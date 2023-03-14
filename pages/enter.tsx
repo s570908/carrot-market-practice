@@ -44,31 +44,38 @@ export default function Enter() {
           </div>
         </div>
         <form className="mt-8 flex flex-col">
-          <label className="text-sm font-medium text-gray-700">
-            {method === "email" ? "Email address" : null}
-            {method === "phone" ? "Phone number" : null}
-          </label>
-          <div className="mt-2">
-            {method === "email" ? (
+          {method === "email" ? (
+            <div className="mt-2">
+              <label htmlFor="email" className="text-sm font-medium text-gray-700">
+                Email address
+              </label>
               <input
+                id="email"
                 type="email"
-                className="w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-orange-500"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-orange-500"
                 required
               />
-            ) : null}
-            {method === "phone" ? (
+            </div>
+          ) : null}
+          {method === "phone" ? (
+            <div className="mt-2">
+              <label htmlFor="phone" className="text-sm font-medium text-gray-700">
+                Phone number
+              </label>
               <div className="flex rounded-md shadow-sm ">
                 <span className="flex select-none items-center justify-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-3 text-sm text-gray-500">
                   +82
                 </span>
                 <input
+                  id="phone"
                   type="number"
-                  className="w-full appearance-none rounded-r-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-orange-500"
+                  className="w-full rounded-r-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-orange-500"
                   required
                 />
               </div>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
+
           <button className="mt-6 rounded-md border border-transparent bg-orange-500 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-600 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">
             {method === "email" ? "Get login link" : null}
             {method === "phone" ? "Get one-time password" : null}
