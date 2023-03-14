@@ -2,8 +2,12 @@ import Layout from "@components/layout";
 import type { NextPage } from "next";
 
 const Home: NextPage = () => {
+  let title, canGoBack, hasTabBar;
+  title = "HOME Test";
+  canGoBack = true;
+  hasTabBar = true;
   return (
-    <Layout title="홈" hasTabBar>
+    <Layout title={title} hasTabBar={hasTabBar} canGoBack={canGoBack}>
       <div className="p flex flex-col space-y-5 py-10">
         {[...Array(10)].map((_, i) => (
           <div key={i} className="flex cursor-pointer justify-between border-b px-4 pb-4">
