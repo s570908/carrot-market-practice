@@ -1,3 +1,5 @@
+import Button from "@components/Button";
+import Input from "@components/Input";
 import type { NextPage } from "next";
 
 const EditProfile: NextPage = () => {
@@ -14,7 +16,8 @@ const EditProfile: NextPage = () => {
         </label>
       </div>
       <div className="space-y-1">
-        <label htmlFor="email" className="text-sm font-medium text-gray-700">
+        <Input label="Email Adress" name="email" type="email" required />
+        {/* <label htmlFor="email" className="text-sm font-medium text-gray-700">
           Email Adress
         </label>
         <input
@@ -22,10 +25,11 @@ const EditProfile: NextPage = () => {
           type="email"
           className="w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-orange-500"
           required
-        />
+        /> */}
       </div>
       <div className="space-y-1">
-        <label htmlFor="phone" className="text-sm font-medium text-gray-700">
+        <Input label="Phone number" name="input" type="number" required />
+        {/* <label htmlFor="phone" className="text-sm font-medium text-gray-700">
           Phone number
         </label>
         <div className="flex rounded-md shadow-sm ">
@@ -38,11 +42,12 @@ const EditProfile: NextPage = () => {
             className="w-full appearance-none rounded-r-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-orange-500"
             required
           />
-        </div>
+        </div> */}
       </div>
-      <button className="mt-6 w-full rounded-md border border-transparent bg-orange-500 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">
+      <Button text="Update profile" />
+      {/* <button className="mt-6 w-full rounded-md border border-transparent bg-orange-500 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">
         Update profile
-      </button>
+      </button> */}
     </div>
   );
 };
