@@ -8,7 +8,7 @@ const TextArea = ({ name, label, ...rest }: TextAreaProps) => {
   return (
     <div>
       {label ? (
-        <label htmlFor="description" className="mb-1 block text-sm font-medium text-gray-700">
+        <label htmlFor={name} className="mb-1 block text-sm font-medium text-gray-700">
           {label}
         </label>
       ) : null}

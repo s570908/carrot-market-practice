@@ -73,7 +73,7 @@ const Input = ({ kind = "text", name, label, rest }: InputProps) => {
       ) : null}
       {kind == "price" ? (
         <div>
-          <div className="relative flex items-center rounded-md shadow-sm">
+          <div className="relative mt-2 flex items-center rounded-md bg-blue-500 shadow-sm">
             <div className="pointer-events-none absolute left-0 flex items-center justify-center pl-3">
               <span className="text-sm text-gray-500">$</span>
             </div>
