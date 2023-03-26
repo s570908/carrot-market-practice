@@ -1,0 +1,723 @@
+###
+POST  http://localhost:3000/api/client-test
+Content-Type: application/json
+
+###  @index=28
+@name = GET /workspaces/:workspace/channels/all
+@workspaceUrl28=cau
+GET http://localhost:3095/api/workspaces/{{workspaceUrl28}}/channels/all
+Content-Type: application/json
+
+### @index=27
+@name=POST /workspaces/:workspace/dms/:id/images
+@workspaceUrl27=slack
+@id27=15
+@fileName1-27=1.png
+@filePath1-27=C:/Users/Song/Pictures/dev/1.png
+@imageType1-27=png
+@fileName2-27=403-500x500.jpg
+@filePath2-27=C:\Users\Song\Pictures\403-500x500.jpg
+@imageType2-27=jpeg
+POST http://localhost:3095/api/workspaces/{{workspaceUrl27}}/dms/{{id27}}/images
+Content-Type: multipart/form-data; boundary=MyWeb
+
+--MyWeb
+Content-Disposition: form-data; name="image"; filename="{{fileName1-27}}"
+Content-Type: image/{{imageType1-27}}
+
+< {{filePath1-27}}
+--MyWeb--
+
+### @index=26
+@name=POST /workspaces/:workspace/dms/:id/chats
+@workspaceUrl26=slack
+@id26=15
+@chat26=test chat 200번째 12 to 15
+POST  http://localhost:3095/api/workspaces/{{workspaceUrl26}}/dms/{{id26}}/chats
+Content-Type: application/json
+
+{"content": "{{chat26}}"}
+
+### @index=25
+@name=GET /workspaces/:workspace/dms
+@workspaceUrl25=slack
+GET  http://localhost:3095/api/workspaces/{{workspaceUrl25}}/dms
+Content-Type: application/json
+
+### @index=24
+@name=POST /workspaces/:workspace/channels/:channel/images
+@workspaceUrl24=slack
+@channel24=일반
+@fileName1-24=pigFoot.jpg
+@filePath1-24=c:/Users/Song/Pictures/pigFoot.jpg
+@imageType1-24=jpeg
+@fileName2-24=pigFoot.jpg
+@filePath2-24=c:/Users/Song/Pictures/pigFoot.jpg
+@imageType2-24=jpeg
+POST http://localhost:3095/api/workspaces/{{workspaceUrl24}}/channels/{{channel24}}/images
+Content-Type: multipart/form-data; boundary=MyWeb
+
+--MyWeb
+Content-Disposition: form-data; name="image"; filename="{{fileName1-24}}"
+Content-Type: image/{{imageType1-24}}
+
+< {{filePath1-24}}
+--MyWeb--
+
+### @index=23
+@name=POST /workspaces/:workspace/channels/:channel/chats
+@workspaceUrl23=slack
+@channel23=general
+@chat23=test chat
+POST  http://localhost:3095/api/workspaces/{{workspaceUrl23}}/channels/{{channel23}}/chats
+Content-Type: application/json
+
+{"content": "{{chat23}}"}
+
+### @index=22
+@name=GET /workspaces/:workspace/dms/:id/unreads
+@workspaceUrl22=slack
+@id22=12
+@after22=1667620500917
+GET  http://localhost:3095/api/workspaces/{{workspaceUrl22}}/dms/{{id22}}/unreads?after={{after22}}
+Content-Type: application/json
+
+### @index=21
+@name=GET /workspaces/:workspace/channels/:channel/unreads
+@workspaceUrl21=slack
+@channel21=일반
+@after21=1664845335983
+GET  http://localhost:3095/api/workspaces/{{workspaceUrl21}}/channels/{{channel21}}/unreads?after={{after21}}
+
+### @index=20
+@name=GET /workspaces/:workspace/channels/:channel/chats
+@workspaceUrl20=slack
+@channel20=general
+@perPage20=20
+@page20=1
+GET  http://localhost:3095/api/workspaces/{{workspaceUrl20}}/channels/{{channel20}}/chats?perPage={{perPage20}}&page={{page20}}
+Content-Type: application/json
+
+###  @index=19
+@name = DELETE /workspaces/:workspace/members/:id
+@workspaceUrl19=dally
+@id19=15
+DELETE   http://localhost:3095/api/workspaces/{{workspaceUrl19}}/members/{{id19}}
+Content-Type: application/json
+
+###  @index=18
+@name = GET /workspaces/:workspace/users/:id
+@workspaceUrl18=cau
+@id18=13
+GET http://localhost:3095/api/workspaces/{{workspaceUrl18}}/users/{{id18}}
+Content-Type: application/json
+
+### @index=17
+@name=POST /workspaces/:workspace/channels/:channel/members
+@workspaceUrl17=slack
+@channel17=Sleact Frontend
+@email17=client100@client.com
+POST  http://localhost:3095/api/workspaces/{{workspaceUrl17}}/channels/{{channel17}}/members
+Content-Type: application/json
+
+{
+  "email": "{{email17}}"
+}
+
+### @index=16
+@name=POST /workspaces/:workspace/members
+@workspaceUrl16=slack
+@email16=client200@client.com
+POST http://localhost:3095/api/workspaces/{{workspaceUrl16}}/members
+Content-Type: application/json
+
+{
+  "email": "{{email16}}"
+}
+
+###  @index=15
+@name = GET /workspaces/:workspace/channels/:channel
+@workspaceUrl15=cau
+@channel15=MCL
+GET http://localhost:3095/api/workspaces/{{workspaceUrl15}}/channels/{{channel15}}
+Content-Type: application/json
+
+### @index=14
+@name=GET /workspaces/:workspace/dms/:id/chats
+@workspaceUrl14=slack
+@id14=12
+@perPage14=20
+@page14=1
+GET  http://localhost:3095/api/workspaces/{{workspaceUrl14}}/dms/{{id14}}/chats?perPage={{perPage14}}&page={{page14}}
+Content-Type: application/json
+
+### @index=13
+@name=POST /users/login
+@email13=client0@client.com
+@password13=121212
+POST http://localhost:3095/api/users/login
+Content-Type: application/json
+
+{
+  "email": "{{email13}}",
+  "password": "{{password13}}" 
+}
+
+### @index=12
+@name=GET /workspaces/:workspace/channels/:channel/unreads
+@workspaceUrl12=Slack
+@channel12=Sleact Frontend
+@timestamp12=0
+GET  http://localhost:3095/api/workspaces/{{workspaceUrl12}}/channels/{{channel12}}/unread?after={{timestamp12}}
+Content-Type: application/json
+
+### @index=11
+@name=GET /workspaces
+GET http://localhost:3095/api/workspaces
+Content-Type: application/json
+
+### @index=10
+@name=POST /workspaces
+@workspaceName10=Prisma로 변환 2
+@url10=prisma-migration2
+POST http://localhost:3095/api/workspaces
+Content-Type: application/json
+
+{ 
+  "workspace": "{{workspaceName10}}",  
+  "url":  "{{url10}}"        
+}
+
+###  @index=9
+@name = GET /workspaces/:workspace/channels
+@workspaceUrl9=cau
+GET http://localhost:3095/api/workspaces/{{workspaceUrl9}}/channels
+Content-Type: application/json
+
+### @index=8
+@name = /workspaces/:workspace/channels/:channel/members
+@workspaceUrl8=slack
+@channel8=general
+@email8=client8@client.com
+POST  http://localhost:3095/api/workspaces/{{workspaceUrl8}}/channels/{{channel8}}/members
+Content-Type: application/json
+
+{
+  "email": "{{email8}}"
+}
+
+### @index=7
+@name = GET /workspaces/:workspace/channels/:channel/members
+@workspaceUrl7=slack
+@channel7=일반
+GET  http://localhost:3095/api/workspaces/{{workspaceUrl7}}/channels/{{channel7}}/members
+Content-Type: application/json
+
+### @index=6
+@name=GET /workspaces/:workspace/channels/:channel
+@workspaceUrl6=slack
+@channel6=Sleact Frontend
+GET  http://localhost:3095/api/workspaces/{{workspaceUrl6}}/channels/{{channel6}}
+Content-Type: application/json
+
+### @index=5
+@name=GET /workspaces/:workspace/dms/:id/chats 
+@workspaceUrl5=slack
+@id5=12
+@perPage5=20
+@page5=1
+GET  http://localhost:3095/api/workspaces/{{workspaceUrl5}}/dms/{{id5}}/chats?perPage={{perPage5}}&page={{{{perPage5}}}}
+Content-Type: application/json
+
+### @index=5
+@name=GET /workspaces/:workspace/channels/:channel/members
+@workspaceUrl5=slack
+@channel5=Sleact Frontend
+GET  http://localhost:3095/api/workspaces/{{workspaceUrl5}}/channels/{{channel5}}/members
+Content-Type: application/json
+
+### @index=4
+@name=GET /workspaces/:workspace/members
+@workspaceUrl4=slack
+GET http://localhost:3095/api/workspaces/{{workspaceUrl4}}/members
+Content-Type: application/json
+
+### @index=3
+@workspaceUrl3=slack
+@channel3=Sleact Frontend
+@perPage3=20
+@page3=1
+GET  http://localhost:3095/api/workspaces/{{workspaceUrl3}}/channels/{{channel3}}/chats?perPage={{perPage3}}&page={{page3}}
+Content-Type: application/json
+
+### @index=2
+@workspaceUrl2=slack
+@channel2 = Sleact Frontend
+GET http://localhost:3095/api/workspaces/{{workspaceUrl2}}/channels/{{channel2}}
+Content-Type: application/json
+
+### @index=1
+@name=POST /workspaces/:workspace/channels
+@workspaceUrl1=cau
+@name1=Football
+POST http://localhost:3095/api/workspaces/{{workspaceUrl1}}/channels
+Content-Type: application/json
+
+{ 
+  "name": "{{name1}}"    
+}
+
+### 
+POST http://localhost:3095/api/users/logout
+Content-Type: application/json
+
+### @index=0
+@name=POST /users
+@email0=clientNew4@client.com
+@nickname0=clientNew4
+@password0=121212
+POST http://localhost:3095/api/users/
+Content-Type: application/json
+
+{
+  "email": "{{email0}}",
+  "nickname": "{{nickname0}}",
+  "password": "{{password0}}"
+}
+
+### 
+@name=GET /users
+GET http://localhost:3095/api/users/ HTTP/1.1
+Content-Type: application/json
+
+### 
+POST http://localhost:4000/graphql
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+mutation Login( 
+  $username: String!
+  $password: String!
+){
+  login(  
+    username: $username,
+    password: $password
+  ) {
+      ok
+      token
+      error
+    }
+}
+
+{
+  "username": "moon-4",
+  "password": "121212"
+}
+
+### 
+POST http://localhost:4000/graphql
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+query SeeProfile($username: String!) {
+  seeProfile(username: $username) {
+    firstName
+    lastName
+    username
+    email
+  }
+}
+
+{
+  "username": "moon"
+}
+
+### 
+POST http://localhost:4000/graphql
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+mutation CreateAccount( 
+  $firstName: String!
+  $lastName: String
+  $username: String!
+  $email: String!
+  $password: String!
+){
+  createAccount(  
+    firstName: $firstName,
+    lastName: $lastName,
+    username: $username,
+    email: $email,
+    password: $password
+  ) {
+      firstName
+      lastName
+      username
+      email
+    }
+}
+
+{
+  "firstName": "Sukdo",
+  "lastName": "Moon",
+  "username": "moon-4",
+  "email": "moon-4@client.com",
+  "password": "121212"
+}
+
+### 
+POST http://localhost:4000/graphql
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+query Movies {
+  movies {
+    id 
+    title
+    year
+    genre
+  }
+}
+
+### 
+POST http://localhost:4000/graphql
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+query Movie($id: Int!) {
+  movie(id: $id) {
+    id 
+    title
+    year
+    genre
+  }
+}
+
+{
+  "id": 5
+}
+
+### 
+POST http://localhost:4000/graphql
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+mutation CreateMovie($title: String!, $year: Int!, $genre: String) {
+  createMovie(title: $title, year: $year, genre: $genre) {
+    id 
+    title
+    year
+    genre    
+  }
+}
+
+{
+    "title": "Star Craft",
+    "year": 2022,
+    "genre": "Ultra Fantacy"
+}
+
+### 
+POST http://localhost:4000/graphql
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+mutation DeleteMovie($id: Int!) {
+  deleteMovie(id: $id) {
+    id 
+    title
+    year
+    genre    
+  }
+}
+
+{
+    "id": 3
+}
+
+### 
+POST http://localhost:4000/graphql
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+mutation UpdateMovie($id: Int!, $title: String!, $year: Int) {
+  updateMovie(id: $id, title: $title, year: $year) {
+    id 
+    title
+    year
+    genre    
+  }
+}
+
+{
+    "id": 5,
+    "title": "Star Wars",
+    "year": 1999
+}
+
+### 
+# 토큰의 소유자가 user id 15인 경우 code는 user id 13의 것인데도 동작한다.
+# 나중에 문제가 없는 것인지 체크가 필요하다.
+POST http://localhost:3000/graphql
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+x-jwt: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE2MTIzNTE5ODV9.L6BYDzFWUNymMmR-kHxuWk_Uqgq3daSjBDgsb0W1Uy0
+
+mutation {
+  verifyEmail(input: {
+    code: "25fe0319-120a-4ddf-aec3-4deabc061b23"
+  }) {
+    ok
+    error
+  }
+}
+
+### 
+POST http://localhost:3000/graphql
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+mutation {
+  login(input: {
+    email: "0604commit@las.com"
+    password: "12345"
+  }) {
+    ok
+    error
+    token
+  }
+}
+
+###
+POST http://localhost:3000/graphql
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+mutation {
+  createAccount(input: {
+    email: "0705commit@las.com"
+    password: "12345"
+    role: Client
+  }) {
+    ok
+    error
+  }
+}
+
+### 5.12   1
+POST http://localhost:3000/graphql
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+x-jwt: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNjEyMjcyNjU0fQ.Tusjvu5cB7iBJp1VFQXgJsmCBbfOmK7NowH1f6tFq6Q
+
+mutation {
+  editProfile(input: {
+    email: "강정수@hong.com"
+    password: "1234512345"
+  }) {
+    ok
+    error
+  }
+}
+
+###
+POST http://localhost:3000/graphql
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+x-jwt: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MjMsImlhdCI6MTYxMTMzMjQyNH0.KHZX3ANQqHSlquSt7cPwZJ5kIIRz9okdbC2jnmimGhU
+
+query {
+  userProfile(userId: 23) {
+    ok
+    error
+    user {
+      id
+      email
+      password
+      createdAt
+      updatedAt
+    }
+  }
+}
+
+###
+POST http://localhost:3000/graphql
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+x-jwt: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNjEyMjcyNjU0fQ.Tusjvu5cB7iBJp1VFQXgJsmCBbfOmK7NowH1f6tFq6Q
+
+query {
+  me {
+      id
+      email
+      password
+      createdAt
+      updatedAt
+      role
+  }
+}
+
+###
+POST http://localhost:3000/graphql
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+x-jwt: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MjMsImlhdCI6MTYxMTMzMjQyNH0.KHZX3ANQqHSlquSt7cPwZJ5kIIRz9okdbC2jnmimGhU
+
+query {
+  me {
+    email
+  }
+}
+
+### 5.2 JWT and Modules
+POST http://localhost:3000/graphql
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+mutation {
+  login(input: {
+    email: "잭시오01@las.com"
+    password: "12345"
+  }) {
+    ok
+    error
+    token
+  }
+}
+
+###
+POST http://localhost:3000/graphql
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+mutation {
+  createAccount(input: {
+    email: "0601코밋@las.com"
+    password: "12345"
+    role: Client
+  }) {
+    ok
+    error
+  }
+}
+
+### 4.9 Log In part Two
+POST http://localhost:3000/graphql
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+mutation {
+  login(input: {
+    email: "남진@hong.com"
+    password: "12345"
+  }) {
+    ok
+    error
+    token
+  }
+}
+
+### 4.8 Log In part One
+POST http://localhost:3000/graphql
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+mutation {
+  login(input: {
+    email: "강정수@hong.com"
+    password: "1234512345"
+  }) {
+    ok
+    error
+    token
+  }
+}
+
+### 4.5 Create Account Mutation part Three
+POST http://localhost:3000/graphql
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+mutation {
+  createAccount(input: {
+    email: "강정수@hong.com"
+    password: "12345"
+    role: Client
+  }) {
+    ok
+    error
+  }
+}
+
+### 4.2
+POST http://localhost:3000/graphql
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+query {
+  hi
+}
+
+### 3.8 Update Restaurant part Two
+POST http://localhost:3000/graphql
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+mutation {
+  updateRestaurant(
+    input: {
+      id: 9
+      data: {
+        name: "Updated"
+        isVegan: false
+      }
+    }
+  )
+}
+
+### 3.7 Update Restaurant part One
+POST http://localhost:3000/graphql
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+mutation {
+  updateRestaurant(
+    input: {
+      id: 9
+      data: {
+        name: "Without isVegan test2"
+      }
+    }
+  )
+}
+
+### 3.6 Create Restaurant
+POST http://localhost:3000/graphql
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+mutation {
+  createRestaurant(
+    input: {
+      name: "Without isVegan"
+    }
+  )
+}
+
+### 3.4 Create Restaurant
+POST http://localhost:3000/graphql
+Content-Type: application/json
+X-REQUEST-TYPE: GraphQL
+
+mutation {
+  createRestaurant(
+    input: {
+      name: "kko is a"
+      isVegan: false
+      address: "123qqqqqq"
+      ownersName: "123qqqqqqq"
+      categoryName: "123123"
+    }
+  )
+}
