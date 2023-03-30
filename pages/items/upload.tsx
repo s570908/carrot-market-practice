@@ -44,8 +44,11 @@ const Upload: NextPage = () => {
         </div>
       </div>
       <div>
-        <label className="mb-1 text-sm font-medium text-gray-700">Description</label>
+        <label htmlFor="description" className="mb-1 text-sm font-medium text-gray-700">
+          Description
+        </label>
         <textarea
+          id="description"
           rows={4}
           className="focus:border-1 mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
         />
