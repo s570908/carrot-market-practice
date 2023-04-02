@@ -1,17 +1,43 @@
 import Input from "@components/Input";
+import { cls } from "@libs/utils";
+import { NextPage } from "next";
 import { useState } from "react";
-import { cls } from "../libs/utils";
+import { useForm } from "react-hook-form";
 
 type MethodType = "email" | "phone";
+interface EnterForm {
+  email?: string;
+  phone?: string;
+}
 
-export default function Enter() {
+const Enter: NextPage = () => {
+  const { register, watch, handleSubmit, reset } = useForm();
+  const [submitting, setSubmitting] = useState(false);
+  const onValid = (data: EnterForm) => {
+    //console.log("Enter: onValid -- data: ", data);
+    setSubmitting(true);
+    fetch("/api/users/enter", {
+      method: "POST",
+      body: JSON.stringify(data),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }).then(() => {
+      setSubmitting(false);
+    });
+  };
+  const onInValid = (errors: any) => {
+    console.log("Enter: onInValid -- errors: ", errors);
+  };
   const [method, setMethod] = useState<MethodType>("email");
-  const onEmailClick = () => setMethod("email");
-  const onPhoneClick = () => setMethod("phone");
-
-  const [methodTmp, setMethodTmp] = useState<MethodType>("email");
-  const onEmailClickTmp = () => setMethodTmp("email");
-  const onPhoneClickTmp = () => setMethodTmp("phone");
+  const onEmailClick = () => {
+    reset();
+    setMethod("email");
+  };
+  const onPhoneClick = () => {
+    reset();
+    setMethod("phone");
+  };
 
   return (
     <div className="mt-16 px-4">
@@ -44,12 +70,23 @@ export default function Enter() {
             </button>
           </div>
         </div>
-        <form className="mt-8 flex flex-col">
+        <form onSubmit={handleSubmit(onValid, onInValid)} className="mt-8 flex flex-col">
           {method === "email" ? (
-            <Input name="email" label="Email address" type="email" required />
+            <Input
+              register={register("email", { required: "Email is required." })}
+              name="email"
+              label="Email address"
+              type="email"
+            />
           ) : null}
           {method === "phone" ? (
-            <Input kind="phone" name="phone" label="Phone number" type="number" required />
+            <Input
+              register={register("phone", { required: "Phone number is required." })}
+              kind="phone"
+              name="phone"
+              label="Phone number"
+              type="number"
+            />
           ) : null}
 
           <button className="mt-6 rounded-md border border-transparent bg-orange-500 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-600 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">
@@ -84,4 +121,6 @@ export default function Enter() {
       </div>
     </div>
   );
-}
+};
+
+export default Enter;

@@ -2,11 +2,25 @@ import Input from "@components/Input";
 import Layout from "@components/Layout";
 import TextArea from "@components/TextArea";
 import type { NextPage } from "next";
+import { useForm } from "react-hook-form";
+
+interface UploadProductForm {
+  name: string;
+  price: number;
+  description: string;
+}
 
 const Upload: NextPage = () => {
+  const { handleSubmit, register } = useForm<UploadProductForm>();
+  const onValid = ({ name, price, description }: UploadProductForm) => {
+    console.log("Upload--onValid: name, price, description: ", name, price, description);
+  };
+  const onInValid = (error: any) => {
+    console.log("Upload--onInValid: error: ", error);
+  };
   return (
     <Layout canGoBack>
-      <div className="space-y-5 px-4 py-3">
+      <form onSubmit={handleSubmit(onValid, onInValid)} className="space-y-5 px-4 py-3">
         <div>
           <label className="flex h-48 w-full cursor-pointer items-center justify-center rounded-md border-2 border-dashed border-gray-300 py-6 text-gray-600 hover:border-orange-500 hover:text-orange-500">
             <svg
@@ -26,13 +40,28 @@ const Upload: NextPage = () => {
             <input className="hidden" type="file" />
           </label>
         </div>
-        <Input required label="Name" name="name" />
-        <Input required label="Price" name="price" kind="price" />
-        <TextArea label="Description" name="description" />
+        <Input
+          register={register("name", { required: true })}
+          type="string"
+          label="Name"
+          name="name"
+        />
+        <Input
+          register={register("price", { required: true })}
+          type="number"
+          label="Price"
+          name="price"
+          kind="price"
+        />
+        <TextArea
+          register={register("description", { required: true })}
+          label="Description"
+          name="description"
+        />
         <button className="mt-5 w-full rounded-md border border-transparent bg-orange-500 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">
           Upload product
         </button>
-      </div>
+      </form>
     </Layout>
   );
 };

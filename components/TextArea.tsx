@@ -4,7 +4,7 @@ interface TextAreaProps {
   [key: string]: any;
 }
 
-const TextArea = ({ name, label, ...rest }: TextAreaProps) => {
+const TextArea = ({ name, label, register, ...rest }: TextAreaProps) => {
   return (
     <div>
       {label ? (
@@ -14,6 +14,7 @@ const TextArea = ({ name, label, ...rest }: TextAreaProps) => {
       ) : null}
       <textarea
         id={name}
+        {...register}
         {...rest}
         rows={4}
         className="focus:border-1 mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
