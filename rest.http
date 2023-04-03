@@ -3,6 +3,14 @@ POST  http://localhost:3000/api/users/enter
 Content-Type: application/json
 
 {
+  "phone": 1
+}
+
+###
+POST  http://localhost:3000/api/users/enter
+Content-Type: application/json
+
+{
   "email": "client0@client.com"
 }
 

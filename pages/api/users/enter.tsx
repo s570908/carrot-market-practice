@@ -1,5 +1,6 @@
 import withHandler from "@libs/server/withHandler";
 import { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
+import client from "@libs/client/client";
 
 interface reqBodyType {
   email?: string;
@@ -9,9 +10,21 @@ interface reqBodyType {
 const handler: NextApiHandler<void> = async (req: NextApiRequest, res: NextApiResponse) => {
   const { email, phone }: reqBodyType = req.body;
   console.log("req.body", req.body);
-  return res.status(200).end();
+  const user = await client.user.upsert({
+    where: {
+      ...(email && { email: email }),
+      ...(phone && { phone: +phone }),
+    },
+    create: {
+      name: "Anonymous",
+      ...(email && { email: email }),
+      ...(phone && { phone: +phone }),
+    },
+    update: {
+      name: "Hong Gil Dong",
+    },
+  });
 };
-//export default handler;
 
 export default withHandler("POST", handler);
 // withHandler(...)는 function이다. 이 function은 ...
