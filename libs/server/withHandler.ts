@@ -4,7 +4,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 // 조건을 위배할 시에는 error로 예외처리를 해준다.
 export default function withHandler(
   method: "GET" | "POST" | "DELETE",
-  fn: (req: NextApiRequest, res: NextApiResponse) => Promise<void>
+  fn: (req: NextApiRequest, res: NextApiResponse) => void
 ) {
   // 우리가 NexJS에서 실행할 함수를 return해야 합니다.
   return async function (req: NextApiRequest, res: NextApiResponse) {

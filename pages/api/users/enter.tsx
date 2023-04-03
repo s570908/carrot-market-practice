@@ -1,13 +1,16 @@
 import withHandler from "@libs/server/withHandler";
-import { NextApiRequest, NextApiResponse } from "next";
+import { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // if (req.method !== "POST") {
-  //   res.status(401).end;
-  // }
-  console.log("req.body", req.body);
-  res.status(200).end();
+interface reqBodyType {
+  email?: string;
+  phone?: string;
 }
+
+const handler: NextApiHandler<void> = async (req: NextApiRequest, res: NextApiResponse) => {
+  const { email, phone }: reqBodyType = req.body;
+  console.log("req.body", req.body);
+  return res.status(200).end();
+};
 //export default handler;
 
 export default withHandler("POST", handler);
