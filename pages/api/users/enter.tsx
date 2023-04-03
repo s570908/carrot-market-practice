@@ -10,20 +10,26 @@ interface reqBodyType {
 const handler: NextApiHandler<void> = async (req: NextApiRequest, res: NextApiResponse) => {
   const { email, phone }: reqBodyType = req.body;
   console.log("req.body", req.body);
-  const user = await client.user.upsert({
-    where: {
-      ...(email && { email: email }),
-      ...(phone && { phone: +phone }),
-    },
-    create: {
-      name: "Anonymous",
-      ...(email && { email: email }),
-      ...(phone && { phone: +phone }),
-    },
-    update: {
-      name: "Hong Gil Dong",
+  const userKey = phone ? { phone: +phone } : { email: email };
+
+  const token = await client.token.create({
+    data: {
+      payload: "12345678",
+      user: {
+        connectOrCreate: {
+          where: {
+            ...userKey,
+          },
+          create: {
+            name: "Anonymous",
+            ...userKey,
+          },
+        },
+      },
     },
   });
+  console.log("api/enter--token: ", token);
+  res.status(200).end();
 };
 
 export default withHandler("POST", handler);
