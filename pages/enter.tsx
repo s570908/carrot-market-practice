@@ -1,4 +1,5 @@
 import Input from "@components/Input";
+import useMutation from "@libs/client/useMutaion";
 import { cls } from "@libs/utils";
 import { NextPage } from "next";
 import { useState } from "react";
@@ -13,18 +14,10 @@ interface EnterForm {
 const Enter: NextPage = () => {
   const { register, watch, handleSubmit, reset } = useForm();
   const [submitting, setSubmitting] = useState(false);
-  const onValid = (data: EnterForm) => {
-    //console.log("Enter: onValid -- data: ", data);
-    setSubmitting(true);
-    fetch("/api/users/enter", {
-      method: "POST",
-      body: JSON.stringify(data),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }).then(() => {
-      setSubmitting(false);
-    });
+  const [enter, { data, loading, error }] = useMutation("/api/users/enter");
+
+  const onValid = (validForm: EnterForm) => {
+    enter(validForm);
   };
   const onInValid = (errors: any) => {
     console.log("Enter: onInValid -- errors: ", errors);
