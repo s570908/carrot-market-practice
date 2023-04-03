@@ -2,8 +2,9 @@ import Input from "@components/Input";
 import useMutation from "@libs/client/useMutaion";
 import { cls } from "@libs/utils";
 import { NextPage } from "next";
-import { useState } from "react";
+import { Component, useState } from "react";
 import { useForm } from "react-hook-form";
+import Button from "@components/Button";
 
 type MethodType = "email" | "phone";
 interface EnterForm {
@@ -13,7 +14,6 @@ interface EnterForm {
 
 const Enter: NextPage = () => {
   const { register, watch, handleSubmit, reset } = useForm();
-  const [submitting, setSubmitting] = useState(false);
   const [enter, { data, loading, error }] = useMutation("/api/users/enter");
 
   const onValid = (validForm: EnterForm) => {
@@ -81,11 +81,10 @@ const Enter: NextPage = () => {
               type="number"
             />
           ) : null}
-
-          <button className="mt-6 rounded-md border border-transparent bg-orange-500 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-600 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">
-            {method === "email" ? "Get login link" : null}
-            {method === "phone" ? "Get one-time password" : null}
-          </button>
+          {method === "email" ? <Button text={loading ? "Loading" : "Get login link"} /> : null}
+          {method === "phone" ? (
+            <Button text={loading ? "Loading" : "Get one-time password"} />
+          ) : null}
         </form>
         <div className="mt-8">
           <div className="relative">
