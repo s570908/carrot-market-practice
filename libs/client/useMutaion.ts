@@ -47,7 +47,7 @@ export default function useMutation(url: string): [(data: any) => void, UseMutat
       })
       .finally(() => {
         setState((prev) => {
-          return { ...prev, loading: true };
+          return { ...prev, loading: false };
         });
       });
   }
