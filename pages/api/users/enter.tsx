@@ -1,4 +1,4 @@
-import withHandler from "@libs/server/withHandler";
+import withHandler, { ResponseType } from "@libs/server/withHandler";
 import { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 import client from "@libs/client/client";
 
@@ -7,14 +7,18 @@ interface reqBodyType {
   phone?: string;
 }
 
-const handler: NextApiHandler<void> = async (req: NextApiRequest, res: NextApiResponse) => {
+// NextApiResponse<ResponseType>에서 generic type, ResponseType, 을 주는 방식에 대해서는 다음의 url을 참조한다.
+// https://nextjs.org/docs/api-routes/response-helpers
+const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse<ResponseType>) => {
   const { email, phone }: reqBodyType = req.body;
   console.log("req.body", req.body);
   const userKey = phone ? { phone: +phone } : { email: email };
 
+  const payload = Math.floor(100000 + Math.random() * 900000) + "";
+
   const token = await client.token.create({
     data: {
-      payload: "12345678",
+      payload,
       user: {
         connectOrCreate: {
           where: {
@@ -29,7 +33,7 @@ const handler: NextApiHandler<void> = async (req: NextApiRequest, res: NextApiRe
     },
   });
   console.log("api/enter--token: ", token);
-  res.status(200).end();
+  res.status(200).json({ ok: true });
 };
 
 export default withHandler("POST", handler);
