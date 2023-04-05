@@ -8,7 +8,7 @@ module.exports = {
     extend: {},
   },
   darkMode: "class", // class, media
-  plugins: [require("@tailwindcss/forms")], //npm i @tailwindcss/forms
+  plugins: [require("@tailwindcss/forms"), require("tailwind-scrollbar-hide")], //npm i @tailwindcss/forms
   variants: {
     extend: {
       backgroundColor: ["group-focus"],
