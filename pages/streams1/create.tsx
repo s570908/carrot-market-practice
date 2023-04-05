@@ -1,0 +1,73 @@
+import type { NextPage } from "next";
+
+const Create: NextPage = () => {
+  return (
+    <div className="space-y-5 px-4 py-10 ">
+      <div>
+        <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="name">
+          Name
+        </label>
+        <div className="relative flex items-center rounded-md shadow-sm">
+          <input
+            id="name"
+            type="email"
+            className="w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-orange-500"
+            required
+          />
+        </div>
+      </div>
+      {/* <div>
+        <label className="block mb-1 text-sm font-medium text-gray-700" htmlFor="price">
+          Price
+        </label>
+        <div className="relative flex items-center rounded-md shadow-sm">
+          <div className="absolute left-0 flex items-center justify-center pl-3 pointer-events-none">
+            <span className="text-sm text-gray-500">$</span>
+          </div>
+          <input
+            id="price"
+            className="w-full px-3 py-2 placeholder-gray-400 border border-gray-300 rounded-md shadow-sm appearance-none pl-7 focus:border-orange-500 focus:outline-none focus:ring-orange-500"
+            type="text"
+            placeholder="0.00"
+          />
+          <div className="absolute right-0 flex items-center pr-3 pointer-events-none">
+            <span className="text-gray-500">USD</span>
+          </div>
+        </div>
+      </div> */}
+
+      <div className="flex flex-col">
+        <label htmlFor="price" className="mb-1 block text-sm font-medium text-gray-700">
+          Price
+        </label>
+
+        <div className="relative flex items-center justify-center">
+          <input
+            type="text"
+            placeholder="0.00"
+            id="price"
+            className="w-full appearance-none rounded-md border border-gray-300 px-3 py-2 pr-16 pl-7 placeholder-gray-400 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-orange-500"
+            required
+          />
+          <span className="absolute left-0 border px-2 text-sm text-gray-500">$</span>
+          <span className="absolute right-0 border pr-4 text-gray-700">USD</span>
+        </div>
+      </div>
+      <div>
+        <label htmlFor="description" className="mb-1 block text-sm font-medium text-gray-700">
+          Description
+        </label>
+        <textarea
+          id="description"
+          className="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 "
+          rows={4}
+        />
+      </div>
+      <button className="w-full rounded-md border border-transparent bg-orange-500 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">
+        Go live
+      </button>
+    </div>
+  );
+};
+
+export default Create;
