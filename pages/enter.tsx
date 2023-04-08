@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { cls } from "../libs/utils";
+import Input from "@components/Input";
 
 type MethodType = "email" | "phone";
 
@@ -131,7 +132,7 @@ export default function Enter() {
       </div>
 
       <form className="mt-8 flex flex-col ">
-        {methodTmp === "email" ? (
+        {/* {methodTmp === "email" ? (
           <label htmlFor="email" className="text-sm font-medium text-gray-700">
             Email address
           </label>
@@ -139,28 +140,43 @@ export default function Enter() {
           <label htmlFor="phone" className="text-sm font-medium text-gray-700">
             Phone number
           </label>
-        )}
+        )} */}
         {methodTmp === "email" ? (
-          <input
-            id="email"
-            className="mt-2 w-full appearance-none rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-orange-500"
+          // <input
+          //   id="email"
+          //   className="mt-2 w-full appearance-none rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-orange-500"
+          //   type="email"
+          //   placeholder="input of Email address"
+          //   required
+          // />
+          <Input
+            label="Email address"
+            name="email"
             type="email"
+            required={true}
             placeholder="input of Email address"
-            required
           />
         ) : (
-          <div className="flex">
-            <span className="mt-2 flex items-center justify-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-3 text-sm text-gray-500">
-              +82
-            </span>
-            <input
-              id="phone"
-              className="mt-2 w-full appearance-none rounded-r-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-orange-500"
-              type="number"
-              placeholder="input of phone number"
-              required
-            />
-          </div>
+          // <div className="flex">
+          //   <span className="mt-2 flex items-center justify-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-3 text-sm text-gray-500">
+          //     +82
+          //   </span>
+          //   <input
+          //     id="phone"
+          //     className="mt-2 w-full appearance-none rounded-r-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-orange-500"
+          //     type="number"
+          //     placeholder="input of phone number"
+          //     required
+          //   />
+          // </div>
+          <Input
+            label="Phone number"
+            name="phone"
+            kind="phone"
+            type="number"
+            required={true}
+            placeholder="input of phone number"
+          />
         )}
         <button className="mt-6 rounded-md border border-transparent bg-orange-500 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-600 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">
           {methodTmp === "email" ? "Get login link" : "Get onetime password"}
