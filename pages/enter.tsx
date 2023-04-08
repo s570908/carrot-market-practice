@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { cls } from "../libs/utils";
 import Input from "@components/Input";
+import Button from "@components/Button";
 
 type MethodType = "email" | "phone";
 
@@ -144,11 +145,12 @@ export default function Enter() {
         {methodTmp === "email" ? (
           // <input
           //   id="email"
-          //   className="mt-2 w-full appearance-none rounded-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-orange-500"
+          //   className="w-full mt-2 placeholder-gray-400 border border-gray-300 rounded-md shadow-sm appearance-none focus:border-orange-500 focus:outline-none focus:ring-orange-500"
           //   type="email"
           //   placeholder="input of Email address"
           //   required
           // />
+
           <Input
             label="Email address"
             name="email"
@@ -158,17 +160,18 @@ export default function Enter() {
           />
         ) : (
           // <div className="flex">
-          //   <span className="mt-2 flex items-center justify-center rounded-l-md border border-r-0 border-gray-300 bg-gray-50 px-3 text-sm text-gray-500">
+          //   <span className="flex items-center justify-center px-3 mt-2 text-sm text-gray-500 border border-r-0 border-gray-300 rounded-l-md bg-gray-50">
           //     +82
           //   </span>
           //   <input
           //     id="phone"
-          //     className="mt-2 w-full appearance-none rounded-r-md border border-gray-300 placeholder-gray-400 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-orange-500"
+          //     className="w-full mt-2 placeholder-gray-400 border border-gray-300 shadow-sm appearance-none rounded-r-md focus:border-orange-500 focus:outline-none focus:ring-orange-500"
           //     type="number"
           //     placeholder="input of phone number"
           //     required
           //   />
           // </div>
+
           <Input
             label="Phone number"
             name="phone"
@@ -178,9 +181,8 @@ export default function Enter() {
             placeholder="input of phone number"
           />
         )}
-        <button className="mt-6 rounded-md border border-transparent bg-orange-500 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-600 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">
-          {methodTmp === "email" ? "Get login link" : "Get onetime password"}
-        </button>
+        {methodTmp === "email" ? <Button text="Get login link" /> : null}
+        {methodTmp === "phone" ? <Button text="Get onetime password" /> : null}
       </form>
       <div className="mt-8">
         <div className="border-t border-gray-300" />
