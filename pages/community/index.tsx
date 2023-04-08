@@ -1,3 +1,4 @@
+import FloatingButton from "@components/FloatingButton1";
 import type { NextPage } from "next";
 
 const Community: NextPage = () => {
@@ -54,7 +55,7 @@ const Community: NextPage = () => {
           </div>
         </div>
       ))}
-      <button className="fixed bottom-24 right-5 cursor-pointer rounded-full bg-orange-400 p-4 text-white shadow-xl transition-colors duration-300 hover:bg-orange-500">
+      <FloatingButton href="/community/write">
         <svg
           className="h-6 w-6"
           fill="none"
@@ -69,7 +70,7 @@ const Community: NextPage = () => {
             d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
           ></path>
         </svg>
-      </button>
+      </FloatingButton>
     </div>
   );
 };
