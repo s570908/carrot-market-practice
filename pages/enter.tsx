@@ -17,7 +17,8 @@ interface TokenForm {
 }
 
 // enter(validForm)을 수행한 후에 data.ok를 수신한다는 것은 token을 email이나 문자전송으로 성공적으로 송부하였음을 뜻한다.
-// data.ok를 수신하면 token을 입력하는 ui가 보여져야 한다.
+// data.ok를 수신하면 token을 입력하는 ui가 보여져야 한다. 이 UI에서 token을 입력한 후 submit하면
+// confirm(validForm)이 수행된다.
 const Enter: NextPage = () => {
   const { register, watch, handleSubmit, reset } = useForm<EnterForm>();
   const {

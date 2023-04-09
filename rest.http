@@ -6,7 +6,7 @@ POST  http://localhost:3000/api/users/confirm
 Content-Type: application/json
 
 {
-  "token": "121212"
+  "token": "551068"
 }
 
 ###
