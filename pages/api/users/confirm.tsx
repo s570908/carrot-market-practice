@@ -54,9 +54,15 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
   // 주의! res.status(200).end({ ok: true, token })로 하면 안된다. json 형태의 args는 .json()을 사용한다.
 };
 
-export default withIronSessionApiRoute(withHandler("POST", handler), {
+const cookieOption = {
   cookieName: "carrotsession",
   password: "2039847509283745098273409587asdfasdfasdfasdfasdfasdfasdf",
-});
+};
+
+function withApiSession(fn: any) {
+  return withIronSessionApiRoute(fn, cookieOption);
+}
+
+export default withApiSession(withHandler("POST", handler));
 
 //export default withHandler("POST", handler);
