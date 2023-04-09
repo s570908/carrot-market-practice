@@ -2,7 +2,7 @@ import { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 type MethodType = "GET" | "POST" | "DELETE";
 export interface ResponseType {
   ok: boolean;
-  [key: string]: any;
+  [key: string]: any | undefined;
 }
 
 // 주어진 method에 한해서 fn을 수행하는 새로운 function을 정의해 준다.

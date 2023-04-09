@@ -24,7 +24,8 @@ model User {
 model Token {
   id        Int      @id @default(autoincrement())
   payload   String //@unique
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // deleting child record deletes parent record. i.e., deleting user record deletes token record.
   userId    Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

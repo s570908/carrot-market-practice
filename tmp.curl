@@ -1,0 +1,7 @@
+curl -s --user 'api:3476cbc45ad43eb4141afa0d086dc542-360a0b2c-8e851ec8' \
+	https://api.mailgun.net/v3/sandboxb217a8ed9497411c82c497dd5272889a.mailgun.org/messages \
+	-F from='Excited User <mailgun@sandboxb217a8ed9497411c82c497dd5272889a.mailgun.org>' \
+	-F to=songohyoung@gmail.com \
+	-F to=song@cau.ac.kr \
+	-F subject='Hello No Junk Mail' \
+	-F text='Testing some Mailgun awesomeness!'

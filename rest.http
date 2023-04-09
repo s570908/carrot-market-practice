@@ -1,4 +1,15 @@
 ###
+GET www.example.org/sample_page.html HTTP/1.1
+
+###
+POST  http://localhost:3000/api/users/confirm
+Content-Type: application/json
+
+{
+  "token": "121212"
+}
+
+###
 POST  http://localhost:3000/api/users/enter
 Content-Type: application/json
 
@@ -11,7 +22,7 @@ POST  http://localhost:3000/api/users/enter
 Content-Type: application/json
 
 {
-  "email": "client0@client.com"
+  "email": "songohyoung@gmail.com"
 }
 
 ###

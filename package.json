@@ -12,12 +12,16 @@
   "dependencies": {
     "@prisma/client": "^4.11.0",
     "@tailwindcss/forms": "^0.5.3",
+    "@types/twilio": "^3.19.3",
+    "mailgun-js": "^0.22.0",
     "next": "^12.2.5",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "react-hook-form": "^7.43.8"
+    "react-hook-form": "^7.43.8",
+    "twilio": "^4.9.0"
   },
   "devDependencies": {
+    "@types/mailgun-js": "^0.22.13",
     "@types/node": "^18.15.2",
     "@types/react": "^18.0.28",
     "@types/react-dom": "^18.0.11",

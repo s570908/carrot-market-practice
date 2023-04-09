@@ -1,6 +1,10 @@
 import withHandler, { ResponseType } from "@libs/server/withHandler";
 import { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 import client from "@libs/client/client";
+import { sendTokenEmail } from "@libs/server/sendEmail";
+import twilio from "twilio";
+
+const twilioClient = twilio(process.env.TWILIO_SID, process.env.TWILIO_TOKEN);
 
 interface reqBodyType {
   email?: string;
@@ -31,8 +35,28 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
         },
       },
     },
+    include: {
+      user: {
+        select: {
+          name: true,
+        },
+      },
+    },
   });
+
   console.log("api/enter--token: ", token);
+  if (phone) {
+    const message = await twilioClient.messages.create({
+      messagingServiceSid: process.env.TWILIO_MSID,
+      // 원래라면 phone으로 보내야 하지만 -> dev process에서는 그냥 내 폰으로
+      to: process.env.MY_PHONE!,
+      body: `Your login token is ${payload}`,
+    });
+
+    console.log(message);
+  } else if (email) {
+    await sendTokenEmail(token.user.name, payload);
+  }
   res.status(200).json({ ok: true });
 };
 
