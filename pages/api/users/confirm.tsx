@@ -1,15 +1,7 @@
 import withHandler, { ResponseType } from "@libs/server/withHandler";
 import { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
-import { withIronSessionApiRoute } from "iron-session/next";
 import client from "@libs/client/client";
-
-declare module "iron-session" {
-  interface IronSessionData {
-    user?: {
-      id: number;
-    };
-  }
-}
+import withApiSession from "@libs/server/withApiSession";
 
 interface reqBodyType {
   token?: string;
@@ -25,7 +17,7 @@ interface reqBodyType {
 const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse<ResponseType>) => {
   // const token = req.body.token;
   const { token }: reqBodyType = req.body;
-  const exists = await client.token.findUnique({
+  const foundToken = await client.token.findUnique({
     where: {
       payload: token,
     },
@@ -36,32 +28,30 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
   // request.body.token을 이용하여 DB에서 token을 찾는다. token을 가져올 때 user도 가져온다.
 
   console.log("confirm--token: ", token);
-  console.log("confirm--exists: ", exists);
+  console.log("confirm--foundToken: ", foundToken);
   console.log(`confirm--Cookies requested: ${JSON.stringify(req.cookies, null, 2)}`);
   console.log("confirm--req.session: ", req.session);
 
-  if (!exists) {
+  if (!foundToken) {
     res.status(404).end();
   } else {
     req.session.user = {
-      id: exists.userId,
+      id: foundToken.userId,
     };
   }
 
   await req.session.save();
 
-  res.status(200).json({ ok: true, token });
-  // 주의! res.status(200).end({ ok: true, token })로 하면 안된다. json 형태의 args는 .json()을 사용한다.
-};
+  // 모든 토큰을 지워준다.
+  await client.token.deleteMany({
+    where: {
+      userId: foundToken?.userId,
+    },
+  });
 
-const cookieOption = {
-  cookieName: "carrotsession",
-  password: "2039847509283745098273409587asdfasdfasdfasdfasdfasdfasdf",
+  res.status(200).json({ ok: true });
+  // 주의! res.status(200).end({ ok: true})로 하면 안된다. json 형태의 args는 .json()을 사용한다.
 };
-
-function withApiSession(fn: any) {
-  return withIronSessionApiRoute(fn, cookieOption);
-}
 
 export default withApiSession(withHandler("POST", handler));
 
