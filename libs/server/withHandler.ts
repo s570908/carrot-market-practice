@@ -4,17 +4,31 @@ export interface ResponseType {
   ok: boolean;
   [key: string]: any | undefined;
 }
+interface ConfigType {
+  method: MethodType;
+  handler: NextApiHandler;
+  isPrivate?: boolean;
+}
+type HandlerType = {
+  (config: ConfigType): NextApiHandler;
+};
 
 // 주어진 method에 한해서 fn을 수행하는 새로운 function을 정의해 준다.
 // 조건을 위배할 시에는 error로 예외처리를 해준다.
-export default function withHandler(method: MethodType, fn: NextApiHandler): NextApiHandler {
+const withHandler: HandlerType = ({ method, handler, isPrivate = true }) => {
   // 우리가 NexJS에서 실행할 함수를 return해야 합니다.
   return async function (req: NextApiRequest, res: NextApiResponse<ResponseType>) {
     if (req.method !== method) {
       res.status(405).end;
     }
+    if (isPrivate && !req.session.user) {
+      return res.status(401).json({ ok: false, error: "Please log in." });
+    }
+    // login user만이 사용하기를 원하는데 login user session이 존재하지 않는다면 error!
+    // login user만이 사용되기를 원하다면 isPrivate은 true이다.
+    // login user 가 request할 경우 반드시 req.session.user가 존재하여야 한다.
     try {
-      await fn(req, res);
+      await handler(req, res);
     } catch (error) {
       console.error(error);
       if (error instanceof Error) {
@@ -24,4 +38,6 @@ export default function withHandler(method: MethodType, fn: NextApiHandler): Nex
       }
     }
   };
-}
+};
+
+export default withHandler;

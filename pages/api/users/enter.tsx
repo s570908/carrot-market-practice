@@ -60,8 +60,13 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
   res.status(200).json({ ok: true });
 };
 
-export default withHandler("POST", handler);
+export default withHandler({ method: "POST", handler, isPrivate: false });
 // withHandler(...)는 function이다. 이 function은 ...
 // request method가 POST 가 아니면 res에 에러를 전송한다.
 // ...이면, handler를 수행시킨다. handler 수행 시에 catch(error)를
 // 할 수 있다.
+
+// isPrivate 인자를 추가하자.  isPrivate:true이면 login을 한 user만이 fn을 수행할 수 있게 만든다.
+// login하지 않은 user가 fn을 수행시킬 수 있게 하려면 isPrivate:false로 하면 된다. api enter, api confirm이 이것에 해당한다.
+
+// login하지 않은 user도 사용할 수 있게 해준다: isPrivate:false
