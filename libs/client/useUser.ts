@@ -18,14 +18,17 @@
 //   }, [router]);
 //   return user;
 // }
+import { useRouter } from "next/router";
+import { useEffect } from "react";
 import useSWR from "swr";
 
-const fetcher = async (url: string) => {
-  const response = await fetch(url);
-  return await response.json();
-};
-
 export default function useUser() {
-  const { data, error } = useSWR("/api/users/me", fetcher);
-  return data;
+  const { data, error } = useSWR("/api/users/me");
+  const router = useRouter();
+  useEffect(() => {
+    if (!data?.ok) {
+      router.replace("/enter");
+    }
+  }, [data, router]);
+  return { user: data?.profile, isLoading: !data && !error };
 }

@@ -5,7 +5,7 @@ import useUser from "@libs/client/useUser";
 import type { NextPage } from "next";
 
 const Home: NextPage = () => {
-  const user = useUser();
+  const { user, isLoading } = useUser();
   console.log("Home--user: ", user);
   return (
     <Layout title="홈" hasTabBar>
