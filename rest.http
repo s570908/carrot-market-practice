@@ -1,4 +1,8 @@
 ###
+GET  http://localhost:3000/api/users/me
+Content-Type: application/json
+
+###
 GET www.example.org/sample_page.html HTTP/1.1
 
 ###
@@ -6,7 +10,7 @@ POST  http://localhost:3000/api/users/confirm
 Content-Type: application/json
 
 {
-  "token": "551068"
+  "token": "658523"
 }
 
 ###

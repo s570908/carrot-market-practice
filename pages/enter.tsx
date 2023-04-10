@@ -2,9 +2,9 @@ import Input from "@components/Input";
 import useMutation from "@libs/client/useMutaion";
 import { cls } from "@libs/utils";
 import { NextPage } from "next";
-import { Component, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useState } from "react";
 import Button from "@components/Button";
+import { useForm } from "react-hook-form";
 
 type MethodType = "email" | "phone";
 interface EnterForm {
@@ -58,7 +58,7 @@ const Enter: NextPage = () => {
   };
 
   return (
-    <div className="mt-16 px-4">
+    <div className="mt-16 px-4 ">
       <h3 className="text-center text-3xl font-bold">Enter to Carrot</h3>
       <div className="mt-8">
         {data?.ok ? (

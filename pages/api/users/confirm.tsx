@@ -1,7 +1,7 @@
 import withHandler, { ResponseType } from "@libs/server/withHandler";
 import { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 import client from "@libs/client/client";
-import withApiSession from "@libs/server/withApiSession";
+import {withApiSession} from "@libs/server/withSession";
 
 interface reqBodyType {
   token?: string;
