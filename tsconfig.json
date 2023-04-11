@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "es2020",
     "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
+    "allowJs": true, // allowJs 옵션을 true로 설정하면 자바스크립트 파일도 타입 지정이 알아서 된다.
     "skipLibCheck": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
