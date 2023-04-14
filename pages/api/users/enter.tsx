@@ -53,7 +53,7 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
       body: `Your login token is ${payload}`,
     });
 
-    console.log(message);
+    //console.log(message);
   } else if (email) {
     await sendTokenEmail(token.user.name, payload);
   }
