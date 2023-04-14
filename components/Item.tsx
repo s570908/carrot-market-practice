@@ -10,7 +10,7 @@ interface ItemProps {
 
 const Item = ({ title, price, id, comments, hearts }: ItemProps) => {
   return (
-    <Link href={`/items/${id}`}>
+    <Link href={`/products/${id}`}>
       <a className="flex cursor-pointer justify-between border-b px-4 pb-4">
         <div className="flex space-x-4">
           <div className="h-20 w-20 rounded-md bg-gray-400" />
