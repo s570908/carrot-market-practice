@@ -21,12 +21,15 @@
 import { useRouter } from "next/router";
 import { useEffect } from "react";
 import useSWR from "swr";
+import fetcher from "@libs/client/fetcher";
+import { ResponseType } from "@libs/server/withHandler";
 
 export default function useUser() {
-  const { data, error } = useSWR("/api/users/me");
+  const { data, error } = useSWR("/api/users/me", fetcher);
+  //console.log("useUser--data: ", data);
   const router = useRouter();
   useEffect(() => {
-    if (!data?.ok) {
+    if (data && !data.ok) {
       router.replace("/enter");
     }
   }, [data, router]);
