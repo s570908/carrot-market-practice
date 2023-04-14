@@ -1,5 +1,6 @@
 ###
 GET  http://localhost:3000/api/users/me
+Cookie: carrotsession=Fe26.2*1*159d3f642dceae88c87a00521ddd219212efb19fff9bb6bd035a4fef2542b7dc*xYPd_bE8JhU43F_thDdFnQ*5iLIQeFyQ4IHEBXfj8azguIEYTYXQg41uyECskXqisU*1682773333707*7d98443716174d26ca655dc3f96318eced667e8e87f1c2a6e701c090f18308a3*WPc5aXaqt4UZP62O8zaRU0yAFirN-sgmK-ETIAPlNfU~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
 Content-Type: application/json
 
 ###
@@ -10,23 +11,25 @@ POST  http://localhost:3000/api/users/confirm
 Content-Type: application/json
 
 {
-  "token": "658523"
+  "token": "205727"
 }
 
-###
+### @index=30
+# @prompt phoneNumber30 Your phone number
 POST  http://localhost:3000/api/users/enter
 Content-Type: application/json
 
 {
-  "phone": 1
+  "phone": {{phoneNumber30}}
 }
 
-###
+### @index=29
+# @prompt email29 Your email
 POST  http://localhost:3000/api/users/enter
 Content-Type: application/json
 
 {
-  "email": "songohyoung@gmail.com"
+  "email": "{{email29}}"
 }
 
 ###
