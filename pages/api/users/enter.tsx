@@ -60,7 +60,7 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
   res.status(200).json({ ok: true });
 };
 
-export default withHandler({ method: "POST", handler, isPrivate: false });
+export default withHandler({ methods: ["POST"], handler, isPrivate: false });
 // withHandler(...)는 function이다. 이 function은 ...
 // request method가 POST 가 아니면 res에 에러를 전송한다.
 // ...이면, handler를 수행시킨다. handler 수행 시에 catch(error)를

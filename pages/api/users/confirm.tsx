@@ -57,6 +57,6 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
   // 주의! res.status(200).end({ ok: true})로 하면 안된다. json 형태의 args는 .json()을 사용한다.
 };
 
-export default withApiSession(withHandler({ method: "POST", handler, isPrivate: false }));
+export default withApiSession(withHandler({ methods: ["POST"], handler, isPrivate: false }));
 
 //export default withHandler("POST", handler);

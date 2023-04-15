@@ -5,7 +5,7 @@ export interface ResponseType {
   [key: string]: any | undefined;
 }
 interface ConfigType {
-  method: MethodType;
+  methods: MethodType[];
   handler: NextApiHandler;
   isPrivate?: boolean;
 }
@@ -15,10 +15,11 @@ type HandlerType = {
 
 // 주어진 method에 한해서 fn을 수행하는 새로운 function을 정의해 준다.
 // 조건을 위배할 시에는 error로 예외처리를 해준다.
-const withHandler: HandlerType = ({ method, handler, isPrivate = true }) => {
+const withHandler: HandlerType = ({ methods, handler, isPrivate = true }) => {
   // 우리가 NexJS에서 실행할 함수를 return해야 합니다.
   return async function (req: NextApiRequest, res: NextApiResponse<ResponseType>) {
-    if (req.method !== method) {
+    if (req.method && !methods.includes(req.method as MethodType)) {
+      // methods가 req.method를 포함하고 있어야 한다. 그렇지 않으면 에러.
       res.status(405).end;
     }
     if (isPrivate && !req.session.user) {

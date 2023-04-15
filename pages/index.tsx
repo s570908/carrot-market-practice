@@ -1,18 +1,29 @@
 import FloatingButton from "@components/FloatingButton";
 import Item from "@components/Item";
 import Layout from "@components/Layout";
+import fetcher from "@libs/client/fetcher";
 import useUser from "@libs/client/useUser";
+import { Product } from "@prisma/client";
 import type { NextPage } from "next";
+import useSWR from "swr";
+
+interface ProductsResponse {
+  ok: boolean;
+  products: Product[];
+}
 
 const Home: NextPage = () => {
   const { user, isLoading } = useUser();
+  const { data, error } = useSWR<ProductsResponse>("/api/products", fetcher);
+
   console.log("Home--user: ", user);
+  console.log("Home--data: ", data);
 
   return (
     <Layout title="홈" hasTabBar>
       <div className="p flex flex-col space-y-5 py-2">
-        {[...Array(11)].map((_, i) => (
-          <Item key={i} id={i + 1} title="new iPhone 14" price={95} comments={1} hearts={1} />
+        {data?.products?.map(({ id, name, price, description }, i) => (
+          <Item key={i} id={id} title={name} price={price} comments={1} hearts={1} />
         ))}
 
         <FloatingButton href="/products/upload">
