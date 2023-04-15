@@ -1,0 +1,7 @@
+###
+POST  http://localhost:3000/api/client-test
+Content-Type: application/json
+
+{
+	"name": "kkh5", "email": "kkh5@kkh.com"
+}
