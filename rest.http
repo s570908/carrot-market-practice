@@ -1,6 +1,12 @@
 ### @index=29
-@cookie29=carrotsession=Fe26.2*1*babfb75ad17817184418da423236628ba92039c157cb1ff56c269423b2ccbb6e*Qzf2BxgGRK0lR4qoLSYZag*tobTa8GItbEYA9RZJzYBVo8JN_0HrFw8RbYB57qnrXQ*1682908015372*379a74efb15b842d0ed76935ef44207c84b24bc1ec3986348f887e19dc3c3a12*7YlzI9BDqs-DJShhd0QgotSfQ_9UMCwGMNSDz6o-ZZw~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
+@cookie29=carrotsession=Fe26.2*1*8d1b887b30d6114779d703c04b4be1026c913061eab9c6ba57b8a85af5456fc8*LhT6QqO6N-T1N9RIViHIMw*NArT3okdhKqgqyTWn5DOeABJX7yffN3LHC354oZtsJI*1682924229379*0a55be1eaf41b18249945de12484fae3e7b984637d4b574102f1cce9daf20460*jOb6WYEThESTfFzM1qh-8ezA8YWdcOhjYYtJlyYYUA0~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
 GET  http://localhost:3000/api/users/me
+Cookie: {{cookie29}}
+Content-Type: application/json
+
+###
+# @prompt idForFav Your productID for fav
+POST http://localhost:3000/api/products/{{idForFav}}/fav
 Cookie: {{cookie29}}
 Content-Type: application/json
 
@@ -32,7 +38,7 @@ POST  http://localhost:3000/api/users/confirm
 Content-Type: application/json
 
 {
-  "token": "900013"
+  "token": "205756"
 }
 
 ### 
