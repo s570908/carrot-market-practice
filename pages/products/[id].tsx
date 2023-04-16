@@ -1,33 +1,57 @@
 import Button from "@components/Button";
 import Layout from "@components/Layout";
+import fetcher from "@libs/client/fetcher";
+import { Product, User } from "@prisma/client";
 import type { NextPage } from "next";
+import { useRouter } from "next/router";
+import useSWR from "swr";
+import { Backdrop, CircularProgress } from "@mui/material";
+
+interface ProductWithUser extends Product {
+  user: User;
+}
+
+interface ItemDetailResponse {
+  ok: boolean;
+  product: ProductWithUser;
+  relatedProducts: ProductWithUser[];
+}
 
 const ItemDetail: NextPage = () => {
+  const router = useRouter();
+  console.log("router.query: ", router.query);
+  const { data, error } = useSWR<ItemDetailResponse>(
+    router.query.id ? `/api/products/${router.query.id}` : null,
+    fetcher
+  );
+  console.log("ItemDetail data: ", data);
   return (
     <Layout canGoBack>
+      <Backdrop
+        sx={{
+          color: "#fff",
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+        }}
+        open={data === undefined}
+      >
+        <CircularProgress color="inherit" />
+      </Backdrop>
       <div className="px-4 py-3">
         <div className="mb-8">
           <div className="h-96 bg-slate-300" />
           <div className="space-x-300 mt-1 flex items-center border-b border-t">
             <div className="h-12 w-12 rounded-full bg-slate-300" />
             <div>
-              <p className="text-sm font-medium text-gray-700">Steve Jebs</p>
+              <p className="text-sm font-medium text-gray-700">{data?.product.user.name}</p>
               <p className="cursor-pointer text-xs font-medium text-gray-500">
                 View profile &rarr;
               </p>
             </div>
           </div>
           <div className="mt-5">
-            <h1 className="text-3xl font-bold text-gray-900">Galaxy S50</h1>
-            <span className="mt-3 block text-3xl text-gray-900">$140</span>
-            <p className="my-6 text-base text-gray-700">
-              My money&apos;s in that office, right? If she start giving me some bullshit about it
-              ain&apos;t there, and we got to go someplace else and get it, I&apos;m gonna shoot you
-              in the head then and there. Then I&apos;m gonna shoot that bitch in the kneecaps, find
-              out where my goddamn money is. She gonna tell me too. Hey, look at me when I&apos;m
-              talking to you, motherfucker. You listen: we go in there, and that ni**a Winston or
-              anybody else is in there, you the first motherfucker to get shot. You understand?
-            </p>
+            <h1 className="text-3xl font-bold text-gray-900">{data?.product.name}</h1>
+            <span className="mt-3 block text-3xl text-gray-900">${data?.product.price}</span>
+            <p className="my-6 text-base text-gray-700">{data?.product.description}</p>
             <div className="flex items-center justify-between space-x-2">
               <Button text="Talk to seller" large />
               <button className="flex items-center justify-center rounded-md p-3 text-gray-400 hover:bg-gray-100 hover:text-gray-500">
@@ -53,11 +77,11 @@ const ItemDetail: NextPage = () => {
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Similar items</h2>
           <div className="mt-6 grid grid-cols-2 gap-4">
-            {[1, 2, 3, 4, 5, 6].map((_, i) => (
-              <div key={i}>
+            {data?.relatedProducts.map(({ id, name, price }) => (
+              <div key={id}>
                 <div className="mb-4 h-56 w-full bg-slate-300" />
-                <h3 className="-mb-1 text-gray-700 ">Galaxy S60</h3>
-                <span className="text-sm font-medium text-gray-900">$6</span>
+                <h3 className="-mb-1 text-gray-700 ">{name}</h3>
+                <span className="text-sm font-medium text-gray-900">${price}</span>
               </div>
             ))}
           </div>

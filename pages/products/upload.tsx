@@ -28,6 +28,7 @@ const Upload: NextPage = () => {
 
   const onValid = (uploadForm: UploadProductForm) => {
     console.log("Upload--onValid: {name, price, description}: ", uploadForm);
+    // 여러번 요청이 가는 것을 막기 위함.
     if (loading) return;
     uploadProduct(uploadForm);
   };

@@ -27,6 +27,7 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
         },
       },
     });
+    console.log("/api/products POST product: ", product);
     res.status(200).json({ ok: true, product });
   }
 };

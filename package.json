@@ -7,9 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "prisma:seed": "node prisma/seed.js",
     "prisma:miggen": "prisma migrate dev --name $npm_config_name && prisma generate"
   },
   "dependencies": {
+    "@emotion/react": "^11.9.0",
+    "@emotion/styled": "^11.8.1",
+    "@mui/material": "^5.7.0",
     "@prisma/client": "^4.11.0",
     "@tailwindcss/forms": "^0.5.3",
     "@types/twilio": "^3.19.3",
