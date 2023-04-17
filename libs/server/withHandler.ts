@@ -20,7 +20,7 @@ const withHandler: HandlerType = ({ methods, handler, isPrivate = true }) => {
   return async function (req: NextApiRequest, res: NextApiResponse<ResponseType>) {
     if (req.method && !methods.includes(req.method as MethodType)) {
       // methods가 req.method를 포함하고 있어야 한다. 그렇지 않으면 에러.
-      res.status(405).end;
+      return res.status(405).end();
     }
     if (isPrivate && !req.session.user) {
       return res.status(401).json({ ok: false, error: "Please log in." });

@@ -14,17 +14,18 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
     },
   });
 
-  console.log("alreadyEx: ", alreadyEx);
+  //console.log("alreadyEx: ", alreadyEx);
 
   if (alreadyEx) {
     // delete: unique한 속성으로만 삭제가 가능하게 설계되어 있습니다.
     // deleteMany: unique하지 않은 값을 없애고 싶을 때는 deleteMany를 사용하면 됩니다.
-    await client.fav.delete({
+    const fav = await client.fav.delete({
       where: { id: alreadyEx.id },
     });
+    // console.log("product/[id]/fav handler--fav deleted: ", fav);
   } else {
     // create
-    await client.fav.create({
+    const fav = await client.fav.create({
       data: {
         user: {
           connect: {
@@ -38,6 +39,7 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
         },
       },
     });
+    // console.log("product/[id]/fav handler--fav created: ", fav);
   }
 
   res.status(200).json({ ok: true });

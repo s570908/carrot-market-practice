@@ -8,7 +8,11 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
   const { user } = req.session;
 
   if (req.method === "GET") {
-    const products = await client.product.findMany({});
+    const products = await client.product.findMany({
+      include: {
+        favs: true,
+      },
+    });
     console.log("/api/products--products: ", products);
     res.json({ ok: true, products });
   }

@@ -3,13 +3,17 @@ import Item from "@components/Item";
 import Layout from "@components/Layout";
 import fetcher from "@libs/client/fetcher";
 import useUser from "@libs/client/useUser";
-import { Product } from "@prisma/client";
+import { Fav, Product } from "@prisma/client";
 import type { NextPage } from "next";
 import useSWR from "swr";
 
+interface ProductWithFavs extends Product {
+  favs: Fav[];
+}
+
 interface ProductsResponse {
   ok: boolean;
-  products: Product[];
+  products: ProductWithFavs[];
 }
 
 const Home: NextPage = () => {
@@ -22,8 +26,8 @@ const Home: NextPage = () => {
   return (
     <Layout title="홈" hasTabBar>
       <div className="p flex flex-col space-y-5 py-2">
-        {data?.products?.map(({ id, name, price, description }, i) => (
-          <Item key={i} id={id} title={name} price={price} comments={1} hearts={1} />
+        {data?.products?.map(({ id, name, price, favs }, i) => (
+          <Item key={i} id={id} title={name} price={price} comments={1} hearts={favs.length} />
         ))}
 
         <FloatingButton href="/products/upload">
