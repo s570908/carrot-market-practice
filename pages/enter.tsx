@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { useRouter } from "next/router";
 
 type MethodType = "email" | "phone";
+
 interface EnterForm {
   email?: string;
   phone?: string;
@@ -15,6 +16,10 @@ interface EnterForm {
 
 interface TokenForm {
   token: string;
+}
+
+interface BaseMutation {
+  ok: boolean;
 }
 
 // enter(validForm)을 수행한 후에 data.ok를 수신한다는 것은 token을 email이나 문자전송으로 성공적으로 송부하였음을 뜻한다.
@@ -28,14 +33,15 @@ const Enter: NextPage = () => {
     handleSubmit: tokenHandleSubmit,
     reset: tokenReset,
   } = useForm<TokenForm>();
-  const [enter, { data, loading, error }] = useMutation("/api/users/enter");
+  const [enter, { data, loading, error }] = useMutation<BaseMutation>("/api/users/enter");
   const [confirm, { data: tokenData, loading: tokenLoading, error: tokenError }] =
-    useMutation("/api/users/confirm");
+    useMutation<BaseMutation>("/api/users/confirm");
   const router = useRouter();
   // console.log("Enter: data: ", data);
   // console.log("Confirm: tokenData: ", tokenData);
 
   const onValid = (validForm: EnterForm) => {
+    if (loading) return;
     enter(validForm);
   };
   const onInValid = (errors: any) => {
@@ -43,6 +49,7 @@ const Enter: NextPage = () => {
   };
 
   const onTokenValid = (validForm: TokenForm) => {
+    if (tokenLoading) return;
     confirm(validForm);
   };
   const onTokenInValid = (errors: any) => {

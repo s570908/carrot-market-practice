@@ -20,6 +20,10 @@ interface ItemDetailResponse {
   relatedProducts: ProductWithUser[];
 }
 
+interface BaseMutation {
+  ok: boolean;
+}
+
 const ItemDetail: NextPage = () => {
   const router = useRouter();
   console.log("router.query: ", router.query);
@@ -34,7 +38,7 @@ const ItemDetail: NextPage = () => {
   );
   console.log("ItemDetail data: ", data);
 
-  const [toggleFav] = useMutation(`/api/products/${router.query.id as String}/fav`);
+  const [toggleFav] = useMutation<BaseMutation>(`/api/products/${router.query.id as String}/fav`);
   const onFavClick = () => {
     mutateProduct(
       (prev) => {
