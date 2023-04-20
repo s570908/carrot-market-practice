@@ -2,16 +2,33 @@ import Input from "@components/Input";
 import useMutation from "@libs/client/useMutation";
 import { cls } from "@libs/utils";
 import { NextPage } from "next";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Button from "@components/Button";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
 //import Bs from "@components/Bs";
 
-const Bs = dynamic(() => import("@components/Bs"), {
-  ssr: false,
-});
+// const Bs = dynamic(() => import("@components/Bs"), {
+//   ssr: false,
+// });
+
+const delay = (delayInms: number) => {
+  return new Promise((resolve) => setTimeout(resolve, delayInms));
+};
+
+const Bs = dynamic(
+  async () => {
+    await delay(10000);
+    console.log("Just before Bs dynamic import.");
+    return import("@components/Bs");
+  },
+  {
+    //ssr: false,
+    // loading: () => <span>Loading a big component 4 u bby</span>,
+    suspense: true,
+  }
+);
 
 type MethodType = "email" | "phone";
 
@@ -134,7 +151,10 @@ const Enter: NextPage = () => {
               ) : null}
               {method === "phone" ? (
                 <div>
-                  <Bs />
+                  {/* <Bs /> */}
+                  <Suspense fallback={<div className="bg-red-500">Loading something big</div>}>
+                    <Bs />
+                  </Suspense>
                   <Input
                     register={register("phone", { required: "Phone number is required." })}
                     kind="phone"
