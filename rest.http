@@ -1,56 +1,83 @@
-### @index=29
-@cookie29=carrotsession=Fe26.2*1*8d1b887b30d6114779d703c04b4be1026c913061eab9c6ba57b8a85af5456fc8*LhT6QqO6N-T1N9RIViHIMw*NArT3okdhKqgqyTWn5DOeABJX7yffN3LHC354oZtsJI*1682924229379*0a55be1eaf41b18249945de12484fae3e7b984637d4b574102f1cce9daf20460*jOb6WYEThESTfFzM1qh-8ezA8YWdcOhjYYtJlyYYUA0~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
+### @index=36
+@name = /api/users/me
+@cookie36=carrotsession=Fe26.2*1*fd67d514e337219c0fd05709b9ec7550ba9a2fa0a5b61a115a5836fbc719337d*allklBU6_S1cKGHT_Q9EHg*7nTibTpsDvPqBE-fjOBs-ZQck6HHFGKg8VX3rpDlMm4*1683530646606*8e1c77d63f5b9c8b82bc2a7026c97b67ef3f5dddef79a2f5cea23a2e66e0e901*qoHsUZ4hb8LS7xgcmcX9mcFCFEcI1t2c_PzzSibXagU~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
 GET  http://localhost:3000/api/users/me
-Cookie: {{cookie29}}
+Cookie: {{cookie36}}
 Content-Type: application/json
 
-###
-# @prompt idForFav Your productID for fav
-POST http://localhost:3000/api/products/{{idForFav}}/fav
-Cookie: {{cookie29}}
-Content-Type: application/json
-
-###
-@name29=자전거
-@price29=15
-@description29=상태좋음
-POST http://localhost:3000/api/products
-Cookie: {{cookie29}}
+### @index=35
+@name = /api/users/me
+@cookie35=carrotsession=Fe26.2*1*fd67d514e337219c0fd05709b9ec7550ba9a2fa0a5b61a115a5836fbc719337d*allklBU6_S1cKGHT_Q9EHg*7nTibTpsDvPqBE-fjOBs-ZQck6HHFGKg8VX3rpDlMm4*1683530646606*8e1c77d63f5b9c8b82bc2a7026c97b67ef3f5dddef79a2f5cea23a2e66e0e901*qoHsUZ4hb8LS7xgcmcX9mcFCFEcI1t2c_PzzSibXagU~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
+# @prompt name35 Your name
+# @prompt email35 Your email
+# @prompt phone35 Your phone
+POST  http://localhost:3000/api/users/me
+Cookie: {{cookie35}}
 Content-Type: application/json
 
 {
-  "name": "{{name29}}",
-  "price": "{{price29}}",
-  "description": "{{description29}}"
+  "name": "{{name35}}",
+  "email": "{{email35}}",
+  "phone": {{phone35}}
 }
 
-###
-@id29=1
-GET http://localhost:3000/api/products/{{id29}}
-Cookie: {{cookie29}}
+### @index=34
+@name = /api/products/:id/fav
+@cookie34=
+# @prompt idForFav34 Your productID for fav
+POST http://localhost:3000/api/products/{{idForFav34}}/fav
+Cookie: {{cookie34}}
+Content-Type: application/json
+
+### @index=33
+@name = /api/products
+@cookie33=
+@name33=자전거
+@price33=15
+@description33=상태좋음
+POST http://localhost:3000/api/products
+Cookie: {{cookie33}}
+Content-Type: application/json
+
+{
+  "name": "{{name33}}",
+  "price": "{{price33}}",
+  "description": "{{description33}}"
+}
+
+### @index=32
+@name = /api/products/:id 
+@id32=1
+@cookie32=
+GET http://localhost:3000/api/products/{{id32}}
+Cookie: {{cookie32}}
 Content-Type: application/json
 
 ###
 GET www.example.org/sample_page.html HTTP/1.1
 
-###
+### @index=31
+@name = /api/users/confirm 
+# @prompt token31 Your token
 POST  http://localhost:3000/api/users/confirm
 Content-Type: application/json
 
 {
-  "token": "205756"
+  "token": "{{token31}}"
 }
 
-### 
-# @prompt phoneNumber29 Your phone number
+### @index=30
+@name = /api/users/enter 
+# @prompt phoneNumber30 Your phone number
 POST  http://localhost:3000/api/users/enter
 Content-Type: application/json
 
 {
-  "phone": {{phoneNumber29}}
+  "phone": {{phoneNumber30}}
 }
 
-### 
+### @index=29
+@name = /api/users/enter
 # @prompt email29 Your email
 POST  http://localhost:3000/api/users/enter
 Content-Type: application/json
@@ -60,10 +87,9 @@ Content-Type: application/json
 }
 
 ###
+@name = POST /api/client-test
 POST  http://localhost:3000/api/client-test
 Content-Type: application/json
-
-########## @index=29 End
 
 ###  @index=28
 @name = GET /workspaces/:workspace/channels/all

@@ -1,18 +1,22 @@
 import Button from "@components/Button";
 import Input from "@components/Input";
+import useMutation from "@libs/client/useMutation";
 import { NextPage } from "next";
 import { useForm } from "react-hook-form";
 
 interface EditProfileForm {
   email?: string;
   phone?: string;
+  name?: string;
 }
 
 const EditProfile: NextPage = () => {
+  const [editProfile, { data, loading, error }] = useMutation("/api/users/me");
   const { register, watch, handleSubmit, reset } = useForm<EditProfileForm>();
   const onValid = (validForm: EditProfileForm) => {
-    const { email, phone } = validForm;
+    const { email, phone, name } = validForm;
     console.log("EditProfile--onValid, validForm :", validForm);
+    editProfile({ email, phone, name });
   };
   return (
     <form onSubmit={handleSubmit(onValid)} className="space-y-4 px-4 py-10">
@@ -26,6 +30,13 @@ const EditProfile: NextPage = () => {
           <input id="picture" type="file" className="hidden" accept="image/*"></input>
         </label>
       </div>
+      <Input
+        register={register("name", { required: "Name is required." })}
+        label="Name"
+        name="name"
+        kind="text"
+        type="text"
+      />
       <Input
         register={register("email", { required: "Email is required." })}
         label="Email Address"
