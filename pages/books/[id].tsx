@@ -47,7 +47,7 @@ export const getStaticProps: GetStaticProps = async (context) => {
     const { data } = await axios.get<GetSpecificBookResponse>(`http://localhost:4000/books/${id}`);
     return {
       props: { data, time },
-      revalidate: 60,
+      revalidate: 6000,
     };
   } catch (err) {
     return {

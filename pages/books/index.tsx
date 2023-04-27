@@ -37,7 +37,7 @@ export async function getStaticProps() {
     const { data } = await axios.get("http://localhost:4000/books");
     return {
       props: { data, time },
-      revalidate: 20,
+      revalidate: 6000,
       // 마지막 build/generate 시간과 누가 요청을 하든지간에 화면 요청이 들어온 시간을 비교하여 20초가 넘었다면 서버캐시를
       // 업데이트한다.
     };

@@ -1,4 +1,12 @@
 ###
+POST http://localhost:3000/api/revalidate-books
+Content-Type: application/json
+
+{
+  "id": "1"
+}
+
+###
 GET http://localhost:4000/books
 
 ###
