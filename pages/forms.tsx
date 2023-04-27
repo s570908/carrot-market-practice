@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { FieldErrors, useForm } from "react-hook-form";
 
 // Less code ( checked )
@@ -33,15 +32,25 @@ export default function Forms() {
   });
   const onValid = (data: LoginForm) => {
     console.log("im valid bby");
+    // setValue("username", "hello");
     setError("errors", { message: "Backend is offline sorry." });
-    // reset();
+    reset();
     resetField("password");
   };
   const onInvalid = (errors: FieldErrors) => {
     console.log(errors);
   };
-  console.log("watch: ", watch("email"));
-  setValue("username", "hello");
+  console.log("watch: email and username ", watch("email"), watch("username"));
+
+  // $ yarn build를 할 때 다음과 같은 에러가 발생하여 setValue("username", "hello")를 코멘트아웃하였다.
+  // build를 할 때 setValue를 수행하면 infinite loop가 발생하는 듯....
+  // 에러....
+  // Generating static pages (0/23)Error: Minified React error #301;
+  // visit https://reactjs.org/docs/error-decoder.html?invariant=301 for the full message
+  // or use the non-minified dev environment for full errors and additional helpful warnings.
+
+  // setValue("username", "hello");
+
   return (
     <form onSubmit={handleSubmit(onValid, onInvalid)}>
       <input

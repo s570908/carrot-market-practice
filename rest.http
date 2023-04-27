@@ -1,3 +1,9 @@
+###
+GET http://localhost:4000/books
+
+###
+GET http://localhost:4000/books/1
+
 ### @index=36
 @name = /api/users/me
 @cookie36=carrotsession=Fe26.2*1*fd67d514e337219c0fd05709b9ec7550ba9a2fa0a5b61a115a5836fbc719337d*allklBU6_S1cKGHT_Q9EHg*7nTibTpsDvPqBE-fjOBs-ZQck6HHFGKg8VX3rpDlMm4*1683530646606*8e1c77d63f5b9c8b82bc2a7026c97b67ef3f5dddef79a2f5cea23a2e66e0e901*qoHsUZ4hb8LS7xgcmcX9mcFCFEcI1t2c_PzzSibXagU~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
