@@ -20,7 +20,7 @@ interface ProductsResponse {
   products: ProductWithCount[];
 }
 
-const Home: NextPage<{ products: ProductWithCount[] }> = ({ products }) => {
+const Home = ({ products }: { products: ProductWithCount[] }) => {
   const { user, isLoading } = useUser();
   const { data } = useSWR<ProductsResponse>("/api/products", {
     fallbackData: {
@@ -76,7 +76,7 @@ export async function getServerSideProps() {
 
   return {
     props: {
-      // products를 deep copy한다: JSON.parse(JSON.stringify(products))
+      // products를 deep copy한다.
       // products를 shallow copy하는 방법: Object.assign({}, products)
       products: JSON.parse(JSON.stringify(products)),
     },
