@@ -13,7 +13,7 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
         favs: true,
       },
     });
-    console.log("/api/products--products: ", products);
+    //console.log("/api/products--products: ", products);
     res.json({ ok: true, products });
   }
 
