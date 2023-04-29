@@ -1,4 +1,5 @@
 import client from "@libs/client/client";
+import withHandler from "@libs/server/withHandler";
 import { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 
 const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse) => {
@@ -43,4 +44,4 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
   }
 };
 
-export default handler;
+export default withHandler(handler);

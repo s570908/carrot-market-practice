@@ -1,9 +1,9 @@
-import { useState } from "react";
-import Input from "@components/Input";
 import Button from "@components/Button";
-import { FieldErrors, useForm } from "react-hook-form";
-import { cls } from "@libs/client/utils";
+import Input from "@components/Input";
 import useMutation from "@libs/client/useMutation";
+import { cls } from "@libs/client/utils";
+import { useState } from "react";
+import { FieldErrors, useForm } from "react-hook-form";
 
 type MethodType = "email" | "phone";
 interface EnterForm {
