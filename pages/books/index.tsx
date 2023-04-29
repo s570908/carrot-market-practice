@@ -1,6 +1,7 @@
 import axios from "axios";
 import Link from "next/link";
 import dayjs from "dayjs";
+import { useEffect, useState } from "react";
 
 export interface Book {
   id: string;
@@ -14,7 +15,19 @@ export interface BooksProps {
 }
 
 export default function Books({ data, time }: BooksProps) {
-  const requestTime = dayjs().format("YYYY-MM-DD HH:mm:ss");
+  // 아래의 statement는 에러를 발생시킨다. 이유는 서버에서 만들어서 보낸 html과 클라언트가 만든 html이 서로 다르기 때문에
+  // hydration을 할 수가 없다. 그래서 코메트아웃하고 useEffect와 useState를 이용하여 처리하였다. 이 훅들은 서버에서 수행되지 않는다.
+  // 그래서 서버에서 만들어낸 html과 클라이언트가 초기에 만들어낸 html이 정확히 같게 된다.
+  // ref: https://stackoverflow.com/questions/72673362/error-text-content-does-not-match-server-rendered-html
+
+  //const currentTime = dayjs().format("YYYY-MM-DD HH:mm:ss");
+
+  const [requestTime, setRequestTime] = useState("");
+  useEffect(() => {
+    const currentTime = dayjs().format("YYYY-MM-DD HH:mm:ss");
+    setRequestTime(currentTime);
+  }, [time]);
+
   return (
     <>
       {data?.map(({ id, title, description }) => (
