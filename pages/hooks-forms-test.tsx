@@ -1,4 +1,4 @@
-import { cls } from "@libs/utils";
+import { cls } from "@libs/client/utils";
 import { useState } from "react";
 import { FieldErrors, useForm } from "react-hook-form";
 

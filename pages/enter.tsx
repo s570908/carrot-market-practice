@@ -1,18 +1,53 @@
 import { useState } from "react";
-import { cls } from "../libs/utils";
 import Input from "@components/Input";
 import Button from "@components/Button";
+import { FieldErrors, useForm } from "react-hook-form";
+import { cls } from "@libs/client/utils";
+import useMutation from "@libs/client/useMutation";
 
 type MethodType = "email" | "phone";
+interface EnterForm {
+  email?: string;
+  phone?: number;
+}
+
+interface EnterMutationResult {
+  ok: boolean;
+  error: string;
+}
 
 export default function Enter() {
+  const { handleSubmit, register } = useForm<EnterForm>();
   const [method, setMethod] = useState<MethodType>("email");
   const onEmailClick = () => setMethod("email");
   const onPhoneClick = () => setMethod("phone");
+  const [enter, { data, error, loading }] = useMutation<EnterMutationResult>(
+    "http://localhost:3000/api/users/enter"
+  );
 
   const [methodTmp, setMethodTmp] = useState<MethodType>("email");
   const onEmailClickTmp = () => setMethodTmp("email");
   const onPhoneClickTmp = () => setMethodTmp("phone");
+  const onValid = (validForm: EnterForm) => {
+    console.log("Enter--onValid, validForm: ", validForm);
+    enter(validForm);
+    // fetch("http://localhost:3000/api/users/enter", {
+    //   method: "POST",
+    //   headers: { "Content-Type": "application/json" },
+    //   body: JSON.stringify(validForm),
+    // })
+    //   .then((response) => {
+    //     return response.json().catch((err) => {
+    //       console.log(err);
+    //     });
+    //   })
+    //   .then((data) => {
+    //     console.log(data);
+    //   });
+  };
+  const onInvalid = (errors: FieldErrors<EnterForm>) => {
+    console.log("Enter--onInValid, errors: ", errors);
+  };
 
   return (
     <div className="mt-16 px-4">
@@ -46,7 +81,7 @@ export default function Enter() {
         </div>
       </div>
 
-      <form className="mt-8 flex flex-col ">
+      <form onSubmit={handleSubmit(onValid, onInvalid)} className="mt-8 flex flex-col ">
         {/* {methodTmp === "email" ? (
           <label htmlFor="email" className="text-sm font-medium text-gray-700">
             Email address
@@ -65,11 +100,12 @@ export default function Enter() {
           //   required
           // />
 
+          // register()의 args, "email"은 반드시 사용되는 <input>의 id와 같아야 한다.
           <Input
+            register={register("email", { required: true })}
             label="Email address"
             name="email"
             type="email"
-            required={true}
             placeholder="input of Email address"
           />
         ) : (
@@ -87,11 +123,11 @@ export default function Enter() {
           // </div>
 
           <Input
+            register={register("phone", { required: true })}
             label="Phone number"
             name="phone"
             kind="phone"
             type="number"
-            required={true}
             placeholder="input of phone number"
           />
         )}

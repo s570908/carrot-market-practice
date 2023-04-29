@@ -1,13 +1,35 @@
 import { NextPage } from "next";
+import { UseFormRegisterReturn } from "react-hook-form";
 
 interface InputProps {
+  register: UseFormRegisterReturn;
   label: string;
   name: string;
   kind?: "text" | "phone" | "price";
-  [key: string]: any;
+  type: string;
+  placeholder?: string;
+  //[key: string]: any;
 }
 
-const Input = ({ label, name, kind = "text", ...rest }: InputProps) => {
+// register
+/* 
+{
+  onChange: ChangeHandler;
+  onBlur: ChangeHandler;
+  ref: RefCallBack;
+  name: TFieldName;
+  min?: string | number | undefined;
+  max?: string | number | undefined;
+  maxLength?: number | undefined;
+  minLength?: number | undefined;
+  pattern?: string | undefined;
+  required?: boolean | undefined;
+  disabled?: boolean | undefined;
+} 
+*/
+//
+
+const Input = ({ register, label, name, kind = "text", type, placeholder = "" }: InputProps) => {
   return (
     <div>
       {kind === "text" ? (
@@ -16,9 +38,11 @@ const Input = ({ label, name, kind = "text", ...rest }: InputProps) => {
             {label}
           </label>
           <input
+            type={type}
+            {...register}
             id={name}
+            placeholder={placeholder}
             className="w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
-            {...rest}
           />
         </div>
       ) : null}
@@ -32,9 +56,11 @@ const Input = ({ label, name, kind = "text", ...rest }: InputProps) => {
               +82
             </span>
             <input
+              type={type}
+              {...register}
               id={name}
+              placeholder={placeholder}
               className="no-spinner w-full rounded-r-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
-              {...rest}
             />
           </div>
         </div>
@@ -49,10 +75,11 @@ const Input = ({ label, name, kind = "text", ...rest }: InputProps) => {
               <span className="text-sm text-gray-500">$</span>
             </div>
             <input
+              {...register}
               id="price"
               className="w-full appearance-none rounded-md border border-gray-300 px-3 py-2 pl-7 pr-14 placeholder-gray-400 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
-              type="text"
-              placeholder="0.00"
+              type={type}
+              placeholder={placeholder}
             />
             <div className="pointer-events-none absolute right-0 flex items-center pr-3">
               <span className="text-gray-500">USD</span>

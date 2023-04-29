@@ -1,8 +1,7 @@
 import React, { useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-
-import { cls } from "../libs/utils";
+import { cls } from "@libs/client/utils";
 
 interface LayoutProps {
   title?: string;
@@ -19,7 +18,7 @@ const Layout = ({ title, canGoBack, hasTabBar, children }: LayoutProps) => {
       <div
         className={cls(
           !canGoBack ? "justify-center" : "",
-          "fixed top-0 left-0 flex w-full items-center border-b bg-white px-10 py-3 text-lg font-medium text-gray-700"
+          "fixed left-0 top-0 flex w-full items-center border-b bg-white px-10 py-3 text-lg font-medium text-gray-700"
         )}
       >
         {canGoBack ? (
@@ -44,7 +43,7 @@ const Layout = ({ title, canGoBack, hasTabBar, children }: LayoutProps) => {
       </div>
       <div className={cls("pt-16", hasTabBar ? "pb-[6rem]" : "")}>{children}</div>
       {hasTabBar ? (
-        <nav className="fixed bottom-0 left-0 flex w-full items-center justify-around border-2 border-t bg-white pt-4 pb-4 text-xs text-gray-800">
+        <nav className="fixed bottom-0 left-0 flex w-full items-center justify-around border-2 border-t bg-white pb-4 pt-4 text-xs text-gray-800">
           <Link href="/">
             <a className="flex flex-col items-center space-y-2">
               <svg
