@@ -10,6 +10,7 @@ import client from "@libs/client/client";
 import Layout from "@components/Layout";
 import Item from "@components/Item";
 import fetcher from "@libs/client/fetcher";
+import { useRef } from "react";
 
 interface ProductWithCount extends Product {
   _count: {
@@ -78,10 +79,10 @@ const Home = ({ products }: { products: ProductWithCount[] }) => {
   );
 };
 
-export async function getServerSideProps() {
-  console.log("SSR");
+export async function getStaticProps() {
+  console.log("SSG");
   const products = await client.product.findMany({});
-  console.log("getServerSideProps, products without favs: ", products);
+  console.log("getStaticProps, products without favs: ", products);
 
   return {
     props: {

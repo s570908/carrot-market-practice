@@ -9,6 +9,7 @@ import Image from "next/image";
 import client from "@libs/client/client";
 import Layout from "@components/Layout";
 import Item from "@components/Item";
+import fetcher from "@libs/client/fetcher";
 
 interface ProductWithCount extends Product {
   _count: {
@@ -75,6 +76,7 @@ const Page: NextPage<{ products: ProductWithCount[] }> = ({ products }) => {
             products,
           },
         },
+        fetcher,
       }}
     >
       <Home />
