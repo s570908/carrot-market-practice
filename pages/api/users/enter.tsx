@@ -1,12 +1,16 @@
-import { NextApiRequest, NextApiResponse } from "next";
+import { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse) => {
+  console.log("req.body", req.body);
+  res.status(200).end();
+};
+
+async function withHandler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     res.status(401).end;
   }
   try {
-    console.log("req.body", req.body);
-    res.status(200).end();
+    await handler(req, res);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error });
