@@ -12,6 +12,13 @@ GET http://localhost:4000/books
 ###
 GET http://localhost:4000/books/1
 
+### @index=37
+@name = /api/products
+@cookie37=carrotsession=Fe26.2*1*1c9f18835629c4d6248147e173de7ed1969fadf610f68a79882c2e4a8b2f9697*ybNtufkb-G1MVki0_TjEMQ*bOAfkOlUseCrIg1NnHgwBIHfXitgezyjY_HssbdOFko*1684160831149*cb2837f6f5c8fdbdc352f7f60b265c1f52189a94682449de5f2228c752f1ab10*_CzL4ogXokoP-WGQvPDorIpx2oy88OJFI4X4fGuCPs0~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
+GET http://localhost:3000/api/products
+Cookie: {{cookie37}}
+Content-Type: application/json
+
 ### @index=36
 @name = /api/users/me
 @cookie36=carrotsession=Fe26.2*1*fd67d514e337219c0fd05709b9ec7550ba9a2fa0a5b61a115a5836fbc719337d*allklBU6_S1cKGHT_Q9EHg*7nTibTpsDvPqBE-fjOBs-ZQck6HHFGKg8VX3rpDlMm4*1683530646606*8e1c77d63f5b9c8b82bc2a7026c97b67ef3f5dddef79a2f5cea23a2e66e0e901*qoHsUZ4hb8LS7xgcmcX9mcFCFEcI1t2c_PzzSibXagU~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
