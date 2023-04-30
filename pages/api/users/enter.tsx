@@ -5,16 +5,16 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
   res.status(200).end();
 };
 
-const withHandler = async (req: NextApiRequest, res: NextApiResponse) => {
+const withHandler = (fn: NextApiHandler) => async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== "POST") {
     res.status(401).end;
   }
   try {
-    await handler(req, res);
+    await fn(req, res);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error });
   }
 };
 
-export default withHandler;
+export default withHandler(handler);
