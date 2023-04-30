@@ -17,4 +17,4 @@ const withHandler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 };
 
-export default handler;
+export default withHandler;
