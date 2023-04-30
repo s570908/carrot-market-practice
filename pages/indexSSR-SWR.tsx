@@ -73,12 +73,14 @@ const Home = ({ products }: { products: ProductWithCount[] }) => {
 export async function getServerSideProps() {
   console.log("SSR");
   const products = await client.product.findMany({});
+  console.log("getServerSideProps, products without favs: ", products);
 
   return {
     props: {
       // products를 deep copy한다.
       // products를 shallow copy하는 방법: Object.assign({}, products)
       products: JSON.parse(JSON.stringify(products)),
+      //products: products,
     },
   };
 }
