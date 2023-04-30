@@ -20,7 +20,7 @@ const Create: NextPage = () => {
     console.log("Upload--onInValid: error: ", errors);
   };
   return (
-    <Layout canGoBack>
+    <Layout canGoBack title="Go Live">
       <form onSubmit={handleSubmit(onValid, onInValid)} className="space-y-5 px-4 py-3">
         <Input
           register={register("name", { required: true })}
