@@ -1,15 +1,21 @@
 import Layout from "@components/Layout";
-import type { NextPage } from "next";
+import { withSsrSession } from "@libs/server/withSession";
+import type { GetServerSidePropsContext, NextPage } from "next";
 import Link from "next/link";
+import client from "@libs/client/client";
+import useUser from "@libs/client/useUser";
+import { SWRConfig } from "swr";
+import { User } from "@prisma/client";
 
 const Profile: NextPage = () => {
+  const { user } = useUser();
   return (
     <Layout title="나의 계정" hasTabBar>
       <div className="px-4 py-3">
         <div className="flex items-center space-x-3">
           <div className="h-16 w-16 rounded-full bg-slate-500" />
           <div className="flex flex-col">
-            <span className="font-medium text-gray-800">Steve Jebs</span>
+            <span className="font-medium text-gray-800">{user?.name}</span>
             <Link href="/profile/edit">
               <a className="font-sm text-gray-700">Edit profile &rarr;</a>
             </Link>
@@ -151,4 +157,33 @@ const Profile: NextPage = () => {
   );
 };
 
-export default Profile;
+const Page: NextPage<{ profile: User }> = ({ profile }) => {
+  return (
+    <SWRConfig
+      value={{
+        fallback: {
+          "/api/users/me": { ok: true, profile },
+        },
+      }}
+    >
+      <Profile />
+    </SWRConfig>
+  );
+};
+
+export const getServerSideProps = withSsrSession(async ({ req }: GetServerSidePropsContext) => {
+  console.log("User: ", req.session.user);
+  const profile = await client.user.findUnique({
+    where: {
+      id: req.session.user?.id,
+    },
+  });
+  console.log("getServerSideProps, profile: ", profile);
+  return {
+    props: {
+      profile: JSON.parse(JSON.stringify(profile)),
+    },
+  };
+});
+
+export default Page;

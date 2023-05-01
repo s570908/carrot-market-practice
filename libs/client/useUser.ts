@@ -23,10 +23,16 @@ import { useEffect } from "react";
 import useSWR from "swr";
 import fetcher from "@libs/client/fetcher";
 import { ResponseType } from "@libs/server/withHandler";
+import { User } from "@prisma/client";
+
+interface ProfileResponse {
+  ok: boolean;
+  profile: User;
+}
 
 export default function useUser() {
-  const { data, error } = useSWR("/api/users/me", fetcher);
-  //console.log("useUser--data: ", data);
+  const { data, error } = useSWR<ProfileResponse>("/api/users/me", fetcher);
+  console.log("useUser--data: ", data);
   const router = useRouter();
   useEffect(() => {
     if (data && !data.ok) {
