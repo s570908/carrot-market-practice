@@ -20,12 +20,6 @@
       "@components/*": ["components/*"]
     }
   },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    "pages/index.tsx.Ssr",
-    "pages/index.tsx.save"
-  ],
-  "exclude": ["node_modules", "**/*.save"]
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "pages/index.tsx.Ssr"],
+  "exclude": ["node_modules"]
 }
