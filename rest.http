@@ -8,7 +8,7 @@ POST  http://localhost:3000/api/users/enter
 Content-Type: application/json
 
 {
-	"phone": 1
+	"phone": 2
 }
 
 ###

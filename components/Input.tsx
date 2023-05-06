@@ -30,6 +30,7 @@ interface InputProps {
 //
 
 const Input = ({ register, label, name, kind = "text", type, placeholder = "" }: InputProps) => {
+  console.log("Input-- type, kind: ", type, kind);
   return (
     <div>
       {kind === "text" ? (

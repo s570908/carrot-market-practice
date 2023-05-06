@@ -8,7 +8,7 @@ import { FieldErrors, useForm } from "react-hook-form";
 type MethodType = "email" | "phone";
 interface EnterForm {
   email?: string;
-  phone?: number;
+  phone?: string;
 }
 
 interface EnterMutationResult {
@@ -127,7 +127,7 @@ export default function Enter() {
             label="Phone number"
             name="phone"
             kind="phone"
-            type="number"
+            type="tel"
             placeholder="input of phone number"
           />
         )}
