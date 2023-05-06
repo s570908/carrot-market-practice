@@ -9,6 +9,7 @@
     "lint": "next lint",
     "prisma:seed": "node prisma/seed.js",
     "prisma:miggen": "prisma migrate dev --name $npm_config_name && prisma generate",
+    "prisma:dbpush": "prisma db push",
     "json-server": "json-server --watch db.json --port 4000"
   },
   "dependencies": {

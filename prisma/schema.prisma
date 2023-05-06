@@ -11,19 +11,21 @@ datasource db {
 }
 
 model User {
-  id        Int         @id @default(autoincrement())
-  phone     Int?        @unique
-  email     String?     @unique
-  name      String
-  avatar    String?
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  tokens    Token[]
-  products  Product[]
-  favs      Fav[]
-  post      Post[]
-  answers   Answer[]
-  wondering Wondering[]
+  id              Int         @id @default(autoincrement())
+  phone           String?     @unique
+  email           String?     @unique
+  name            String
+  avatar          String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  tokens          Token[]
+  products        Product[]
+  favs            Fav[]
+  post            Post[]
+  answers         Answer[]
+  wondering       Wondering[]
+  writtenReviews  Review[]    @relation("writtenReviews")
+  receivedReviews Review[]    @relation("receivedReviews")
 }
 
 model Token {
@@ -89,6 +91,18 @@ model Wondering {
   userId    Int
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
   postId    Int
+}
+
+model Review {
+  id           Int      @id @default(autoincrement())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  review       String   @db.MediumText
+  score        Int      @default(1)
+  createdBy    User     @relation(name: "writtenReviews", fields: [createdById], references: [id], onDelete: Cascade)
+  createdById  Int
+  createdFor   User     @relation(name: "receivedReviews", fields: [createdForId], references: [id], onDelete: Cascade)
+  createdForId Int
 }
 
 model TimezoneTest {
