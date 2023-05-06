@@ -132,7 +132,7 @@ const Enter: NextPage = () => {
                   kind="phone"
                   name="phone"
                   label="Phone number"
-                  type="number"
+                  type="tel"
                 />
               ) : null}
               {method === "email" ? <Button text={loading ? "Loading" : "Get login link"} /> : null}
