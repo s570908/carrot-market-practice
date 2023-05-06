@@ -1,5 +1,11 @@
 ### 
 POST http://localhost:3000/api/revalidate-books?secret=nalnari
+### @index=39
+@name = GET /api/review
+@cookie39=carrotsession=Fe26.2*1*dc31d8a0145d6728220eb7fc007ff37f058041b95a330d27703aa9edd9849554*lSF5BXxT7s0b7GfrVXXB4Q*4ZnNaboJ99s5caPo-ygwcV0Sx4HtjVtOG9SEab8NC_8*1684673499102*d0f565d414f4a035efbf13e5f1aa8281bab0492a453af7bd12e0993cd46da4c8*vgRR5em4aGFKHpIqRwecZNC_qsZdwF71iicsVij1VN0~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
+GET http://localhost:3000/api/reviews
+Cookie: {{cookie39}}
+
 ### @index=38
 @name = /api/review
 @cookie38=carrotsession=Fe26.2*1*dc31d8a0145d6728220eb7fc007ff37f058041b95a330d27703aa9edd9849554*lSF5BXxT7s0b7GfrVXXB4Q*4ZnNaboJ99s5caPo-ygwcV0Sx4HtjVtOG9SEab8NC_8*1684673499102*d0f565d414f4a035efbf13e5f1aa8281bab0492a453af7bd12e0993cd46da4c8*vgRR5em4aGFKHpIqRwecZNC_qsZdwF71iicsVij1VN0~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
