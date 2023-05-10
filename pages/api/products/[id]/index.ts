@@ -72,7 +72,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
   //console.log("product: ", product);
   //console.log("relatedProducts: ", relatedProducts);
-  console.log("product [id] handler: id, isLiked ", id, isLiked);
+  console.log("/api/products/[id] : id, isLiked ", id, isLiked);
   res.status(200).json({ ok: true, isLiked, product: product, relatedProducts: relatedProducts });
 };
 

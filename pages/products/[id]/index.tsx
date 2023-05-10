@@ -8,6 +8,7 @@ import useSWR from "swr";
 import { Backdrop, CircularProgress } from "@mui/material";
 import useMutation from "@libs/client/useMutation";
 import { cls } from "@libs/utils";
+import BackdropSpinner from "@components/DropSpinner";
 
 interface ProductWithUser extends Product {
   user: User;
@@ -53,7 +54,8 @@ const ItemDetail: NextPage = () => {
   };
   return (
     <Layout canGoBack>
-      <Backdrop
+      <BackdropSpinner open={data === undefined} />
+      {/* <Backdrop
         sx={{
           color: "#fff",
           zIndex: (theme) => theme.zIndex.drawer + 1,
@@ -61,7 +63,7 @@ const ItemDetail: NextPage = () => {
         open={data === undefined}
       >
         <CircularProgress color="inherit" />
-      </Backdrop>
+      </Backdrop> */}
       <div className="px-4 py-3">
         <div className="mb-8">
           <div className="h-96 bg-slate-300" />

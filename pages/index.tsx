@@ -85,7 +85,7 @@ const Page: NextPage<{ products: ProductWithCount[] }> = ({ products }) => {
 };
 
 export async function getServerSideProps() {
-  console.log("SSR");
+  console.log("SSR-Home page");
   const products = await client.product.findMany({});
   console.log("getServerSideProps, products without favs: ", products);
 

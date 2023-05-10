@@ -4,8 +4,8 @@ import { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 import client from "@libs/client/client";
 
 const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse<ResponseType>) => {
-  console.log(`me--Cookies requested: ${JSON.stringify(req.cookies, null, 2)}`);
-  console.log("me--req.session: ", req.session);
+  console.log(`/api/users/me--req.cookies: ${JSON.stringify(req.cookies, null, 2)}`);
+  console.log("/api/users/me--req.session: ", req.session);
 
   if (req.method === "GET") {
     const profile = await client.user.findUnique({
@@ -38,7 +38,7 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
       },
     });
     if (email && email !== currentUser?.email) {
-      const alreaadyExists = Boolean(
+      const alreadyExists = Boolean(
         await client.user.findUnique({
           where: {
             email: email,
@@ -48,7 +48,7 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
           },
         })
       );
-      if (alreaadyExists) {
+      if (alreadyExists) {
         return res.json({ ok: false, error: "Email already taken." });
       }
       await client.user.update({

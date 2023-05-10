@@ -15,7 +15,7 @@ interface reqBodyType {
 // https://nextjs.org/docs/api-routes/response-helpers
 const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse<ResponseType>) => {
   const { email, phone }: reqBodyType = req.body;
-  console.log("req.body", req.body);
+  console.log("/api/users/enter--req.body: ", req.body);
   const userKey = phone ? { phone: phone } : { email: email };
 
   const payload = Math.floor(100000 + Math.random() * 900000) + "";
