@@ -1,9 +1,9 @@
-###
-POST http://localhost:3000/api/revalidate-books
+### 
+POST http://localhost:3000/api/revalidate-books?secret=nalnari
 Content-Type: application/json
 
 {
-  "id": "1"
+  "id": "9"
 }
 
 ###
