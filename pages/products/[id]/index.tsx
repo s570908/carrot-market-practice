@@ -70,7 +70,7 @@ const ItemDetail: NextPage = () => {
           <div className="space-x-300 mt-1 flex items-center border-b border-t">
             <div className="h-12 w-12 rounded-full bg-slate-300" />
             <div>
-              <p className="text-sm font-medium text-gray-700">{data?.product.user.name}</p>
+              <p className="text-sm font-medium text-gray-700">{data?.product?.user.name}</p>
               <p className="cursor-pointer text-xs font-medium text-gray-500">
                 View profile &rarr;
               </p>
