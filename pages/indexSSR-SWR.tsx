@@ -35,7 +35,7 @@ const Home = ({ products }: { products: ProductWithCount[] }) => {
   console.log("HOME, data: ", JSON.stringify(data, null, 2));
 
   return (
-    <Layout title="홈" hasTabBar>
+    <Layout seoTitle="홈" title="홈" hasTabBar>
       <Head>
         <title>Home</title>
       </Head>

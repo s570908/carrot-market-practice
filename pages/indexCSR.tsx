@@ -24,7 +24,7 @@ const Home: NextPage = () => {
   console.log("Home--data: ", data);
 
   return (
-    <Layout title="홈" hasTabBar>
+    <Layout seoTitle="홈" title="홈" hasTabBar>
       <div className="p flex flex-col space-y-5 py-2">
         {data?.products?.map(({ id, name, price, favs }, i) => (
           <Item key={i} id={id} title={name} price={price} comments={1} hearts={favs.length} />

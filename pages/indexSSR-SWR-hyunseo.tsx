@@ -26,7 +26,7 @@ const Home = () => {
   const { data } = useSWR<ProductsResponse>("/api/products");
 
   return (
-    <Layout title="홈" hasTabBar>
+    <Layout seoTitle="홈" title="홈" hasTabBar>
       <Head>
         <title>Home</title>
       </Head>

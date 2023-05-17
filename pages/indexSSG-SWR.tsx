@@ -36,11 +36,11 @@ const Home = ({ products }: { products: ProductWithCount[] }) => {
   console.log("HOME, data: ", JSON.stringify(data, null, 2));
 
   return (
-    <Layout title="홈" hasTabBar>
+    <Layout seoTitle="홈" title="홈" hasTabBar>
       <Head>
         <title>Home</title>
       </Head>
-      <div className="p flex flex-col space-y-5 py-2">
+      <div className="flex flex-col py-2 space-y-5 p">
         {data
           ? data.products?.map((products) => {
               console.log("products?._count?.favs: ", products?._count?.favs);
@@ -59,7 +59,7 @@ const Home = ({ products }: { products: ProductWithCount[] }) => {
 
         <FloatingButton href="/products/upload">
           <svg
-            className="h-6 w-6"
+            className="w-6 h-6"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"

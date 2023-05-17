@@ -9,7 +9,7 @@ interface ItemProps {
   comments?: number;
   hearts: number;
   isLike?: boolean;
-  photo: string;
+  photo?: string;
   kind?: string;
 }
 

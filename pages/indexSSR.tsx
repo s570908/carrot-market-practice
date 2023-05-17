@@ -2,7 +2,7 @@ import type { NextPage } from "next";
 
 import FloatingButton from "@components/FloatingButton";
 import useUser from "@libs/client/useUser";
-import Head from "next/seoTitle";
+import Head from "next/head";
 import useSWR from "swr";
 import { Fav, Product } from "@prisma/client";
 import picture from "../public/local-image.jpg";
@@ -26,7 +26,7 @@ const Home: NextPage<{ products: ProductWithCount[] }> = ({ products }) => {
   // const { data } = useSWR<ProductsResponse>("/api/products");
 
   return (
-    <Layout title="홈" hasTabBar>
+    <Layout seoTitle="홈" title="홈" hasTabBar>
       <Head>
         <title>Home</title>
       </Head>
