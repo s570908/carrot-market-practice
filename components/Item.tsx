@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { cls } from "@libs/utils";
-import ImgComponent from "@components/Img-component";
+import ImgComponent from "@components/ImgComponent";
 
 interface ItemProps {
   title: string;
   price: number;
   id: number;
-  comments: number;
+  comments?: number;
   hearts: number;
   isLike?: boolean;
   photo: string;

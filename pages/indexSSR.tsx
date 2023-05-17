@@ -2,7 +2,7 @@ import type { NextPage } from "next";
 
 import FloatingButton from "@components/FloatingButton";
 import useUser from "@libs/client/useUser";
-import Head from "next/head";
+import Head from "next/seoTitle";
 import useSWR from "swr";
 import { Fav, Product } from "@prisma/client";
 import picture from "../public/local-image.jpg";

@@ -4,7 +4,7 @@ import type { NextPage } from "next";
 
 const Community: NextPage = () => {
   return (
-    <Layout title="동네생활" hasTabBar>
+    <Layout seoTitle="동네생활" title="동네생활" hasTabBar>
       <div className="space-y-8 px-4 py-2">
         {[...Array(10)].map((_, i) => (
           <div key={i} className="flex flex-col items-start">
@@ -19,7 +19,7 @@ const Community: NextPage = () => {
               <span>현서</span>
               <span>18시간 전</span>
             </div>
-            <div className="mt-3 flex w-full space-x-5 border-t border-b-[2px] py-2.5 text-gray-700">
+            <div className="mt-3 flex w-full space-x-5 border-b-[2px] border-t py-2.5 text-gray-700">
               <div className="flex items-center space-x-2 text-sm">
                 <svg
                   className="h-4 w-4"

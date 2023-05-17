@@ -8,7 +8,7 @@ import Layout from "@components/Layout";
 
 const Post: NextPage<{ post: string; title: string }> = ({ post, title }) => {
   return (
-    <Layout title={title}>
+    <Layout seoTitle={title} title={title}>
       <div
         className="blog-post-content flex flex-col items-center space-y-2 pt-10"
         dangerouslySetInnerHTML={{ __html: post }}

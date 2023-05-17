@@ -1,6 +1,6 @@
 import { cls } from "@libs/utils";
 import Image from "next/image";
-import ImgComponent from "@components/Img-component";
+import ImgComponent from "@components/ImgComponent";
 import RegDate from "@components/RegDate";
 
 interface MessageProps {

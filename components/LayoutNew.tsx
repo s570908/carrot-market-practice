@@ -11,7 +11,7 @@ interface LayoutProps {
   hasTabBar?: boolean;
   children: React.ReactNode;
   backUrl?: any;
-  head: string;
+  seoTitle: string;
   isProfile?: boolean;
   notice?: boolean;
   [key: string]: any;
@@ -35,7 +35,7 @@ export default function Layout({
   hasTabBar,
   children,
   backUrl,
-  head,
+  seoTitle,
   isProfile,
   notice,
   ...rest
@@ -56,10 +56,12 @@ export default function Layout({
       if (chat.recentMsg?.isNew && chat.recentMsg.userId !== user?.id) setIsNew(true);
     });
   }, [data, user]);
+
+  const titleHead = `${seoTitle} | Carrot Market`;
   return (
     <div>
       <Head>
-        <title>{head} | Carrot Market</title>
+        <title>{titleHead}</title>
       </Head>
       <div
         {...rest}

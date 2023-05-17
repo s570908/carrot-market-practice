@@ -10,7 +10,7 @@ import useMutation from "@libs/client/useMutation";
 import { cls } from "@libs/utils";
 import { useEffect, useState } from "react";
 import RegDate from "@components/RegDate";
-import ImgComponent from "@components/Img-component";
+import ImgComponent from "@components/ImgComponent";
 
 interface AnswerWithUser extends Answer {
   user: User;

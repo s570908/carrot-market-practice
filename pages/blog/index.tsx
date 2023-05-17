@@ -16,7 +16,7 @@ interface Post {
 const Blog: NextPage<{ posts: Post[] }> = ({ posts }) => {
   return (
     <Layout title="Blog" seoTitle="Blog">
-      <h1 className="mt-5 mb-10 text-xl font-semibold text-center">Latest Posts:</h1>
+      <h1 className="mb-10 mt-5 text-center text-xl font-semibold">Latest Posts:</h1>
       {posts.map((post, index) => (
         <div key={index} className="mb-5">
           <Link href={`/blog/${post.slug}`}>

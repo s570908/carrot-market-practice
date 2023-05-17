@@ -7,7 +7,7 @@ import Button from "@components/Button";
 import { Product, Review, User } from "@prisma/client";
 import { cls } from "@libs/utils";
 import Link from "next/link";
-import ImgComponent from "@components/Img-component";
+import ImgComponent from "@components/ImgComponent";
 
 interface ProductScore extends Product {
   productReviews: Review[];

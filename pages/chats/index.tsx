@@ -29,7 +29,7 @@ import Link from "next/link";
 import Layout from "@components/Layout";
 import useUser from "@libs/client/useUser";
 import useSWR from "swr";
-import ImgComponent from "@components/Img-component";
+import ImgComponent from "@components/ImgComponent";
 import { ChatRoom, SellerChat, User } from "@prisma/client";
 import { useEffect } from "react";
 

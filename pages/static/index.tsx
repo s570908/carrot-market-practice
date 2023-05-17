@@ -6,13 +6,14 @@ import useUser from "@libs/client/useUser";
 import useSWR, { SWRConfig } from "swr";
 import { Fav, Product } from "@prisma/client";
 import { useRouter } from "next/router";
-import { Suspense, useState } from "react";
+import { useState } from "react";
 import PaginationButton from "@components/PaginationButton";
 import client from "@libs/client/client";
+
 export interface ProductWithCount extends Product {
-  favs: Fav[];
+  fav: Fav[];
   _count: {
-    favs: number;
+    fav: number;
   };
 }
 
@@ -44,9 +45,9 @@ const Home: NextPage = () => {
             key={product.id}
             title={product.name}
             price={product.price}
-            hearts={product._count?.favs}
+            hearts={product._count?.fav}
             photo={product.image}
-            isLike={product.favs
+            isLike={product.fav
               .map((uid) => {
                 if (uid.userId === user?.id) return true;
               })

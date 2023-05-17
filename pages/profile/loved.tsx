@@ -1,17 +1,13 @@
-import Item from "@components/Item";
 import Layout from "@components/Layout";
 import ProductList from "@components/Product-list";
 import type { NextPage } from "next";
 
-const Loved: NextPage = () => (
-  <Layout canGoBack title="관심목록">
-    <div className="p flex flex-col space-y-5 py-3">
-      {/* {[...Array(10)].map((_, i) => (
-        <Item key={i} title="New iPhone 14" price={95} hearts={1} comments={1} id={i} />
-      ))} */}
+const Loved: NextPage = () => {
+  return (
+    <Layout seoTitle="관심목록" title="관심목록" canGoBack backUrl={"/profile"} isProfile={true}>
       <ProductList kind="favs" />
-    </div>
-  </Layout>
-);
+    </Layout>
+  );
+};
 
 export default Loved;

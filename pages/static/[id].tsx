@@ -8,7 +8,7 @@ import { Product, Review, User } from "@prisma/client";
 import useMutation from "@libs/client/useMutation";
 import { cls } from "@libs/utils";
 import useUser from "@libs/client/useUser";
-import ImgComponent from "@components/Img-component";
+import ImgComponent from "@components/ImgComponent";
 import { useEffect } from "react";
 import RegDate from "@components/RegDate";
 import client from "@libs/client/client";
@@ -70,7 +70,7 @@ const ItemDetail: NextPage<ItemDetailResponse> = ({ product, relatedProducts, is
   }, [router, talkToSellerData]);
   // if (router.isFallback) {
   //   return (
-  //     <Layout head="캐럿" title="Loading for you" canGoBack backUrl={"back"}>
+  //     <Layout seoTitle="캐럿" title="Loading for you" canGoBack backUrl={"back"}>
   //       <span>I love you</span>
   //     </Layout>
   //   );

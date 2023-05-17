@@ -1,49 +1,46 @@
+import type { NextPage } from "next";
 import Button from "@components/Button";
 import Layout from "@components/Layout";
 import TextArea from "@components/TextArea";
+import { useForm } from "react-hook-form";
+import useSWR from "swr";
 import useMutation from "@libs/client/useMutation";
-import { Post } from "@prisma/client";
-import type { NextPage } from "next";
-import router from "next/router";
 import { useEffect } from "react";
-import { FieldErrors, useForm } from "react-hook-form";
-import { isErrored } from "stream";
+import { Post } from "@prisma/client";
+import { useRouter } from "next/router";
+import useCoords from "@libs/client/useCoords";
 
 interface WriteForm {
   question: string;
 }
 
-interface WriteMutation {
+interface WriteResponse {
   ok: boolean;
   post: Post;
 }
 
 const Write: NextPage = () => {
-  const { handleSubmit, register } = useForm<WriteForm>();
-  const [post, { data, loading, error }] = useMutation<WriteMutation>("/api/posts");
-  const onValid = (data: WriteForm) => {
+  const { latitude, longitude } = useCoords();
+  const router = useRouter();
+  const { register, handleSubmit } = useForm<WriteForm>({ mode: "onChange" });
+  const [post, { loading, data }] = useMutation<WriteResponse>("/api/posts");
+  const onValid = (writeForm: WriteForm) => {
     if (loading) return;
-    console.log("Write onValid, data: ", data);
-    post(data);
-  }; //  http post
-  const onInValid = (errors: FieldErrors) => {
-    console.log("Errors: ", errors);
+    post({ ...writeForm, latitude, longitude });
   };
   useEffect(() => {
-    if (data?.ok) {
+    if (data && data.ok) {
       router.push(`/community/${data.post.id}`);
     }
-  });
+  }, [data, router]);
   return (
-    <Layout canGoBack>
-      <form onSubmit={handleSubmit(onValid, onInValid)} className="px-4 py-10">
-        <div className="px-4">
-          <TextArea
-            register={register("question", { required: true, minLength: 5 })}
-            placeholder="Ask a question!"
-          />
-          <Button text="submit" />
-        </div>
+    <Layout seoTitle="포스팅" canGoBack title="포스팅" backUrl={"/community"}>
+      <form className="px-4 py-10" onSubmit={handleSubmit(onValid)}>
+        <TextArea
+          register={register("question", { required: true, minLength: 5 })}
+          placeholder="Ask a question!"
+        />
+        <Button text={loading ? "loading..." : "Submit"} />
       </form>
     </Layout>
   );

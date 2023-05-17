@@ -56,10 +56,12 @@ export default function Layout({
       if (chat.recentMsg?.isNew && chat.recentMsg.userId !== user?.id) setIsNew(true);
     });
   }, [data, user]);
+
+  const titleHead = `${seoTitle} | Carrot Market`;
   return (
     <div>
       <Head>
-        <title>{seoTitle} | Carrot Market</title>
+        <title>{titleHead}</title>
       </Head>
       <div
         {...rest}

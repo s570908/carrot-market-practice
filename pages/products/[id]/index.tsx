@@ -8,7 +8,7 @@ import { Product, Review, User } from "@prisma/client";
 import useMutation from "@libs/client/useMutation";
 import { cls } from "@libs/utils";
 import useUser from "@libs/client/useUser";
-import ImgComponent from "@components/Img-component";
+import ImgComponent from "@components/ImgComponent";
 import { Suspense, useEffect } from "react";
 import RegDate from "@components/RegDate";
 import { Skeleton } from "@mui/material";

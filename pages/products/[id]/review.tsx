@@ -9,7 +9,7 @@ import { useRouter } from "next/router";
 import useUser from "@libs/client/useUser";
 import useSWR from "swr";
 import { Product, User } from "@prisma/client";
-import ImgComponent from "@components/Img-component";
+import ImgComponent from "@components/ImgComponent";
 import Link from "next/link";
 
 interface ProductWithUser extends Product {
