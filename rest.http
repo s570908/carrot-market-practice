@@ -1,3 +1,18 @@
+### @index=41
+@name = /api/products/:id/sale
+@cookie41=carrotsession=Fe26.2*1*bf3bcb8285ff6ce42986f5bd7d30a16a880440da21c9e49d63d7e72f0f2be95e*bohVeI7JMHS6okSSZa-8qg*HDH_5MK6h1HfY2MaK-o3Jf5J0tWUXMGI9Pn8yB4xHbM*1685074656377*0d3b86fe3f6d6c7f4f32d30ce3d24cbe85fb78b843836b58cb40746dcd531500*SiM-A5a6OOmTukGmU4yxXxGFe12_LBYN0eETkv9Xyps~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
+# @prompt idForSale41 Your productID for sale
+POST  http://localhost:3000/api/products/{{idForSale41}}/sale
+Cookie: {{cookie41}}
+Content-Type: application/json
+
+### @index=40
+@name = /api/users/me/sale
+@cookie40=carrotsession=Fe26.2*1*bf3bcb8285ff6ce42986f5bd7d30a16a880440da21c9e49d63d7e72f0f2be95e*bohVeI7JMHS6okSSZa-8qg*HDH_5MK6h1HfY2MaK-o3Jf5J0tWUXMGI9Pn8yB4xHbM*1685074656377*0d3b86fe3f6d6c7f4f32d30ce3d24cbe85fb78b843836b58cb40746dcd531500*SiM-A5a6OOmTukGmU4yxXxGFe12_LBYN0eETkv9Xyps~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
+GET  http://localhost:3000/api/users/me/sales
+Cookie: {{cookie40}}
+Content-Type: application/json
+
 ### 
 POST http://localhost:3000/api/revalidate-books?secret=nalnari
 ### @index=39
@@ -78,8 +93,8 @@ Content-Type: application/json
 
 ### @index=33
 @name = /api/products
-@cookie33=
-@name33=자전거
+@cookie33=carrotsession=Fe26.2*1*bf3bcb8285ff6ce42986f5bd7d30a16a880440da21c9e49d63d7e72f0f2be95e*bohVeI7JMHS6okSSZa-8qg*HDH_5MK6h1HfY2MaK-o3Jf5J0tWUXMGI9Pn8yB4xHbM*1685074656377*0d3b86fe3f6d6c7f4f32d30ce3d24cbe85fb78b843836b58cb40746dcd531500*SiM-A5a6OOmTukGmU4yxXxGFe12_LBYN0eETkv9Xyps~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
+@name33=아이폰
 @price33=15
 @description33=상태좋음
 POST http://localhost:3000/api/products

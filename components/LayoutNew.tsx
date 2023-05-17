@@ -1,17 +1,17 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { cls } from "@libs/utils";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import useSWR from "swr";
 import useUser from "@libs/client/useUser";
+import { cls } from "@libs/utils";
 interface LayoutProps {
   title?: string;
   canGoBack?: boolean;
   hasTabBar?: boolean;
   children: React.ReactNode;
   backUrl?: any;
-  seoTitle: string;
+  head: string;
   isProfile?: boolean;
   notice?: boolean;
   [key: string]: any;
@@ -35,7 +35,7 @@ export default function Layout({
   hasTabBar,
   children,
   backUrl,
-  seoTitle,
+  head,
   isProfile,
   notice,
   ...rest
@@ -59,7 +59,7 @@ export default function Layout({
   return (
     <div>
       <Head>
-        <title>{seoTitle} | Carrot Market</title>
+        <title>{head} | Carrot Market</title>
       </Head>
       <div
         {...rest}

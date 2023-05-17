@@ -1,4 +1,4 @@
-import type { GetStaticProps, NextPage } from "next";
+import type { GetStaticPaths, GetStaticProps, NextPage } from "next";
 import Button from "@components/Button";
 import Layout from "@components/Layout";
 import useSWR, { mutate, useSWRConfig } from "swr";
@@ -9,9 +9,9 @@ import useMutation from "@libs/client/useMutation";
 import { cls } from "@libs/utils";
 import useUser from "@libs/client/useUser";
 import ImgComponent from "@components/Img-component";
-import { Suspense, useEffect } from "react";
+import { useEffect } from "react";
 import RegDate from "@components/RegDate";
-import { Skeleton } from "@mui/material";
+import client from "@libs/client/client";
 
 interface ProductWithReview extends Review {
   createBy: User;
@@ -28,7 +28,7 @@ interface ItemDetailResponse {
   isLike: boolean;
 }
 
-const ItemDetail: NextPage = () => {
+const ItemDetail: NextPage<ItemDetailResponse> = ({ product, relatedProducts, isLike }) => {
   const { user, isLoading } = useUser();
   const router = useRouter();
   // const { mutate: unboundMutate } = useSWRConfig();
@@ -68,6 +68,13 @@ const ItemDetail: NextPage = () => {
         : router.push(`/chats/${talkToSellerData.createChat.id}`);
     }
   }, [router, talkToSellerData]);
+  // if (router.isFallback) {
+  //   return (
+  //     <Layout head="캐럿" title="Loading for you" canGoBack backUrl={"back"}>
+  //       <span>I love you</span>
+  //     </Layout>
+  //   );
+  // }
   return (
     <Layout seoTitle="캐럿" title="캐럿" canGoBack backUrl={"back"}>
       <div className="px-4 py-4">
@@ -77,50 +84,38 @@ const ItemDetail: NextPage = () => {
             layoutHeight="h-80"
             imgAdd={`https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg`}
             clsProps="object-scale-down"
-            imgName={data?.product?.name}
           />
           <div className="flex cursor-pointer items-center space-x-3 border-b border-t py-3">
-            {data?.product?.user?.avatar ? (
+            {product?.user?.avatar ? (
               <ImgComponent
                 imgAdd={`https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg`}
                 width={48}
                 height={48}
                 clsProps="rounded-full"
-                imgName={data?.product?.user?.name}
               />
             ) : (
               <div className="h-12 w-12 rounded-full bg-slate-300" />
             )}
             <div>
-              <p className="text-sm font-medium text-gray-700">
-                {data ? data?.product?.user?.name : "Now Loading..."}
-              </p>
+              <p className="text-sm font-medium text-gray-700">{product?.user?.name}</p>
               <Link
-                href={
-                  data?.product?.user?.id === user?.id
-                    ? `/profile`
-                    : `/profile/${data?.product?.user?.id}`
-                }
+                href={product?.user?.id === user?.id ? `/profile` : `/profile/${product?.user?.id}`}
               >
                 <a className="text-xs font-medium text-gray-500">View profile &rarr;</a>
               </Link>
             </div>
           </div>
           <div className="mt-5">
-            <h1 className="text-3xl font-bold text-gray-900">
-              {data ? data?.product?.name : "Now Loading..."}
-            </h1>
-            <span className="mt-3 block text-3xl text-gray-900">
-              ￦{data ? data?.product?.price : "Now Loading..."}
-            </span>
+            <h1 className="text-3xl font-bold text-gray-900">{product?.name}</h1>
+            <span className="mt-3 block text-3xl text-gray-900">￦{product?.price}</span>
             <div className="my-3">
               <div className="border-t py-3 text-xl font-bold">
                 {/*@ts-ignore*/}
-                {data?.product?.productReviews?.length > 0 ? "Review" : "Description"}
+                {product?.productReviews?.length > 0 ? "Review" : "Description"}
               </div>
               {/*@ts-ignore*/}
-              {data?.product?.productReviews?.length > 0 ? (
-                data?.product?.productReviews.map((review) => (
+              {product?.productReviews?.length > 0 ? (
+                product?.productReviews.map((review) => (
                   <div key={review.id} className="flex flex-row justify-items-start space-x-12">
                     <div className="flex flex-col items-center justify-center space-y-1">
                       {review.createBy?.avatar ? (
@@ -129,7 +124,6 @@ const ItemDetail: NextPage = () => {
                           width={48}
                           height={48}
                           clsProps="rounded-full"
-                          imgName={review.createBy?.name}
                         />
                       ) : (
                         <div className="h-12 w-12 rounded-full bg-slate-500" />
@@ -164,9 +158,7 @@ const ItemDetail: NextPage = () => {
                   </div>
                 ))
               ) : (
-                <p className="my-6 text-base text-gray-700">
-                  {data ? data?.product?.description : "Now Loading..."}
-                </p>
+                <p className="my-6 text-base text-gray-700">{product?.description}</p>
               )}
             </div>
             <div className="flex items-center justify-between space-x-2">
@@ -183,10 +175,10 @@ const ItemDetail: NextPage = () => {
                   <Button onClick={onBuyClick} large text="Buy It" />
                 </>
               )}
-              {data?.product.isSell ? null : (
+              {product.isSell ? null : (
                 <button
                   onClick={onFavClick}
-                  disabled={data?.product?.userId === user?.id}
+                  disabled={product?.userId === user?.id}
                   className={cls(
                     data?.isLike
                       ? " text-red-400 hover:text-red-500"
@@ -229,11 +221,11 @@ const ItemDetail: NextPage = () => {
             </div>
           </div>
         </div>
-        {data?.product.isSell ? null : (
+        {product ? null : (
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Similar Items</h2>
             <div className="grid grid-cols-2 gap-4">
-              {data?.relatedProducts.map((product) => (
+              {relatedProducts?.map((product) => (
                 <Link href={`/products/${product.id}`} key={product.id}>
                   <a className="cursor-pointer">
                     <ImgComponent
@@ -241,7 +233,6 @@ const ItemDetail: NextPage = () => {
                       isLayout={true}
                       layoutHeight="h-56"
                       clsProps="mt-6 mb-4 bg-slate-300"
-                      imgName={product.name}
                     />
                     <h3 className="-mb-1 text-base text-gray-700">{product.name}</h3>
                     <span className="text-xs font-medium text-gray-900">￦{product.price}</span>
@@ -254,6 +245,74 @@ const ItemDetail: NextPage = () => {
       </div>
     </Layout>
   );
+};
+
+export const getStaticPaths: GetStaticPaths = () => {
+  return {
+    paths: [],
+    fallback: "blocking",
+  };
+};
+
+export const getStaticProps: GetStaticProps = async (ctx) => {
+  if (!ctx?.params?.id) {
+    return {
+      props: {},
+    };
+  }
+  const product = await client.product.findUnique({
+    where: {
+      id: +ctx?.params?.id.toString(),
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          avatar: true,
+        },
+      },
+      productReviews: {
+        select: {
+          createdBy: {
+            select: {
+              name: true,
+              avatar: true,
+            },
+          },
+          review: true,
+          score: true,
+          createdAt: true,
+        },
+      },
+    },
+  });
+  const terms = product?.name.split(" ").map((word) => ({
+    name: {
+      contains: word,
+    },
+  }));
+  const relatedProducts = await client.product.findMany({
+    where: {
+      OR: terms,
+      AND: {
+        id: {
+          not: product?.id,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    take: 10,
+  });
+  // await new Promise((resolve) => setTimeout(resolve, 10000));
+  return {
+    props: {
+      product: JSON.parse(JSON.stringify(product)),
+      relatedProducts: JSON.parse(JSON.stringify(relatedProducts)),
+    },
+  };
 };
 
 export default ItemDetail;
