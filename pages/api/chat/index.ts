@@ -78,6 +78,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
     const {
       query: { roomId },
     } = req;
+    if (!roomId) {
+      return res.status(404).end({ error: "request query is not given." });
+    }
     if (roomId) {
       const delChatRoom = await client.chatRoom.deleteMany({
         where: {

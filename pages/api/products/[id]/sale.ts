@@ -5,7 +5,13 @@ import client from "@libs/client/client";
 
 const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse) => {
   console.log("test");
-  const id = req.query.id ? (req.query.id as String) : ""; // product id
+  const {
+    query: { id },
+  } = req;
+  // const page = req.query.page ? (req.query.page as String) : "";
+  if (!id) {
+    return res.status(404).end({ error: "request query is not given." });
+  }
   const { user } = req.session;
 
   console.log("/api/products/:id/sale-- productId, user.id", id, user?.id);

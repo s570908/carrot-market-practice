@@ -6,11 +6,20 @@ import client from "@libs/client/client";
 const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse<ResponseType>) => {
   console.log(`/api/users/me--req.cookies: ${JSON.stringify(req.cookies, null, 2)}`);
   console.log("/api/users/me--req.session: ", req.session);
+  console.log("/api/users/me--req.method: ", req.method);
 
   if (req.method === "GET") {
     const profile = await client.user.findUnique({
       where: {
         id: req.session.user?.id,
+      },
+      include: {
+        favs: {
+          select: {
+            id: true,
+            productId: true,
+          },
+        },
       },
     });
     // console.log("api/users/me--profile: ", profile);
@@ -29,15 +38,25 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
   if (req.method === "POST") {
     const {
       session: { user },
-      body: { email, name, phone },
+      body: { email, phone, name, avatarId },
     } = req;
-    console.log("api/users/me--user, email, name, phone: ", user, email, name, phone);
+    console.log(
+      "api/users/me--user, email, name, phone, avatarId: ",
+      user,
+      email,
+      name,
+      phone,
+      avatarId
+    );
     const currentUser = await client.user.findUnique({
       where: {
         id: user?.id,
       },
     });
+    console.log("api/users/me--currentUser: ", currentUser);
+
     if (email && email !== currentUser?.email) {
+      console.log("email, currentUser?.email: ", email, currentUser?.email);
       const alreadyExists = Boolean(
         await client.user.findUnique({
           where: {
@@ -49,7 +68,7 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
         })
       );
       if (alreadyExists) {
-        return res.json({ ok: false, error: "Email already taken." });
+        return res.json({ ok: false, error: "해당 이메일은 이미 존재합니다." });
       }
       await client.user.update({
         where: {
@@ -59,6 +78,9 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
           email: email,
         },
       });
+      // res.json({
+      //   ok: true,
+      // });
     }
     if (phone && phone !== currentUser?.phone) {
       const alreaadyExists = Boolean(
@@ -72,7 +94,7 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
         })
       );
       if (alreaadyExists) {
-        return res.json({ ok: false, error: "Phone already taken." });
+        return res.json({ ok: false, error: "해당 폰넘버는 이미 존재합니다." });
       }
       await client.user.update({
         where: {
@@ -82,6 +104,9 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
           phone: phone,
         },
       });
+      // res.json({
+      //   ok: true,
+      // });
     }
     if (name && name !== currentUser?.name) {
       await client.user.update({
@@ -90,6 +115,16 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
         },
         data: {
           name: name,
+        },
+      });
+    }
+    if (avatarId && avatarId !== currentUser?.avatar) {
+      await client.user.update({
+        where: {
+          id: user?.id,
+        },
+        data: {
+          avatar: avatarId,
         },
       });
     }

@@ -6,6 +6,8 @@ import useUser from "@libs/client/useUser";
 import { useForm } from "react-hook-form";
 import { useEffect, useState } from "react";
 import useMutation from "@libs/client/useMutation";
+import useSWR from "swr";
+import fetcher from "@libs/client/fetcher";
 
 interface EditProfileForm {
   email?: string;
@@ -21,7 +23,8 @@ interface EditProfileResponse {
 }
 
 const EditProfile: NextPage = () => {
-  const { user } = useUser();
+  const { user, mutate: mutateUser } = useUser();
+  //const { data: imageData } = useSWR<any>("/api/images/29-1684643304941-3158620.png", fetcher);
   const {
     register,
     setValue,
@@ -30,43 +33,67 @@ const EditProfile: NextPage = () => {
     watch,
     formState: { errors },
   } = useForm();
+
   useEffect(() => {
+    console.log("EditProfile--user?.avatar: ", user?.avatar);
     if (user?.name) setValue("name", user.name);
     if (user?.email) setValue("email", user.email);
     if (user?.phone) setValue("phone", user.phone);
     if (user?.avatar)
-      setAvatarPreview(`https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg`);
+      //setAvatarPreview(`https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg`);
+      setAvatarPreview(`${user?.avatar}`);
   }, [user, setValue]);
+
   const [editProfile, { data, loading }] = useMutation<EditProfileResponse>(`/api/users/me`);
+
   const onValid = async ({ email, phone, name, avatar }: EditProfileForm) => {
+    console.log("pages/profile/edit: email, name, phone, avatar: ", email, name, phone, avatar);
     if (loading) return;
     if (email === "" && phone === "" && name === "") {
       return setError("formErrors", {
         message: "뭐든 하나는 써라.",
       });
     }
+    // if (avatar && avatar.length > 0 && user) {
+    //   const { uploadURL } = await (await fetch(`/api/files`)).json();
+    //   const form = new FormData();
+    //   form.append("file", avatar[0], user?.id + "");
+    //   const {
+    //     result: { id },
+    //   } = await (
+    //     await fetch(uploadURL, {
+    //       method: "POST",
+    //       body: form,
+    //     })
+    //   ).json();
+    //   editProfile({ email, phone, name, avatarId: id });
+    // } else {
+    //   editProfile({ email, phone, name });
+    // }
+
     if (avatar && avatar.length > 0 && user) {
-      const { uploadURL } = await (await fetch(`/api/files`)).json();
       const form = new FormData();
       form.append("file", avatar[0], user?.id + "");
-      const {
-        result: { id },
-      } = await (
-        await fetch(uploadURL, {
+      const result = await (
+        await fetch("/api/images/file-upload", {
           method: "POST",
           body: form,
         })
       ).json();
-      editProfile({ email, phone, name, avatarId: id });
+      editProfile({ email, phone, name, avatarId: result.data.url });
+      //mutateUser();
     } else {
       editProfile({ email, phone, name });
+      //mutateUser();
     }
   };
+
   useEffect(() => {
     if (data && !data.ok && data.error) {
       setError("formErrors", { message: data.error });
     }
   }, [data, setError]);
+
   const [avatarPreview, setAvatarPreview] = useState("");
   const avatar = watch("avatar");
   useEffect(() => {
@@ -75,6 +102,7 @@ const EditProfile: NextPage = () => {
       setAvatarPreview(URL.createObjectURL(file));
     }
   }, [avatar]);
+
   return (
     <Layout seoTitle="프로필 수정" canGoBack title="프로필 수정" backUrl={"/profile"}>
       <form onSubmit={handleSubmit(onValid)} className="space-y-4 px-4 py-10">
@@ -83,6 +111,7 @@ const EditProfile: NextPage = () => {
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={avatarPreview}
+              //src="/uploads/29-1684987306491-540260167.png"
               className="h-14 w-14 rounded-full bg-slate-500"
               alt="avatarPreview"
             />

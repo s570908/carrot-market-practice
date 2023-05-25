@@ -4,28 +4,80 @@ import { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 import client from "@libs/client/client";
 
 const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse<ResponseType>) => {
-  const { name, price, description } = req.body;
-  const { user } = req.session;
-
   if (req.method === "GET") {
+    const {
+      query: { page },
+    } = req;
+    // const page = req.query.page ? (req.query.page as String) : "";
+    if (!page) {
+      return res.status(404).end({ error: "request query is not given." });
+    }
+    const limit = 10;
     const products = await client.product.findMany({
+      where: {
+        isSell: false,
+      },
       include: {
         _count: {
           select: {
             favs: true,
           },
         },
-        //favs: true,
+        favs: {
+          select: {
+            userId: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+          },
+        },
       },
+      take: limit,
+      skip: (+page - 1) * limit,
+      orderBy: { createdAt: "desc" },
     });
-    console.log("/api/products--products: ", products);
-    res.json({ ok: true, products });
+    const nextProducts = await client.product.findMany({
+      where: {
+        isSell: false,
+      },
+      include: {
+        _count: {
+          select: {
+            favs: true,
+          },
+        },
+        favs: {
+          select: {
+            userId: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+          },
+        },
+      },
+      take: limit,
+      skip: (+page + 1 - 1) * limit,
+      orderBy: { createdAt: "desc" },
+    });
+    res.json({
+      ok: true,
+      products,
+      nextProducts,
+    });
   }
 
   if (req.method === "POST") {
-    const product = await client.product.create({
+    const {
+      body: { name, price, description, photoId },
+      session: { user },
+    } = req;
+    const products = await client.product.create({
       data: {
-        image: "XX",
+        image: photoId,
         name,
         price: +price,
         description,
@@ -36,8 +88,10 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
         },
       },
     });
-    console.log("/api/products POST product: ", product);
-    res.status(200).json({ ok: true, product });
+    res.json({
+      ok: true,
+      products,
+    });
   }
 };
 

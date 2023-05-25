@@ -7,6 +7,13 @@ import { FieldErrors, useForm } from "react-hook-form";
 // Dont deal with events ( checked )
 // Easier Inputs ( checked )
 
+// 적은 코드 라인
+// 더 나은 유효성 검사
+// 더 나은 오류(set, clear, display)
+// input 컨트롤
+// 이벤트 핸들링 단순화
+// input을 쉽게 작성
+
 interface LoginForm {
   username: string;
   password: string;

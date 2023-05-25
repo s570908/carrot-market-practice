@@ -29,25 +29,50 @@ const Upload: NextPage = () => {
   const [uploadProduct, { loading, data }] = useMutation<UploadProductMutation>("/api/products");
   const onValid = async ({ name, price, description, photo }: UploadProductForm) => {
     if (loading) return;
+    // if (photo && photo.length > 0) {
+    //   const { uploadURL } = await (await fetch(`/api/files`)).json(); // cloudflare에서 업로드할 url을 얻어온다.
+    //   const form = new FormData();
+    //   form.append("file", photo[0], name);  // form을 file 타입으로 만들고 photo[0]를 블랍(binary large object) 입력으로 사용하고 파일명을 name으로 사용한다.
+    //   const {
+    //     result: { id },
+    //   } = await (
+    //     await fetch(uploadURL, {
+    //       method: "POST",
+    //       body: form,
+    //     })
+    //   ).json();      // 이미지 폼을 uploadURL에 업로드한다. 업로드된 이미지의 URL을 id로 받는다.
+    //   uploadProduct({ name, price, description, photoId: id }); // 이미지의 URL인 id를 name, price, description을 함께 backend에 기록한다.
+    // } else {
+    //   uploadProduct({ name, price, description });
+    // }
     if (photo && photo.length > 0) {
-      const { uploadURL } = await (await fetch(`/api/files`)).json();
+      console.log("phote, photo[0]: ", photo, photo[0]);
       const form = new FormData();
-      form.append("file", photo[0], name);
-      const {
-        result: { id },
-      } = await (
-        await fetch(uploadURL, {
+
+      // https://javascript.info/formdata
+      /*       
+      formData.append("image", imageBlob, "image.png");
+      
+      That’s same as if there were <input type="file" name="image"> in the form, 
+      and the visitor submitted a file named "image.png" (3rd argument) with the data imageBlob (2nd argument) from their filesystem.
+      The server reads form data and the file, as if it were a regular form submission. 
+      */
+      form.append("file", photo[0], name); // file: 타입, photo[0]: image blob, name: file name
+      const result = await (
+        await fetch("/api/images/file-upload", {
           method: "POST",
           body: form,
         })
       ).json();
-      uploadProduct({ name, price, description, photoId: id });
+      console.log("result: ", result);
+      uploadProduct({ name, price, description, photoId: result.data.url });
     } else {
       uploadProduct({ name, price, description });
     }
   };
   useEffect(() => {
     if (data?.ok) {
+      // 업로드가 잘 되었다면 ....
       router.push(`/products/${data.products.id}`);
     }
   }, [data, router]);
@@ -56,7 +81,10 @@ const Upload: NextPage = () => {
   useEffect(() => {
     if (photo && photo.length > 0) {
       const file = photo[0];
-      setPhotoPreview(URL.createObjectURL(file));
+      setPhotoPreview(URL.createObjectURL(file)); // 이미지 블랍인 file을 we will use this to show the preview of the image: blob
+      // https://kyounghwan01.github.io/blog/JS/JSbasic/Blob-url/
+      // URL.createObjectURL() 메소드는 주어진 객체를 가리키는 URL을 DOMString으로 변환하는 기능을 합니다.
+      // 해당 url은 window 창이 사라지면 함께 사라집니다. 그에 따라 다른 window에서 재 사용이 불가능 하고 이 URL은 수명이 한정되있습니다.
     }
   }, [photo]);
   return (
@@ -67,7 +95,7 @@ const Upload: NextPage = () => {
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={photoPreview}
-              className="aspect-video h-48 w-full rounded-md text-gray-600"
+              className="aspect-video h-48 w-full max-w-full rounded-md object-contain text-gray-600"
               alt="photo"
             />
           ) : (

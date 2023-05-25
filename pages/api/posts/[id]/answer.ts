@@ -6,30 +6,32 @@ import { withApiSession } from "@libs/server/withSession";
 async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) {
   const {
     query: { id },
-    body,
     session: { user },
+    body: { answer },
   } = req;
-  // const page = req.query.page ? (req.query.page as String) : "";
   if (!id) {
     return res.status(404).end({ error: "request query is not given." });
   }
-  const streamMessage = await client.message.create({
+  const newAnswer = await client.answer.create({
     data: {
-      message: body.message,
-      stream: {
-        connect: {
-          id: +id.toString(),
-        },
-      },
       user: {
         connect: {
           id: user?.id,
         },
       },
+      post: {
+        connect: {
+          id: +id.toString(),
+        },
+      },
+      answer,
     },
   });
 
-  res.json({ ok: true, streamMessage });
+  res.json({
+    ok: true,
+    answer: newAnswer,
+  });
 }
 
-export default withApiSession(withHandler({ methods: ["POST"], handler }));
+export default withApiSession(withHandler({ methods: ["POST"], handler, isPrivate: true }));

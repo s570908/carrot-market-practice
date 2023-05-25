@@ -31,6 +31,7 @@ const Profile: NextPage = () => {
   const router = useRouter();
   const { data } = useSWR<ProfileResponse>(
     router.query.id ? `/api/users/other/${router.query.id}` : null
+    // other 상대방
   );
   const onChatClick = () => {
     router.push(`/chats/${data?.other.id}`);

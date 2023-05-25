@@ -5,7 +5,10 @@ import client from "@libs/client/client";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const user = req.session.user; // login user
-  const id = req.query.id ? (req.query.id as String) : "";
+  const {
+    query: { id },
+  } = req;
+  // const page = req.query.page ? (req.query.page as String) : "";
   if (!id) {
     return res.status(404).end({ error: "request query is not given." });
   }
@@ -76,4 +79,4 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   res.status(200).json({ ok: true, isLiked, product: product, relatedProducts: relatedProducts });
 };
 
-export default withApiSession(withHandler({ methods: ["GET"], handler, isPrivate: true }));
+export default withApiSession(withHandler({ methods: ["GET", "POST"], handler, isPrivate: true }));

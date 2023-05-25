@@ -5,11 +5,15 @@ import { withApiSession } from "@libs/server/withSession";
 
 async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) {
   const {
+    query: { page, limit },
     session: { user },
     body: { name, price, description },
   } = req;
-  const page = req.query.page ? (req.query.page as String) : "";
-  const limit = req.query.limit ? (req.query.limit as String) : "";
+  // const page = req.query.page ? (req.query.page as String) : "";
+  // const limit = req.query.limit ? (req.query.limit as String) : "";
+  if (!page || !limit) {
+    return res.status(404).end({ error: "request query is not given." });
+  }
   if (req.method === "POST") {
     const {
       result: {

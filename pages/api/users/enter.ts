@@ -2,9 +2,17 @@ import withHandler, { ResponseType } from "@libs/server/withHandler";
 import { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 import client from "@libs/client/client";
 import { sendTokenEmail } from "@libs/server/sendEmail";
-import twilio from "twilio";
+//import twilio from "twilio";
 
-const twilioClient = twilio(process.env.TWILIO_SID, process.env.TWILIO_TOKEN);
+//const twilioClient = twilio(process.env.TWILIO_SID, process.env.TWILIO_TOKEN);
+// const nodemailer = require("nodemailer");
+// const transporter = nodemailer.createTransport({
+//   service: "gmail",
+//   auth: {
+//     user: process.env.GMAIL_ID,
+//     pass: process.env.GMAIL_PWD,
+//   },
+// });
 
 interface reqBodyType {
   email?: string;
@@ -17,6 +25,7 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
   const { email, phone }: reqBodyType = req.body;
   console.log("/api/users/enter--req.body: ", req.body);
   const userKey = phone ? { phone: phone } : { email: email };
+  if (!userKey) return res.status(400).json({ ok: false });
 
   const payload = Math.floor(100000 + Math.random() * 900000) + "";
 
@@ -44,7 +53,34 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
     },
   });
 
-  console.log("api/enter--token: ", token);
+  if (phone) {
+    console.log(`당신의 폰 로그인 토큰은 ${payload}입니다.`);
+    // const messages = await twilioClient.messages.create({
+    //   messagingServiceSid: process.env.TWILIO_MSID,
+    //   to: process.env.MY_PHONE!, // 정상적으로는 req.phone을 써야 함
+    //   body: `당신의 로그인 토큰은 ${payload}입니다.`,
+    // });
+    // console.log(messages);
+  } else if (email) {
+    console.log(`당신의 이메일 로그인 토큰은 ${payload}입니다.`);
+    // const sendEmail = await transporter
+    //   .sendMail({
+    //     from: process.env.GMAIL_ID,
+    //     to: process.env.GMAIL_ID,
+    //     subject: "token",
+    //     test: `your token is ${payload}`,
+    //     html: `
+    //       <div style="text-align: center;">
+    //         <h3 style="color: #FA5882">ABC</h3>
+    //         <br />
+    //         <p>your login token is ${payload}</p>
+    //       </div>
+    //   `,
+    //   })
+    //   .then((result: any) => console.log(result))
+    //   .catch((error: any) => console.log(error));
+  }
+
   /***********************************************************
    *  아래의 과정으로 토큰을 사용자에게 전송한다. phone sms 는 twilio를 사용하였으나 정해진 한도를 넘으면 유료이다.
    *  naver sense를 사용할 수 있다. 한달에 50건이 무료이다. 개발 중에는 서버 로그를 보면 token.payload에 토큰이 들어 있다. 이것을 활용한다.
@@ -61,7 +97,7 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
   // } else if (email) {
   //   await sendTokenEmail(token.user.name, payload);
   // }
-  res.status(200).json({ ok: true });
+  res.status(200).json({ ok: true, payload });
 };
 
 export default withHandler({ methods: ["POST"], handler, isPrivate: false });

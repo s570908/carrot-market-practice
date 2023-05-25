@@ -40,3 +40,50 @@ Content-Type: application/json
 
 "홈을 들어가면 좋아요가 0 -> DB값 으로 바뀌는 것을 확인할 수 있었습니다.": 그러나 SSR에서는 바뀌지 않는다. 그 이유는 홈으로 들어갈 때마다 즉, "/"로 요청될 때마다
 SSR이 일어나고 api/products가 수행되고 fav는 불러오지 않고 따라서 "좋아요"는 항상 0이다. SSR을 SSG로 변경하면 될 것 같다.
+
+# Next JS Upload File / Images to Local Directory
+
+https://www.youtube.com/watch?app=desktop&v=QTD9L0jL0dU
+
+Tofik Nuryanto
+6 months ago
+but the images cannot accessed on production mode
+
+3
+
+Reply
+
+3 replies
+Bachar El karni
+Bachar El karni
+6 months ago
+Is there an alternative to this cuz i'm facing this exact prob
+
+Reply
+
+Tofik Nuryanto
+Tofik Nuryanto
+6 months ago (edited)
+Absolutely you need 1 step to access your image after image uploaded.
+
+1. Re build your app, so image will detected 😁 or ...
+2. Create an API to serve your image.
+
+Example:
+Create api file usual /pages/api/images/[filename].jsx
+import fs
+read data file using query filename
+Send the image to client
+😁
+Show less
+
+2
+
+Reply
+
+Bachar El karni
+Bachar El karni
+6 months ago
+@Tofik Nuryanto thanks
+
+Reply

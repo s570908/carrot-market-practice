@@ -31,7 +31,11 @@ interface ProfileResponse {
 }
 
 export default function useUser() {
-  const { data, error } = useSWR<ProfileResponse>("/api/users/me", fetcher);
+  const { data, error, mutate } = useSWR<ProfileResponse>("/api/users/me", fetcher, {
+    revalidateIfStale: true,
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+  });
   console.log("useUser--data: ", data);
   const router = useRouter();
   useEffect(() => {
@@ -39,5 +43,5 @@ export default function useUser() {
       router.replace("/enter");
     }
   }, [data, router]);
-  return { user: data?.profile, isLoading: !data && !error };
+  return { user: data?.profile, isLoading: !data && !error, mutate };
 }

@@ -5,9 +5,13 @@ import { withApiSession } from "@libs/server/withSession";
 
 async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) {
   const {
+    query: { id },
     session: { user },
   } = req;
-  const id = req.query.id ? (req.query.id as String) : "";
+  // const page = req.query.page ? (req.query.page as String) : "";
+  if (!id) {
+    return res.status(404).end({ error: "request query is not given." });
+  }
   const stream = await client.stream.findUnique({
     where: {
       id: +id.toString(),

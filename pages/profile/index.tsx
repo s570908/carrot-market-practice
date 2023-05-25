@@ -8,7 +8,9 @@ import { cls } from "@libs/utils";
 import ImgComponent from "@components/ImgComponent";
 import { withSsrSession } from "@libs/server/withSession";
 import client from "@libs/client/client";
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
+import axios from "axios";
+import fetcher from "@libs/client/fetcher";
 
 interface ReviewWithUser extends Review {
   createBy: User;
@@ -22,7 +24,7 @@ const Reviews = () => {
   const { data } = useSWR<ReviewsResponse>("/api/reviews");
   return (
     <>
-      {data?.reviews.map((review) => (
+      {data?.reviews?.map((review) => (
         <Link key={review.id} href={`/products/${review.productForId}`}>
           <a className="mt-12 cursor-pointer">
             <div className="flex items-center space-x-4">
@@ -69,12 +71,15 @@ const Reviews = () => {
 
 const ProfileHeader = () => {
   const { user } = useUser();
+  //console.log("ProfileHeader--user.avatar: ", user?.avatar);
+
   return (
     <>
       <div className="mt-4 flex items-center space-x-3">
         {user?.avatar ? (
           <ImgComponent
-            imgAdd={`https://imagedelivery.net/D0zOSDPhfEMFCyc4YdUxfQ/${user?.avatar}/avatar`}
+            //imgAdd={`https://imagedelivery.net/D0zOSDPhfEMFCyc4YdUxfQ/${user?.avatar}/avatar`}
+            imgAdd={`${user?.avatar}`}
             width={48}
             height={48}
             clsProps="rounded-full"

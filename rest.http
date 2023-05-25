@@ -1,3 +1,11 @@
+### @index=42
+@name = /api/images/:filename
+@cookie42=carrotsession=Fe26.2*1*5d4af2ff2ae9ef96fb10be7940241f7561eb58e553fa9f0bae5e27fc75be6cab*AqbiNShZXq_ZCWven1qOhw*GOGK8cATDxlPNzW2H4N526-CbCF4C2v1Ls9gb-c7IY4*1685939200585*41c1ed75611c910cda706cbc59129a54d0c52135ec7135008671b4966e7bd139*9MMAO8zEtF3JbanKwi5KjOeWAOZIXILGimYN6oxF4fs~2
+# @prompt filename42 Your filename for image
+GET  http://localhost:3000/api/images/{{filename42}}
+Cookie: {{cookie41}}
+Content-Type: application/json
+
 ### @index=41
 @name = /api/products/:id/sale
 @cookie41=carrotsession=Fe26.2*1*bf3bcb8285ff6ce42986f5bd7d30a16a880440da21c9e49d63d7e72f0f2be95e*bohVeI7JMHS6okSSZa-8qg*HDH_5MK6h1HfY2MaK-o3Jf5J0tWUXMGI9Pn8yB4xHbM*1685074656377*0d3b86fe3f6d6c7f4f32d30ce3d24cbe85fb78b843836b58cb40746dcd531500*SiM-A5a6OOmTukGmU4yxXxGFe12_LBYN0eETkv9Xyps~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax

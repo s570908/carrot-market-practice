@@ -15,8 +15,8 @@ interface Post {
 
 const Blog: NextPage<{ posts: Post[] }> = ({ posts }) => {
   return (
-    <Layout title="Blog" seoTitle="Blog">
-      <h1 className="mb-10 mt-5 text-center text-xl font-semibold">Latest Posts:</h1>
+    <Layout title="Blog" seoTitle="Blog" canGoBack backUrl="back">
+      <h1 className="mt-5 mb-10 text-xl font-semibold text-center">Latest Posts:</h1>
       {posts.map((post, index) => (
         <div key={index} className="mb-5">
           <Link href={`/blog/${post.slug}`}>
@@ -39,7 +39,8 @@ export const getStaticProps: GetStaticProps = () => {
   const blogPosts = readdirSync("./posts").map((file) => {
     console.log("file: ", file);
     const content = readFileSync(`./posts/${file}`, "utf-8");
-    const slug = file.split(".")[0];
+    // const slug = file.split(".")[0];
+    const [slug, _] = file.split(".");
     console.log("matter(content).data: ", matter(content).data, " slug: ", slug);
     return { ...matter(content).data, slug };
   });

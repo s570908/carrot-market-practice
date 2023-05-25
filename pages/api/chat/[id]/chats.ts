@@ -9,27 +9,27 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
     body,
     session: { user },
   } = req;
-  // const page = req.query.page ? (req.query.page as String) : "";
   if (!id) {
     return res.status(404).end({ error: "request query is not given." });
   }
-  const streamMessage = await client.message.create({
+  const sellerChat = await client.sellerChat.create({
     data: {
-      message: body.message,
-      stream: {
+      chatMsg: body.chatMsg,
+      chatRooms: {
         connect: {
           id: +id.toString(),
         },
       },
+      chatRoomId: +id.toString(),
       user: {
         connect: {
           id: user?.id,
         },
       },
+      isNew: true,
     },
   });
-
-  res.json({ ok: true, streamMessage });
+  res.json({ ok: true, sellerChat });
 }
 
 export default withApiSession(withHandler({ methods: ["POST"], handler }));

@@ -30,32 +30,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       reviews,
     });
   }
-
-  if (req.method === "POST") {
-    const newReview = await client.review.create({
-      data: {
-        review,
-        score: +score,
-        createdBy: {
-          connect: {
-            id: +createdById,
-          },
-        },
-        createdFor: {
-          connect: {
-            id: +createdForId,
-          },
-        },
-      },
-    });
-    console.log("POST /api/reviews--newReview: ", newReview);
-    res.status(200).json({ ok: true, newReview });
-  }
 }
 
 export default withApiSession(
   withHandler({
-    methods: ["GET", "POST"],
+    methods: ["GET"],
     isPrivate: true,
     handler,
   })

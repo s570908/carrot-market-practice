@@ -5,59 +5,62 @@ import { withApiSession } from "@libs/server/withSession";
 
 async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) {
   const {
+    query: { id, page },
     session: { user },
-    query: { page },
   } = req;
-  if (!page) {
+  if (!id || !page) {
     return res.status(404).end({ error: "request query is not given." });
   }
   const limit = 10;
-  const favs = await client.fav.findMany({
+  const post = await client.post.findUnique({
     where: {
-      userId: user?.id,
+      id: +id.toString(),
     },
     include: {
-      product: {
-        include: {
-          _count: {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          avatar: true,
+        },
+      },
+      answers: {
+        select: {
+          answer: true,
+          id: true,
+          createdAt: true,
+          user: {
             select: {
-              favs: true,
+              id: true,
+              name: true,
+              avatar: true,
             },
           },
         },
+        take: limit,
+        skip: (+page - 1) * limit,
+      },
+      _count: {
+        select: {
+          answers: true,
+          wonderings: true,
+        },
       },
     },
-    orderBy: {
-      createdAt: "desc",
-    },
-    take: limit,
-    skip: (+page - 1) * limit,
   });
-  const next = await client.fav.findMany({
+  const isWondering = await client.wondering.findFirst({
     where: {
+      postId: +id.toString(),
       userId: user?.id,
     },
-    include: {
-      product: {
-        include: {
-          _count: {
-            select: {
-              favs: true,
-            },
-          },
-        },
-      },
+    select: {
+      id: true,
     },
-    orderBy: {
-      createdAt: "desc",
-    },
-    take: +limit,
-    skip: (+page + 1 - 1) * +limit,
   });
   res.json({
     ok: true,
-    favs,
-    next,
+    post,
+    isWondering,
   });
 }
 

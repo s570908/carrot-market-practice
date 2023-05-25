@@ -97,7 +97,7 @@ const Streams: NextPage = () => {
         onClick={onNextBtn}
         direction="next"
         page={page}
-        itemLength={data?.streams.length}
+        itemLength={data?.streams?.length}
         isGroup={true}
       >
         <svg
