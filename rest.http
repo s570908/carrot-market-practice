@@ -1,6 +1,6 @@
 ### @index=36
 @name = /api/users/me
-@cookie36=carrotsession=Fe26.2*1*a04be310572cef22baf4b7bb781cfe691d1dc6d49e122db7503503e7cc3d3af2*IOQiQCvDIZMG4-vHRw1A3w*oBg5Z-zgsLN__FV15eBLItIN9r-Cdgso743hF6klH_Y*1692538380698*a431bcec57bedf10a95299fa4a2876a850145fc16c3312ba02433cad1a9aafc7*SvsalyBdf91weEIeMhWvQIkQgOYCneCmDYj8Z1CgY-A~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
+@cookie36=carrotsession=Fe26.2*1*ccb4191f6607261d4f8f7b64f09951ee9ba9a7040703debe554fdb7394aa869a*m7_96vrQ-6h84JFSrAEIww*AWTl4H9Mr2ojEuFDeIOL1TtPndlSHNkjCUjTzMA0eDg*1693709885817*4c7a94e5d6064b963159bfabcd5385dc1c0f3fc76169cddda00328b7456a86ea*fICNfqQklvq0KXJsXUuqC8Gb7O-4FJ7EFef2tKiMilM~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
 GET  http://localhost:3000/api/users/me
 Cookie: {{cookie36}}
 Content-Type: application/json
