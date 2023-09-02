@@ -22,14 +22,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       description: description,
     });
 
-    const idToRevalidate = body.id;
+    // const idToRevalidate = body.id;
 
-    if (idToRevalidate) {
-      // this should be the actual path not a rewritten path
-      // e.g. for "/blog/[slug]" this should be "/blog/post-1"
-      await res.revalidate("/books");
-      await res.revalidate(`/books/${idToRevalidate}`);
-    }
+    // if (idToRevalidate) {
+    //   // this should be the actual path not a rewritten path
+    //   // e.g. for "/blog/[slug]" this should be "/blog/post-1"
+    //   await res.revalidate("/books");
+    //   await res.revalidate(`/books/${idToRevalidate}`);
+    // }
 
     return res.json({ ok: true });
   } catch (err) {

@@ -20,9 +20,10 @@ export default function Books({ data, time }: BooksProps) {
   // 그래서 서버에서 만들어낸 html과 클라이언트가 초기에 만들어낸 html이 정확히 같게 된다.
   // ref: https://stackoverflow.com/questions/72673362/error-text-content-does-not-match-server-rendered-html
 
-  //const currentTime = dayjs().format("YYYY-MM-DD HH:mm:ss");
+  //const requestTime = dayjs().format("YYYY-MM-DD HH:mm:ss");
 
   const [requestTime, setRequestTime] = useState("");
+
   useEffect(() => {
     const currentTime = dayjs().format("YYYY-MM-DD HH:mm:ss");
     setRequestTime(currentTime);
@@ -50,7 +51,7 @@ export async function getStaticProps() {
     const { data } = await axios.get("http://localhost:4000/books");
     return {
       props: { data, time },
-      revalidate: 6000,
+      revalidate: 180,
       // 마지막 build/generate 시간과 누가 요청을 하든지간에 화면 요청이 들어온 시간을 비교하여 20초가 넘었다면 서버캐시를
       // 업데이트한다.
     };

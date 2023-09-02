@@ -52,12 +52,17 @@
     },
     {
       "id": "11",
-      "title": "대한민국 금수강산",
+      "title": "K-Fasion",
       "description": "재미있는 영화다!"
     },
     {
       "id": "12",
-      "title": "미워도 다시 한번",
+      "title": "K-TT",
+      "description": "재미있는 영화다!"
+    },
+    {
+      "id": "13",
+      "title": "K-냉장고",
       "description": "재미있는 영화다!"
     }
   ]
