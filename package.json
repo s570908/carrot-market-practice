@@ -26,6 +26,7 @@
     "fs": "^0.0.1-security",
     "gray-matter": "^4.0.3",
     "iron-session": "^6.3.1",
+    "json-server": "^0.17.3",
     "mailgun-js": "^0.22.0",
     "mime": "^3.0.0",
     "multer": "^1.4.2",

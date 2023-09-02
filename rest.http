@@ -23,6 +23,21 @@ Content-Type: application/json
 
 ### 
 POST http://localhost:3000/api/revalidate-books?secret=nalnari
+Content-Type: application/json
+
+{
+  "id": 8
+}
+
+### 
+POST http://localhost:3000/api/books?secret=nalnari
+Content-Type: application/json
+
+{
+  "id": 8
+}
+
+
 ### @index=39
 @name = GET /api/review
 @cookie39=carrotsession=Fe26.2*1*dc31d8a0145d6728220eb7fc007ff37f058041b95a330d27703aa9edd9849554*lSF5BXxT7s0b7GfrVXXB4Q*4ZnNaboJ99s5caPo-ygwcV0Sx4HtjVtOG9SEab8NC_8*1684673499102*d0f565d414f4a035efbf13e5f1aa8281bab0492a453af7bd12e0993cd46da4c8*vgRR5em4aGFKHpIqRwecZNC_qsZdwF71iicsVij1VN0~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
@@ -53,6 +68,16 @@ Content-Type: application/json
 
 {
   "id": "9"
+}
+
+###
+POST http://localhost:3000/api/books
+Content-Type: application/json
+
+{
+  "id": "12",
+  "title": "미워도 다시 한번",
+  "description": "재미있는 영화다!"
 }
 
 ###
