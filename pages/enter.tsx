@@ -37,8 +37,8 @@ const Enter: NextPage = () => {
   const [confirm, { data: tokenData, loading: tokenLoading, error: tokenError }] =
     useMutation<BaseMutation>("/api/users/confirm");
   const router = useRouter();
-  // console.log("Enter: data: ", data);
-  // console.log("Confirm: tokenData: ", tokenData);
+  console.log("Enter: data: ", data);
+  console.log("Confirm: tokenData: ", tokenData);
 
   const onValid = (validForm: EnterForm) => {
     if (loading) return;
@@ -68,8 +68,9 @@ const Enter: NextPage = () => {
 
   useEffect(() => {
     //console.log("tokenData: ", tokenData);
-    if (tokenData?.ok) router.push("/");
-  }, [router, tokenData]);
+    if (tokenData?.ok) window.location.href = "/";
+    //router.push("/");
+  }, [tokenData]);
 
   return (
     <div className="mt-16 px-4 ">
