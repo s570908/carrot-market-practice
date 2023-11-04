@@ -6,10 +6,9 @@ const nextConfig = {
       "imagedelivery.net",
       "videodelivery.net",
       "raw.githubusercontent.com",
+      "www.gravatar.com",
     ],
   },
 };
 
 module.exports = nextConfig;
-
-

@@ -69,7 +69,7 @@ const ItemDetail: NextPage = () => {
     }
   }, [router, talkToSellerData]);
   return (
-    <Layout seoTitle="캐럿" title="캐럿" canGoBack backUrl={"back"}>
+    <Layout seoTitle="댕댕마켓" title="댕댕마켓" canGoBack backUrl={"back"}>
       <div className="px-4 py-4">
         <div className="mb-8">
           <ImgComponent

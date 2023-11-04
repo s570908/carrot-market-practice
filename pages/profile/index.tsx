@@ -11,6 +11,7 @@ import client from "@libs/client/client";
 import { Suspense, useEffect, useState } from "react";
 import axios from "axios";
 import fetcher from "@libs/client/fetcher";
+import gravatar from "gravatar";
 
 interface ReviewWithUser extends Review {
   createBy: User;
@@ -90,7 +91,17 @@ const ProfileHeader = () => {
             imgName={user?.name}
           />
         ) : (
-          <div className="h-12 w-12 rounded-full bg-slate-500" />
+          <ImgComponent
+            imgAdd={`https:${gravatar.url(user?.email ? user?.email : "anonymous@email.com", {
+              s: "48px",
+              d: "retro",
+            })}`}
+            width={48}
+            height={48}
+            clsProps="rounded-full"
+            imgName={user?.name}
+          />
+          // <div className="w-12 h-12 rounded-full bg-slate-500" />
         )}
         <div className="flex flex-col">
           <span className="font-medium text-gray-900">{user?.name}</span>
@@ -105,7 +116,7 @@ const ProfileHeader = () => {
 
 const Profile: NextPage = () => {
   return (
-    <Layout seoTitle="나의 캐럿" hasTabBar title="나의 캐럿" notice>
+    <Layout seoTitle="나의 댕댕마켓" hasTabBar title="나의 댕댕마켓" notice>
       <div className="px-4">
         <ProfileHeader />
         <div className="mt-8 flex justify-around border-y py-3">

@@ -25,12 +25,7 @@ const ImgComponent = ({
   return (
     <div className={cls(isLayout ? `relative ${layoutHeight}` : "")}>
       {isLayout ? (
-        <Image
-          src={"https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg"}
-          layout="fill"
-          className={clsProps}
-          alt={imgName}
-        />
+        <Image src={`${imgAdd}`} layout="fill" className={clsProps} alt={imgName} />
       ) : (
         <Image src={`${imgAdd}`} width={width} height={height} className={clsProps} alt={imgName} />
       )}

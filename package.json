@@ -24,6 +24,7 @@
     "express": "^4.18.2",
     "formidable": "^2.1.1",
     "fs": "^0.0.1-security",
+    "gravatar": "^1.8.2",
     "gray-matter": "^4.0.3",
     "iron-session": "^6.3.1",
     "json-server": "^0.17.3",
@@ -44,6 +45,7 @@
   },
   "devDependencies": {
     "@types/formidable": "^2.0.6",
+    "@types/gravatar": "^1.8.5",
     "@types/mailgun-js": "^0.22.13",
     "@types/multer": "^1.4.5",
     "@types/node": "^18.15.2",

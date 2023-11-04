@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import useMutation from "@libs/client/useMutation";
 import useSWR from "swr";
 import fetcher from "@libs/client/fetcher";
+import gravatar from "gravatar";
 
 interface EditProfileForm {
   email?: string;
@@ -39,9 +40,19 @@ const EditProfile: NextPage = () => {
     if (user?.name) setValue("name", user.name);
     if (user?.email) setValue("email", user.email);
     if (user?.phone) setValue("phone", user.phone);
-    if (user?.avatar)
-      //setAvatarPreview(`https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg`);
-      setAvatarPreview(`${user?.avatar}`);
+    if (user?.avatar) {
+      setAvatarPreview(
+        `https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${user?.avatar}/public`
+      );
+      //setAvatarPreview(`${user?.avatar}`);
+    } else {
+      setAvatarPreview(
+        `https:${gravatar.url(user?.email ? user?.email : "anonymous@email.com", {
+          s: "48px",
+          d: "retro",
+        })}`
+      );
+    }
   }, [user, setValue]);
 
   const [editProfile, { data, loading }] = useMutation<EditProfileResponse>(`/api/users/me`);
