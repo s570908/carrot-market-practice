@@ -29,46 +29,46 @@ const Upload: NextPage = () => {
   const [uploadProduct, { loading, data }] = useMutation<UploadProductMutation>("/api/products");
   const onValid = async ({ name, price, description, photo }: UploadProductForm) => {
     if (loading) return;
-    // if (photo && photo.length > 0) {
-    //   const { uploadURL } = await (await fetch(`/api/files`)).json(); // cloudflare에서 업로드할 url을 얻어온다.
-    //   const form = new FormData();
-    //   form.append("file", photo[0], name);  // form을 file 타입으로 만들고 photo[0]를 블랍(binary large object) 입력으로 사용하고 파일명을 name으로 사용한다.
-    //   const {
-    //     result: { id },
-    //   } = await (
-    //     await fetch(uploadURL, {
-    //       method: "POST",
-    //       body: form,
-    //     })
-    //   ).json();      // 이미지 폼을 uploadURL에 업로드한다. 업로드된 이미지의 URL을 id로 받는다.
-    //   uploadProduct({ name, price, description, photoId: id }); // 이미지의 URL인 id를 name, price, description을 함께 backend에 기록한다.
-    // } else {
-    //   uploadProduct({ name, price, description });
-    // }
     if (photo && photo.length > 0) {
-      console.log("phote, photo[0]: ", photo, photo[0]);
+      const { uploadURL } = await (await fetch(`/api/files`)).json(); // cloudflare에서 업로드할 url을 얻어온다.
       const form = new FormData();
-
-      // https://javascript.info/formdata
-      /*       
-      formData.append("image", imageBlob, "image.png");
-      
-      That’s same as if there were <input type="file" name="image"> in the form, 
-      and the visitor submitted a file named "image.png" (3rd argument) with the data imageBlob (2nd argument) from their filesystem.
-      The server reads form data and the file, as if it were a regular form submission. 
-      */
-      form.append("file", photo[0], name); // file: 타입, photo[0]: image blob, name: file name
-      const result = await (
-        await fetch("/api/images/file-upload", {
+      form.append("file", photo[0], name);  // form을 file 타입으로 만들고 photo[0]를 블랍(binary large object) 입력으로 사용하고 파일명을 name으로 사용한다.
+      const {
+        result: { id },
+      } = await (
+        await fetch(uploadURL, {
           method: "POST",
           body: form,
         })
-      ).json();
-      console.log("result: ", result);
-      uploadProduct({ name, price, description, photoId: result.data.url });
+      ).json();      // 이미지 폼을 uploadURL에 업로드한다. 업로드된 이미지의 URL을 id로 받는다.
+      uploadProduct({ name, price, description, photoId: id }); // 이미지의 URL인 id를 name, price, description을 함께 backend에 기록한다.
     } else {
       uploadProduct({ name, price, description });
     }
+    // if (photo && photo.length > 0) {
+    //   console.log("phote, photo[0]: ", photo, photo[0]);
+    //   const form = new FormData();
+
+    //   // https://javascript.info/formdata
+    //   /*       
+    //   formData.append("image", imageBlob, "image.png");
+      
+    //   That’s same as if there were <input type="file" name="image"> in the form, 
+    //   and the visitor submitted a file named "image.png" (3rd argument) with the data imageBlob (2nd argument) from their filesystem.
+    //   The server reads form data and the file, as if it were a regular form submission. 
+    //   */
+    //   form.append("file", photo[0], name); // file: 타입, photo[0]: image blob, name: file name
+    //   const result = await (
+    //     await fetch("/api/images/file-upload", {
+    //       method: "POST",
+    //       body: form,
+    //     })
+    //   ).json();
+    //   console.log("result: ", result);
+    //   uploadProduct({ name, price, description, photoId: result.data.url });
+    // } else {
+    //   uploadProduct({ name, price, description });
+    // }
   };
   useEffect(() => {
     if (data?.ok) {
@@ -84,24 +84,24 @@ const Upload: NextPage = () => {
       setPhotoPreview(URL.createObjectURL(file)); // 이미지 블랍인 file을 we will use this to show the preview of the image: blob
       // https://kyounghwan01.github.io/blog/JS/JSbasic/Blob-url/
       // URL.createObjectURL() 메소드는 주어진 객체를 가리키는 URL을 DOMString으로 변환하는 기능을 합니다.
-      // 해당 url은 window 창이 사라지면 함께 사라집니다. 그에 따라 다른 window에서 재 사용이 불가능 하고 이 URL은 수명이 한정되있습니다.
+      // 해당 url은 window 창이 사라지면 함께 사라집니다. 그에 따라 다른 window에서 재 사용이 불가능하고 이 URL은 수명이 한정되있습니다.
     }
   }, [photo]);
   return (
     <Layout seoTitle="상품 올리기" canGoBack title="상품 올리기" backUrl="back">
-      <form className="space-y-4 p-4" onSubmit={handleSubmit(onValid)}>
+      <form className="p-4 space-y-4" onSubmit={handleSubmit(onValid)}>
         <div>
           {photoPreview ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={photoPreview}
-              className="aspect-video h-48 w-full max-w-full rounded-md object-contain text-gray-600"
+              className="object-contain w-full h-48 max-w-full text-gray-600 rounded-md aspect-video"
               alt="photo"
             />
           ) : (
-            <label className="flex h-48 w-full cursor-pointer items-center justify-center rounded-md border-2 border-dashed border-gray-300 text-gray-600 hover:border-orange-500 hover:text-orange-500">
+            <label className="flex items-center justify-center w-full h-48 text-gray-600 border-2 border-gray-300 border-dashed rounded-md cursor-pointer hover:border-orange-500 hover:text-orange-500">
               <svg
-                className="h-12 w-12"
+                className="w-12 h-12"
                 stroke="currentColor"
                 fill="none"
                 viewBox="0 0 48 48"

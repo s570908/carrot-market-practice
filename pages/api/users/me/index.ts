@@ -22,7 +22,7 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
         },
       },
     });
-    // console.log("api/users/me--profile: ", profile);
+    console.log("api/users/me--profile: ", profile);
     res.status(200).json({ ok: true, profile });
   }
 

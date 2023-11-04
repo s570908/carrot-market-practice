@@ -71,15 +71,19 @@ const Reviews = () => {
 
 const ProfileHeader = () => {
   const { user } = useUser();
-  //console.log("ProfileHeader--user.avatar: ", user?.avatar);
+  console.log(
+    "ProfileHeader--process.env.NEXT_PUBLIC_CF_HASH, user, user.avatar: ",
+    process.env.NEXT_PUBLIC_CF_HASH,
+    user,
+    user?.avatar
+  );
 
   return (
     <>
       <div className="mt-4 flex items-center space-x-3">
         {user?.avatar ? (
           <ImgComponent
-            //imgAdd={`https://imagedelivery.net/D0zOSDPhfEMFCyc4YdUxfQ/${user?.avatar}/avatar`}
-            imgAdd={`${user?.avatar}`}
+            imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${user?.avatar}/public`}
             width={48}
             height={48}
             clsProps="rounded-full"

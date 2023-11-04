@@ -21,9 +21,7 @@ const ImgComponent = ({
   layoutHeight,
   imgName,
 }: ImgComponentProps) => {
-  // const myLoader = ({ src }: { src: any }) => {
-  //   return `${src}`;
-  // };
+  console.log("imgAdd: ", imgAdd);
   return (
     <div className={cls(isLayout ? `relative ${layoutHeight}` : "")}>
       {isLayout ? (
@@ -34,24 +32,7 @@ const ImgComponent = ({
           alt={imgName}
         />
       ) : (
-        <Image
-          //loader={myLoader}
-          src={`${imgAdd}`}
-          width={width}
-          height={height}
-          className={clsProps}
-          //alt={imgName}
-          alt="안나옴"
-          unoptimized={true}
-        />
-        // eslint-disable-next-line @next/next/no-img-element
-        // <img
-        //   src={`http://localhost:3000/32-1684832577509-710871512.webp`}
-        //   width={width}
-        //   height={height}
-        //   className={clsProps}
-        //   alt={imgName}
-        // />
+        <Image src={`${imgAdd}`} width={width} height={height} className={clsProps} alt={imgName} />
       )}
     </div>
   );

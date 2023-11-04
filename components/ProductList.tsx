@@ -31,7 +31,10 @@ interface IProductListResponse {
 }
 
 export default function ProductList({ kind }: ProductListProps) {
+  console.log("ProductList: begins");
   const { data } = useSWR<IProductListResponse>(`/api/users/me/${kind}`);
+  console.log("ProductList: data---", data);
+
   return data ? (
     <>
       {data[kind]?.map((record) => (

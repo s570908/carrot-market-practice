@@ -54,38 +54,40 @@ const EditProfile: NextPage = () => {
         message: "뭐든 하나는 써라.",
       });
     }
-    // if (avatar && avatar.length > 0 && user) {
-    //   const { uploadURL } = await (await fetch(`/api/files`)).json();
-    //   const form = new FormData();
-    //   form.append("file", avatar[0], user?.id + "");
-    //   const {
-    //     result: { id },
-    //   } = await (
-    //     await fetch(uploadURL, {
-    //       method: "POST",
-    //       body: form,
-    //     })
-    //   ).json();
-    //   editProfile({ email, phone, name, avatarId: id });
-    // } else {
-    //   editProfile({ email, phone, name });
-    // }
-
     if (avatar && avatar.length > 0 && user) {
+      const result = await (await fetch(`/api/files`)).json();
+      const { uploadURL } = result;
+      console.log("avatar, uploadURL: ", avatar, uploadURL);
       const form = new FormData();
       form.append("file", avatar[0], user?.id + "");
-      const result = await (
-        await fetch("/api/images/file-upload", {
+      const {
+        result: { id },
+      } = await (
+        await fetch(uploadURL, {
           method: "POST",
           body: form,
         })
       ).json();
-      editProfile({ email, phone, name, avatarId: result.data.url });
-      //mutateUser();
+      editProfile({ email, phone, name, avatarId: id });
     } else {
       editProfile({ email, phone, name });
-      //mutateUser();
     }
+
+    // if (avatar && avatar.length > 0 && user) {
+    //   const form = new FormData();
+    //   form.append("file", avatar[0], user?.id + "");
+    //   const result = await (
+    //     await fetch("/api/images/file-upload", {
+    //       method: "POST",
+    //       body: form,
+    //     })
+    //   ).json();
+    //   editProfile({ email, phone, name, avatarId: result.data.url });
+    //   //mutateUser();
+    // } else {
+    //   editProfile({ email, phone, name });
+    //   //mutateUser();
+    // }
   };
 
   useEffect(() => {
