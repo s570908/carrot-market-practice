@@ -12,6 +12,7 @@ import ImgComponent from "@components/ImgComponent";
 import { Suspense, useEffect } from "react";
 import RegDate from "@components/RegDate";
 import { Skeleton } from "@mui/material";
+import gravatar from "gravatar";
 
 interface ProductWithReview extends Review {
   createBy: User;
@@ -35,11 +36,12 @@ const ItemDetail: NextPage = () => {
   const { data, mutate: boundMutate } = useSWR<ItemDetailResponse>(
     router.query.id ? `/api/products/${router.query.id}` : null
   );
+
   const [toggleFav] = useMutation(`/api/products/${router.query.id}/fav`);
   const [talkToSeller, { loading: talkToSellerLoading, data: talkToSellerData }] =
     useMutation(`/api/chat`);
   const [buyItem, { loading: buyItemLoading, data: buyItemData }] = useMutation(
-    `/api/products/${router.query.id}?seller=${data?.product.userId}`
+    `/api/products/${router.query.id}?seller=${data?.product.userId.toString()}`
   );
   const onFavClick = () => {
     if (!data) return;
@@ -48,10 +50,12 @@ const ItemDetail: NextPage = () => {
     toggleFav({});
   };
   const onChatClick = () => {
+    console.log("onChatClick clicked.");
     if (talkToSellerLoading) return;
     talkToSeller({ buyerId: user?.id, sellerId: data?.product.userId });
   };
   const onBuyClick = () => {
+    //console.log("onBuyClick clicked.");
     if (confirm("정말 구매하시겠어요?")) {
       if (buyItemLoading) return;
       buyItem({});
@@ -75,21 +79,32 @@ const ItemDetail: NextPage = () => {
           <ImgComponent
             isLayout={true}
             layoutHeight="h-80"
-            imgAdd={`https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg`}
+            imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.product?.image}/public`}
+            // imgAdd={`https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg`}
             clsProps="object-scale-down"
             imgName={data?.product?.name}
           />
           <div className="flex cursor-pointer items-center space-x-3 border-b border-t py-3">
             {data?.product?.user?.avatar ? (
               <ImgComponent
-                imgAdd={`https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg`}
+                imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.product?.user?.avatar}/public`}
                 width={48}
                 height={48}
                 clsProps="rounded-full"
                 imgName={data?.product?.user?.name}
               />
             ) : (
-              <div className="h-12 w-12 rounded-full bg-slate-300" />
+              // <div className="w-12 h-12 rounded-full bg-slate-300" />
+              <ImgComponent
+                imgAdd={`https:${gravatar.url(user?.email ? user?.email : "anonymous@email.com", {
+                  s: "48px",
+                  d: "retro",
+                })}`}
+                width={48}
+                height={48}
+                clsProps="rounded-full"
+                imgName={data?.product?.user?.name}
+              />
             )}
             <div>
               <p className="text-sm font-medium text-gray-700">
@@ -125,7 +140,7 @@ const ItemDetail: NextPage = () => {
                     <div className="flex flex-col items-center justify-center space-y-1">
                       {review.createBy?.avatar ? (
                         <ImgComponent
-                          imgAdd={`https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg`}
+                          imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${review.createBy?.avatar}/public`}
                           width={48}
                           height={48}
                           clsProps="rounded-full"
@@ -237,7 +252,7 @@ const ItemDetail: NextPage = () => {
                 <Link href={`/products/${product.id}`} key={product.id}>
                   <a className="cursor-pointer">
                     <ImgComponent
-                      imgAdd={`https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg`}
+                      imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${product?.image}/public`}
                       isLayout={true}
                       layoutHeight="h-56"
                       clsProps="mt-6 mb-4 bg-slate-300"

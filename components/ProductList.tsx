@@ -33,7 +33,7 @@ interface IProductListResponse {
 export default function ProductList({ kind }: ProductListProps) {
   console.log("ProductList: begins");
   const { data } = useSWR<IProductListResponse>(`/api/users/me/${kind}`);
-  console.log("ProductList: data---", data);
+  console.log("ProductList: data---", JSON.stringify(data, null, 2));
 
   return data ? (
     <>
@@ -45,6 +45,7 @@ export default function ProductList({ kind }: ProductListProps) {
           price={record.product.price}
           comments={1}
           hearts={record.product._count.favs}
+          photo={record.product.image}
         />
       ))}
     </>

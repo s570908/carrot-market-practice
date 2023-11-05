@@ -11,9 +11,10 @@ interface ItemProps {
   isLike?: boolean;
   photo?: string;
   kind?: string;
+  date?: Date;
 }
 
-const Item = ({ title, price, comments, hearts, id, isLike, photo }: ItemProps) => {
+const Item = ({ title, price, comments, hearts, id, isLike, photo, date }: ItemProps) => {
   return (
     <Link href={`/products/${id}`}>
       <a className="flex cursor-pointer justify-between px-4 pt-5">
@@ -22,7 +23,7 @@ const Item = ({ title, price, comments, hearts, id, isLike, photo }: ItemProps) 
             width={80}
             height={80}
             clsProps="rounded-md bg-gray-400"
-            imgAdd={"https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg"}
+            imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${photo}/public`}
             imgName={title}
           />
           <div className="flex flex-col pt-2">

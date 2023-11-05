@@ -28,7 +28,7 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
     if (alreadyEx) {
       // Bad request: 400
       // https://uncertainty.oopy.io/05519ce4-9a62-4037-ad0a-e50def94f16e
-      res.status(400).json({ ok: false, error: "you have already sold it." });
+      res.status(400).json({ ok: false, error: "you have already purchased it." });
     } else {
       // create
       const purchase = await client.purchase.create({
