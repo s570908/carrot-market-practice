@@ -15,14 +15,14 @@ export default function Message({ message, reversed, name, avatar, date }: Messa
   return (
     <div
       className={cls(
-        "flex items-start",
+        "flex items-end",
         reversed ? "flex-row-reverse space-x-2 space-x-reverse" : "space-x-2"
       )}
     >
-      <div>
+      <div className="">
         {avatar ? (
           <ImgComponent
-            imgAdd={`https://imagedelivery.net/D0zOSDPhfEMFCyc4YdUxfQ/${avatar}/avatar`}
+            imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${avatar}/public`}
             width={32}
             height={32}
             clsProps="rounded-full"

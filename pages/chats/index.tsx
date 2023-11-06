@@ -49,6 +49,7 @@ const Chats: NextPage = () => {
   const { data } = useSWR<ChatRoomResponse>(`/api/chat`, {
     refreshInterval: 1000,
   });
+  console.log("Chats---data:", JSON.stringify(data, null, 2));
   useEffect(() => {
     if (data && data.ok) {
       data.chatRoomList.map((room) => {
@@ -72,7 +73,7 @@ const Chats: NextPage = () => {
               {chatRoom.buyerId === user?.id ? (
                 chatRoom.seller.avatar ? (
                   <ImgComponent
-                    imgAdd={`https://imagedelivery.net/D0zOSDPhfEMFCyc4YdUxfQ/${chatRoom.seller.avatar}/avatar`}
+                    imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${chatRoom.seller.avatar}/public`}
                     width={48}
                     height={48}
                     clsProps="rounded-full"
@@ -83,7 +84,7 @@ const Chats: NextPage = () => {
                 )
               ) : chatRoom.buyer.avatar ? (
                 <ImgComponent
-                  imgAdd={`https://imagedelivery.net/D0zOSDPhfEMFCyc4YdUxfQ/${chatRoom.buyer.avatar}/avatar`}
+                  imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${chatRoom.buyer.avatar}/public`}
                   width={48}
                   height={48}
                   clsProps="rounded-full"

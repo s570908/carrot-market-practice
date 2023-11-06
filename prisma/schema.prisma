@@ -146,7 +146,7 @@ model SellerChat {
   id         Int        @id @default(autoincrement())
   created    DateTime   @default(now())
   updated    DateTime   @updatedAt
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade) // buyer
   userId     Int        @default(1)
   chatMsg    String     @db.MediumText
   chatRooms  ChatRoom[]

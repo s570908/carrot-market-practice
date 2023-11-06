@@ -15,7 +15,7 @@ interface ChatWithUser extends SellerChat {
 interface SellerChatResponse {
   ok: boolean;
   sellerChat: ChatWithUser[];
-  seller: {
+  chatRoomOfSeller: {
     buyerId: number;
     sellerId: number;
     buyer: User;
@@ -33,6 +33,9 @@ const ChatDetail: NextPage = () => {
     router.query.id ? `/api/chat/${router.query.id}` : null,
     { refreshInterval: 1000 }
   );
+
+  //console.log("ChatDetail---data: ", JSON.stringify(data, null, 2));
+
   const { register, handleSubmit, reset } = useForm<ChatFormResponse>();
   const [sendChat, { loading, data: sendChatData }] = useMutation(
     `/api/chat/${router.query.id}/chats`
@@ -66,10 +69,14 @@ const ChatDetail: NextPage = () => {
   return (
     <Layout
       seoTitle={`${
-        data?.seller?.buyerId === user?.id ? data?.seller?.seller.name : data?.seller?.buyer.name
+        data?.chatRoomOfSeller?.buyerId === user?.id
+          ? data?.chatRoomOfSeller?.seller.name
+          : data?.chatRoomOfSeller?.buyer.name
       } || 채팅`}
       title={`${
-        data?.seller?.buyerId === user?.id ? data?.seller?.seller.name : data?.seller?.buyer.name
+        data?.chatRoomOfSeller?.buyerId === user?.id
+          ? data?.chatRoomOfSeller?.seller.name
+          : data?.chatRoomOfSeller?.buyer.name
       }`}
       canGoBack
       backUrl={"/chats"}
@@ -79,16 +86,19 @@ const ChatDetail: NextPage = () => {
           className="flex h-[calc(95vh-106px)] flex-col space-y-2 overflow-y-scroll py-5 transition-all"
           id="chatBox"
         >
-          {data?.sellerChat?.map((message) => (
-            <Message
-              reversed={message.userId === user?.id}
-              key={message.id}
-              name={message.user.name}
-              message={message.chatMsg}
-              avatar={"https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg"}
-              date={message.created}
-            />
-          ))}
+          {data?.sellerChat?.map((message) => {
+            //console.log("message: ", JSON.stringify(message, null, 2));
+            return (
+              <Message
+                reversed={message.userId === user?.id}
+                key={message.id}
+                name={message.user.name}
+                message={message.chatMsg}
+                avatar={message.user.avatar}
+                date={message.created}
+              />
+            );
+          })}
         </div>
         <div>
           <form onSubmit={handleSubmit(onValid)} className="fixed inset-x-0 bottom-0 bg-white py-2">

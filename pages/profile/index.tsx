@@ -72,12 +72,12 @@ const Reviews = () => {
 
 const ProfileHeader = () => {
   const { user } = useUser();
-  console.log(
-    "ProfileHeader--process.env.NEXT_PUBLIC_CF_HASH, user, user.avatar: ",
-    process.env.NEXT_PUBLIC_CF_HASH,
-    user,
-    user?.avatar
-  );
+  // console.log(
+  //   "ProfileHeader--process.env.NEXT_PUBLIC_CF_HASH, user, user.avatar: ",
+  //   process.env.NEXT_PUBLIC_CF_HASH,
+  //   user,
+  //   user?.avatar
+  // );
 
   return (
     <>

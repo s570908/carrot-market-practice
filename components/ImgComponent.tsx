@@ -21,7 +21,7 @@ const ImgComponent = ({
   layoutHeight,
   imgName,
 }: ImgComponentProps) => {
-  console.log("imgAdd: ", imgAdd);
+  //console.log("imgAdd: ", imgAdd);
   return (
     <div className={cls(isLayout ? `relative ${layoutHeight}` : "")}>
       {isLayout ? (

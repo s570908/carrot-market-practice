@@ -5,18 +5,19 @@ import { withApiSession } from "@libs/server/withSession";
 
 async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) {
   const {
-    query: { id },
-    session: { user },
+    query: { id }, // chatroom id
+    session: { user }, // login user
   } = req;
   if (!id) {
     return res.status(404).end({ error: "request query is not given." });
   }
   const sellerChat = await client.sellerChat.findMany({
     where: {
-      chatRoomId: +id.toString(),
+      chatRoomId: +id, // chatroom 은 seller 와 one to one 이다. 즉 seller 에 대해서 하나의 chatroom이 형성된다.
     },
     include: {
       user: {
+        // chat을 보내는 사람, 즉 buyer이다.
         select: {
           name: true,
           avatar: true,
@@ -24,9 +25,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
       },
     },
   });
-  const seller = await client.chatRoom.findUnique({
+  const chatRoomOfSeller = await client.chatRoom.findUnique({
     where: {
-      id: +id.toString(),
+      id: +id,
     },
     include: {
       buyer: {
@@ -47,7 +48,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
     if (chat.userId !== user?.id) {
       await client.sellerChat.updateMany({
         where: {
-          AND: [{ chatRoomId: +id.toString() }, { userId: chat.userId }],
+          AND: [{ chatRoomId: +id }, { userId: chat.userId }],
         },
         data: {
           isNew: false,
@@ -55,10 +56,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
       });
     }
   });
-  if (seller?.buyerId !== user?.id && seller?.sellerId !== user?.id) {
+  if (chatRoomOfSeller?.buyerId !== user?.id && chatRoomOfSeller?.sellerId !== user?.id) {
     res.json({ ok: false, error: "접근 권한이 없습니다." });
   } else {
-    res.json({ ok: true, sellerChat, seller });
+    res.json({ ok: true, sellerChat, chatRoomOfSeller });
   }
 }
 
