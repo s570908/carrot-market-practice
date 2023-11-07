@@ -4,24 +4,21 @@ import client from "@libs/client/client";
 import { withApiSession } from "@libs/server/withSession";
 import products from "pages/api/products";
 
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<ResponseType>
-) {
+async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) {
   const {
     query: { id },
   } = req;
-	if (!id) {
+  if (!id) {
     return res.status(404).end({ error: "request query is not given." });
   }
   const other = await client.user.findUnique({
     where: {
-      id: +id.toString(),
+      id: +id,
     },
     include: {
       sales: {
         where: {
-          userId: +id.toString(),
+          userId: +id,
         },
         select: {
           product: {

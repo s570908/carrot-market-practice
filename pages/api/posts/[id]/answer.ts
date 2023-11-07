@@ -9,9 +9,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
     session: { user },
     body: { answer },
   } = req;
+
   if (!id) {
     return res.status(404).end({ error: "request query is not given." });
   }
+
   const newAnswer = await client.answer.create({
     data: {
       user: {
@@ -21,7 +23,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
       },
       post: {
         connect: {
-          id: +id.toString(),
+          id: +id,
         },
       },
       answer,

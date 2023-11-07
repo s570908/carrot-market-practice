@@ -14,7 +14,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
   const alreadyExists = await client.wondering.findFirst({
     where: {
       userId: user?.id,
-      postId: +id.toString(),
+      postId: +id,
     },
   });
   if (alreadyExists) {
@@ -33,7 +33,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
         },
         post: {
           connect: {
-            id: +id.toString(),
+            id: +id,
           },
         },
       },

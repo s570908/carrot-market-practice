@@ -19,10 +19,10 @@ interface AnswerWithUser extends Answer {
 interface PostWithUser extends Post {
   user: User;
   _count: {
-    answer: number;
+    answers: number;
     wonderings: number;
   };
-  answer: AnswerWithUser[];
+  answers: AnswerWithUser[];
 }
 
 interface CommunityPostResponse {
@@ -49,7 +49,7 @@ const CommunityPostDetail: NextPage = () => {
   );
   const [wonder, { loading }] = useMutation(`/api/posts/${router.query.id}/wonder`);
   const [sendAnswer, { data: answerData, loading: ansLoading }] = useMutation<AnswerResponse>(
-    `/api/posts/${router.query.id}/answers`
+    `/api/posts/${router.query.id}/answer`
   );
   const onWonderClick = () => {
     if (!data) return;
@@ -74,6 +74,8 @@ const CommunityPostDetail: NextPage = () => {
     }
   };
   const onValid = (ansForm: AnswerForm) => {
+    console.log("Reply button clicked!---andForm: ", ansForm);
+
     if (ansLoading) return;
     sendAnswer(ansForm);
   };
@@ -91,7 +93,7 @@ const CommunityPostDetail: NextPage = () => {
         </span>
         <div className="mb-3 flex items-center space-x-3 border-b px-4 pb-3">
           <ImgComponent
-            imgAdd={`https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg`}
+            imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.post?.user?.avatar}/public`}
             width={40}
             height={40}
             clsProps="rounded-full"
@@ -150,16 +152,16 @@ const CommunityPostDetail: NextPage = () => {
                   d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
                 ></path>
               </svg>
-              <span>답변 {data?.post?._count?.answer}</span>
+              <span>답변 {data?.post?._count?.answers}</span>
             </span>
           </div>
         </div>
         <div className="my-5 space-y-5 px-4">
-          {data?.post?.answer?.map((ans) => (
+          {data?.post?.answers.map((ans) => (
             <div key={ans.id} className="flex items-start space-x-3">
               {ans.user.avatar ? (
                 <ImgComponent
-                  imgAdd={`https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg`}
+                  imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${ans.user.avatar}/public`}
                   width={32}
                   height={32}
                   clsProps="rounded-full"

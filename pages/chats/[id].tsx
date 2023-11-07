@@ -34,8 +34,6 @@ const ChatDetail: NextPage = () => {
     { refreshInterval: 1000 }
   );
 
-  //console.log("ChatDetail---data: ", JSON.stringify(data, null, 2));
-
   const { register, handleSubmit, reset } = useForm<ChatFormResponse>();
   const [sendChat, { loading, data: sendChatData }] = useMutation(
     `/api/chat/${router.query.id}/chats`
@@ -95,7 +93,7 @@ const ChatDetail: NextPage = () => {
                 name={message.user.name}
                 message={message.chatMsg}
                 avatar={message.user.avatar}
-                date={message.created}
+                date={message.createdAt}
               />
             );
           })}

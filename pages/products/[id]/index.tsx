@@ -15,7 +15,7 @@ import { Skeleton } from "@mui/material";
 import gravatar from "gravatar";
 
 interface ProductWithReview extends Review {
-  createBy: User;
+  createdBy: User;
 }
 
 interface ProductWithUser extends Product {
@@ -138,18 +138,18 @@ const ItemDetail: NextPage = () => {
                 data?.product?.productReviews.map((review) => (
                   <div key={review.id} className="flex flex-row justify-items-start space-x-12">
                     <div className="flex flex-col items-center justify-center space-y-1">
-                      {review.createBy?.avatar ? (
+                      {review.createdBy?.avatar ? (
                         <ImgComponent
-                          imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${review.createBy?.avatar}/public`}
+                          imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${review.createdBy?.avatar}/public`}
                           width={48}
                           height={48}
                           clsProps="rounded-full"
-                          imgName={review.createBy?.name}
+                          imgName={review.createdBy?.name}
                         />
                       ) : (
                         <div className="h-12 w-12 rounded-full bg-slate-500" />
                       )}
-                      <span className="font-medium text-gray-900">{review?.createBy.name}</span>
+                      <span className="font-medium text-gray-900">{review?.createdBy.name}</span>
                     </div>
                     <div className="flex flex-row items-center justify-evenly space-x-20">
                       <div className="flex flex-col items-start">

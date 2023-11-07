@@ -8,13 +8,15 @@ import { Product, Review, User } from "@prisma/client";
 import { cls } from "@libs/utils";
 import Link from "next/link";
 import ImgComponent from "@components/ImgComponent";
+import useMutation from "@libs/client/useMutation";
+import { useEffect } from "react";
 
 interface ProductScore extends Product {
   productReviews: Review[];
 }
 
 interface ProfileWithReview extends User {
-  sale: [
+  sales: [
     {
       product: ProductScore;
     }
@@ -29,13 +31,36 @@ interface ProfileResponse {
 const Profile: NextPage = () => {
   const { user } = useUser();
   const router = useRouter();
+
   const { data } = useSWR<ProfileResponse>(
     router.query.id ? `/api/users/other/${router.query.id}` : null
     // other 상대방
   );
+
+  console.log("Profile---data: ", JSON.stringify(data, null, 2));
+
+  const [talkToSeller, { loading: talkToSellerLoading, data: talkToSellerData }] =
+    useMutation(`/api/chat`);
+
+  useEffect(() => {
+    if (talkToSellerData && talkToSellerData.ok) {
+      talkToSellerData.chatRoomList
+        ? router.push(`/chats/${talkToSellerData.chatRoomList.id}`)
+        : router.push(`/chats/${talkToSellerData.createChat.id}`);
+    }
+  }, [router, talkToSellerData]);
+
+  if (!router.query.id) {
+    console.log("Logical error: router.query.id should be given but not.");
+    return null;
+  }
+
   const onChatClick = () => {
-    router.push(`/chats/${data?.other.id}`);
+    console.log("onChatClick clicked.");
+    if (talkToSellerLoading) return;
+    talkToSeller({ buyerId: user?.id, sellerId: +router.query.id! });
   };
+
   return (
     <Layout
       seoTitle={`${data?.other.name} || 프로필`}
@@ -51,7 +76,7 @@ const Profile: NextPage = () => {
               width={48}
               height={48}
               clsProps="rounded-md bg-gray-400"
-              imgAdd={`https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg`}
+              imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.other.avatar}/public`}
               imgName={data?.other.name}
             />
           ) : (
@@ -62,14 +87,14 @@ const Profile: NextPage = () => {
           </div>
         </div>
         <Button onClick={onChatClick} large text="Talk to seller" />
-        {data?.other.sale.map((item, idx) => (
+        {data?.other.sales?.map((item, idx) => (
           <Link key={idx} href={`/products/${item.product.id}`}>
             <a className="flex cursor-pointer space-x-4">
               <ImgComponent
                 width={80}
                 height={80}
                 clsProps="rounded-md bg-gray-400"
-                imgAdd={`https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg`}
+                imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${item.product.image}/public`}
               />
               <div className="flex flex-col pt-2">
                 <h3 className="text-sm font-medium text-gray-900">{item.product.name}</h3>

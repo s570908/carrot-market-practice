@@ -45,7 +45,6 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
         },
       },
     });
-    // console.log("product/[id]/fav handler--fav created: ", fav);
   }
 
   res.status(200).json({ ok: true });

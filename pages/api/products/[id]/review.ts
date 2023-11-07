@@ -24,12 +24,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
         },
         createdFor: {
           connect: {
-            id: +seller.toString(),
+            id: +seller,
           },
         },
         productFor: {
           connect: {
-            id: +id.toString(),
+            id: +id,
           },
         },
       },

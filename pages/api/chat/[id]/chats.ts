@@ -17,10 +17,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
       chatMsg: body.chatMsg,
       chatRooms: {
         connect: {
-          id: +id.toString(),
+          id: +id,
         },
       },
-      chatRoomId: +id.toString(),
+      chatRoomId: +id,
       user: {
         connect: {
           id: user?.id,

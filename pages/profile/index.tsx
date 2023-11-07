@@ -14,7 +14,7 @@ import fetcher from "@libs/client/fetcher";
 import gravatar from "gravatar";
 
 interface ReviewWithUser extends Review {
-  createBy: User;
+  createdBy: User;
 }
 interface ReviewsResponse {
   ok: boolean;
@@ -29,9 +29,9 @@ const Reviews = () => {
         <Link key={review.id} href={`/products/${review.productForId}`}>
           <a className="mt-12 cursor-pointer">
             <div className="flex items-center space-x-4">
-              {review.createBy.avatar ? (
+              {review.createdBy.avatar ? (
                 <ImgComponent
-                  imgAdd={`https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg`}
+                  imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${review.createdBy.avatar}/public`}
                   width={48}
                   height={48}
                   clsProps="rounded-full"
@@ -40,7 +40,7 @@ const Reviews = () => {
                 <div className="h-12 w-12 rounded-full bg-slate-500" />
               )}
               <div>
-                <h4 className="text-sm font-bold text-gray-800">{review.createBy.name}</h4>
+                <h4 className="text-sm font-bold text-gray-800">{review.createdBy.name}</h4>
                 <div className="flex items-center">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <svg

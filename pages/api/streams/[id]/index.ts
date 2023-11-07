@@ -14,7 +14,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
   }
   const stream = await client.stream.findUnique({
     where: {
-      id: +id.toString(),
+      id: +id,
     },
     include: {
       user: {
@@ -36,7 +36,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
           },
         },
         orderBy: {
-          created: "asc",
+          createdAt: "asc",
         },
       },
     },
@@ -65,7 +65,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
   if (result) {
     await client.stream.update({
       where: {
-        id: +id.toString(),
+        id: +id,
       },
       data: {
         replayVideoId: result[0].uid,

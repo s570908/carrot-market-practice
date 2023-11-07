@@ -54,14 +54,14 @@ const Review: NextPage = () => {
           <ImgComponent
             isLayout={true}
             layoutHeight="h-72"
-            imgAdd={`https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg`}
+            imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.product?.image}/public`}
             clsProps="object-scale-down"
             imgName={data?.product?.name}
           />
           <div className="flex cursor-pointer items-center space-x-3 border-b border-t py-3">
             {data?.product?.user?.avatar ? (
               <ImgComponent
-                imgAdd={`https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg`}
+                imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.product?.user?.avatar}/public`}
                 width={48}
                 height={48}
                 clsProps="rounded-full"

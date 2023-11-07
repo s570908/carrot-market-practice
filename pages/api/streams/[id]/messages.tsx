@@ -18,7 +18,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
       message: body.message,
       stream: {
         connect: {
-          id: +id.toString(),
+          id: +id,
         },
       },
       user: {

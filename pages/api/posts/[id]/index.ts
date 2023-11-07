@@ -14,7 +14,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
   const limit = 10;
   const post = await client.post.findUnique({
     where: {
-      id: +id.toString(),
+      id: +id,
     },
     include: {
       user: {
@@ -50,7 +50,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
   });
   const isWondering = await client.wondering.findFirst({
     where: {
-      postId: +id.toString(),
+      postId: +id,
       userId: user?.id,
     },
     select: {

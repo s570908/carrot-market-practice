@@ -20,7 +20,7 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
     // 이미 현재 사용자가 해당 상품을 sale 한 기록이 있다면?
     const alreadyEx = await client.sale.findFirst({
       where: {
-        productId: +id.toString(),
+        productId: +id,
         userId: user?.id,
       },
     });
