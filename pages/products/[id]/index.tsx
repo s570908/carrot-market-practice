@@ -51,7 +51,7 @@ const ItemDetail: NextPage = () => {
   };
   const onChatClick = () => {
     console.log("onChatClick clicked.");
-    if (talkToSellerLoading) return;
+    //if (talkToSellerLoading) return;
     talkToSeller({ buyerId: user?.id, sellerId: data?.product.userId });
   };
   const onBuyClick = () => {

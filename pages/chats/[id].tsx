@@ -29,12 +29,15 @@ interface ChatFormResponse {
 const ChatDetail: NextPage = () => {
   const { user } = useUser();
   const router = useRouter();
+  //// router.query.id: chatRoom id
+  //// chatRoom list 가져오기
   const { data, mutate } = useSWR<SellerChatResponse>(
     router.query.id ? `/api/chat/${router.query.id}` : null,
     { refreshInterval: 1000 }
   );
 
   const { register, handleSubmit, reset } = useForm<ChatFormResponse>();
+  //// api server를 통해서 chatRoom에 chat data를 보내기
   const [sendChat, { loading, data: sendChatData }] = useMutation(
     `/api/chat/${router.query.id}/chats`
   );
@@ -56,9 +59,9 @@ const ChatDetail: NextPage = () => {
             },
           ],
         } as any),
-      false
+      false // cache만 업데이트한다. 즉 optimistic UI이다. 서버의 데이터를 업데이트하지 않는다. 이것이 true라면 서버의 데이터를 이 시점에서 업데이트를 한다.
     );
-    sendChat(chatForm);
+    sendChat(chatForm); // mutate에서 option을 false로 하였기 때문에 서버의 데이터가 아직 업데이트되지 않았으므로 지금 여기서 서버의 데이터를 업데이트한다.
   };
   useEffect(() => {
     const chatBox = document.getElementById("chatBox") as HTMLElement;

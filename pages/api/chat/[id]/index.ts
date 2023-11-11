@@ -25,6 +25,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
       },
     },
   });
+  //console.log("api.chat.[id].index---sellerChat: ", JSON.stringify(sellerChat, null, 2));
   const chatRoomOfSeller = await client.chatRoom.findUnique({
     where: {
       id: +id,

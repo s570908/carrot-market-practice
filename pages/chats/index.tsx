@@ -31,7 +31,7 @@ import useUser from "@libs/client/useUser";
 import useSWR from "swr";
 import ImgComponent from "@components/ImgComponent";
 import { ChatRoom, SellerChat, User } from "@prisma/client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 interface ChatRoomWithUser extends ChatRoom {
   buyer: User;
@@ -49,7 +49,10 @@ const Chats: NextPage = () => {
   const { data } = useSWR<ChatRoomResponse>(`/api/chat`, {
     refreshInterval: 1000,
   });
+  const [recentMessageShown, setRecentMessageShown] = useState("");
+
   console.log("Chats---data:", JSON.stringify(data, null, 2));
+
   useEffect(() => {
     if (data && data.ok) {
       data.chatRoomList.map((room) => {
@@ -64,6 +67,10 @@ const Chats: NextPage = () => {
       });
     }
   }, [data]);
+
+  console.log("chats---data.chatRoomList: ", JSON.stringify(data?.chatRoomList, null, 2));
+  console.log("chats---login user: ", JSON.stringify(user, null, 2));
+
   return (
     <Layout seoTitle="채팅" title="채팅" hasTabBar notice>
       <div className="divide-y-[1px] py-10">
@@ -97,7 +104,15 @@ const Chats: NextPage = () => {
                 <p className="text-gray-700">
                   {chatRoom.buyerId === user?.id ? chatRoom.seller.name : chatRoom.buyer.name}
                 </p>
-                <p className="text-sm text-gray-500">{chatRoom.recentMsg?.chatMsg}</p>
+                <div className="flex flex-row">
+                  <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
+                    {chatRoom.recentMsg.userId === chatRoom.seller.id
+                      ? chatRoom.seller.name
+                      : chatRoom.buyer.name}
+                  </span>
+                  <p className="text-sm text-gray-500">{chatRoom.recentMsg?.chatMsg}</p>
+                </div>
+
                 {chatRoom.recentMsg?.isNew && chatRoom.recentMsg.userId !== user?.id ? (
                   <span className="absolute right-0 top-2 text-orange-500">
                     <svg
