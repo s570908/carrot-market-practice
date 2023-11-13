@@ -51,7 +51,7 @@ const Chats: NextPage = () => {
   });
   const [recentMessageShown, setRecentMessageShown] = useState("");
 
-  console.log("Chats---data:", JSON.stringify(data, null, 2));
+  //console.log("Chats---data:", JSON.stringify(data, null, 2));
 
   useEffect(() => {
     if (data && data.ok) {
@@ -68,67 +68,80 @@ const Chats: NextPage = () => {
     }
   }, [data]);
 
-  console.log("chats---data.chatRoomList: ", JSON.stringify(data?.chatRoomList, null, 2));
-  console.log("chats---login user: ", JSON.stringify(user, null, 2));
+  // console.log("chats---data.chatRoomList: ", JSON.stringify(data?.chatRoomList, null, 2));
+  // console.log("chats---login user: ", JSON.stringify(user, null, 2));
 
   return (
     <Layout seoTitle="채팅" title="채팅" hasTabBar notice>
       <div className="divide-y-[1px] py-10">
-        {data?.chatRoomList?.map((chatRoom) => (
-          <Link href={`/chats/${chatRoom.id}`} key={chatRoom.id}>
-            <a className="flex cursor-pointer items-center space-x-3 px-4 py-3">
-              {chatRoom.buyerId === user?.id ? (
-                chatRoom.seller.avatar ? (
+        {data?.chatRoomList?.map((chatRoom) => {
+          // console.log(
+          //   "chatRoom: ",
+          //   JSON.stringify(chatRoom, null, 2),
+          //   chatRoom.recentMsg.userId,
+          //   chatRoom.seller.id,
+          //   chatRoom.seller.name,
+          //   chatRoom.buyer.name,
+          //   chatRoom.recentMsg.userId === chatRoom.seller.id
+          //     ? chatRoom.seller.name
+          //     : chatRoom.buyer.name
+          // );
+          return (
+            <Link href={`/chats/${chatRoom.id}`} key={chatRoom.id}>
+              <a className="flex cursor-pointer items-center space-x-3 px-4 py-3">
+                {chatRoom.buyerId === user?.id ? (
+                  chatRoom.seller.avatar ? (
+                    <ImgComponent
+                      imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${chatRoom.seller.avatar}/public`}
+                      width={48}
+                      height={48}
+                      clsProps="rounded-full"
+                      imgName={chatRoom.seller.name}
+                    />
+                  ) : (
+                    <div className="h-12 w-12 rounded-full bg-slate-500" />
+                  )
+                ) : chatRoom.buyer.avatar ? (
                   <ImgComponent
-                    imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${chatRoom.seller.avatar}/public`}
+                    imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${chatRoom.buyer.avatar}/public`}
                     width={48}
                     height={48}
                     clsProps="rounded-full"
-                    imgName={chatRoom.seller.name}
+                    imgName={chatRoom.buyer.name}
                   />
                 ) : (
                   <div className="h-12 w-12 rounded-full bg-slate-500" />
-                )
-              ) : chatRoom.buyer.avatar ? (
-                <ImgComponent
-                  imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${chatRoom.buyer.avatar}/public`}
-                  width={48}
-                  height={48}
-                  clsProps="rounded-full"
-                  imgName={chatRoom.buyer.name}
-                />
-              ) : (
-                <div className="h-12 w-12 rounded-full bg-slate-500" />
-              )}
-              <div className="relative w-10/12">
-                <p className="text-gray-700">
-                  {chatRoom.buyerId === user?.id ? chatRoom.seller.name : chatRoom.buyer.name}
-                </p>
-                <div className="flex flex-row">
-                  <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
-                    {chatRoom.recentMsg.userId === chatRoom.seller.id
-                      ? chatRoom.seller.name
-                      : chatRoom.buyer.name}
-                  </span>
-                  <p className="text-sm text-gray-500">{chatRoom.recentMsg?.chatMsg}</p>
-                </div>
+                )}
+                <div className="relative w-10/12">
+                  <p className="text-gray-700">
+                    {chatRoom.buyerId === user?.id ? chatRoom.seller.name : chatRoom.buyer.name}
+                  </p>
+                  <div className="inline flex-row">
+                    <span className="inline rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
+                      {chatRoom.recentMsg.userId === chatRoom.seller.id
+                        ? chatRoom.seller.name
+                        : chatRoom.buyer.name}
+                    </span>
+                    <p className="inline text-sm text-gray-500">{chatRoom.recentMsg?.chatMsg}</p>
+                  </div>
 
-                {chatRoom.recentMsg?.isNew && chatRoom.recentMsg.userId !== user?.id ? (
-                  <span className="absolute right-0 top-2 text-orange-500">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
-                    </svg>
-                  </span>
-                ) : null}
-              </div>
-            </a>
-          </Link>
-        ))}
+                  {chatRoom.recentMsg?.isNew && chatRoom.recentMsg.userId !== user?.id ? (
+                    <span className="absolute right-0 top-2 text-orange-500">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+                      </svg>
+                    </span>
+                  ) : null}
+                </div>
+              </a>
+            </Link>
+          );
+        })}
       </div>
     </Layout>
   );

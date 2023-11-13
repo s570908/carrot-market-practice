@@ -51,7 +51,8 @@ const ItemDetail: NextPage = () => {
   };
   const onChatClick = () => {
     console.log("onChatClick clicked.");
-    //if (talkToSellerLoading) return;
+    if (talkToSellerLoading) return;
+    //// login user가 buyer이고 product를 upload한 사람이 seller이다.
     talkToSeller({ buyerId: user?.id, sellerId: data?.product.userId });
   };
   const onBuyClick = () => {
@@ -67,9 +68,9 @@ const ItemDetail: NextPage = () => {
   };
   useEffect(() => {
     if (talkToSellerData && talkToSellerData.ok) {
-      talkToSellerData.chatRoomList
-        ? router.push(`/chats/${talkToSellerData.chatRoomList.id}`)
-        : router.push(`/chats/${talkToSellerData.createChat.id}`);
+      talkToSellerData.chatRoom
+        ? router.push(`/chats/${talkToSellerData.chatRoom.id}`)
+        : router.push(`/chats/${talkToSellerData.createChatRoom.id}`);
     }
   }, [router, talkToSellerData]);
   return (

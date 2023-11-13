@@ -8,18 +8,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
     const {
       body: { buyerId, sellerId },
     } = req;
-    const chatRoomList = await client.chatRoom.findFirst({
+    const chatRoom = await client.chatRoom.findFirst({
       where: {
         AND: [{ buyerId }, { sellerId }],
       },
     });
-    if (chatRoomList) {
+    if (chatRoom) {
       res.json({
         ok: true,
-        chatRoomList,
+        chatRoom,
       });
     } else {
-      const createChat = await client.chatRoom.create({
+      const createChatRoom = await client.chatRoom.create({
         data: {
           buyer: {
             connect: {
@@ -35,7 +35,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
       });
       res.json({
         ok: true,
-        createChat,
+        createChatRoom,
       });
     }
   }
@@ -59,12 +59,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
           select: {
             name: true,
             avatar: true,
+            id: true,
           },
         },
         seller: {
           select: {
             name: true,
             avatar: true,
+            id: true,
           },
         },
       },
@@ -82,19 +84,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
       return res.status(404).end({ error: "request query is not given." });
     }
     if (roomId) {
-      const delChatRoom = await client.chatRoom.deleteMany({
+      const delChatRoomList = await client.chatRoom.deleteMany({
         where: {
           id: +roomId,
         },
       });
       res.json({
         ok: true,
-        delChatRoom,
+        delChatRoomList,
       });
     } else {
       res.json({
         ok: false,
-        error: "no roomId found",
+        error: "no chatRoom of roomId found",
       });
     }
   }

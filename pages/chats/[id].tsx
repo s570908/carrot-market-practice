@@ -65,6 +65,7 @@ const ChatDetail: NextPage = () => {
   };
   useEffect(() => {
     const chatBox = document.getElementById("chatBox") as HTMLElement;
+    //// scrollTop 의 최대치는 scrollHeight-clientHeght. scrollTop에 이 최대치보다 큰 수를 넣더라도 scrollTop은 최대치 만큼만 반응한다.
     chatBox.scrollTop = chatBox.scrollHeight + 20;
   }, [data?.ok, sendChatData, mutate]);
   return (
