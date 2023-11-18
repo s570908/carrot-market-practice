@@ -10,6 +10,7 @@ import Link from "next/link";
 import ImgComponent from "@components/ImgComponent";
 import useMutation from "@libs/client/useMutation";
 import { useEffect } from "react";
+import gravatar from "gravatar";
 
 interface ProductScore extends Product {
   productReviews: Review[];
@@ -80,7 +81,19 @@ const Profile: NextPage = () => {
               imgName={data?.other.name}
             />
           ) : (
-            <div className="h-12 w-12 rounded-full bg-slate-500" />
+            <ImgComponent
+              imgAdd={`https:${gravatar.url(
+                data?.other.email ? data?.other.email : "anonymous@email.com",
+                {
+                  s: "48px",
+                  d: "retro",
+                }
+              )}`}
+              width={48}
+              height={48}
+              clsProps="rounded-full"
+              imgName={"UserAvatar"}
+            />
           )}
           <div className="flex flex-col">
             <span className="font-medium text-gray-900">{data?.other.name}</span>

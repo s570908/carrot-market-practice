@@ -32,6 +32,7 @@ import useSWR from "swr";
 import ImgComponent from "@components/ImgComponent";
 import { ChatRoom, SellerChat, User } from "@prisma/client";
 import { useEffect, useState } from "react";
+import gravatar from "gravatar";
 
 interface ChatRoomWithUser extends ChatRoom {
   buyer: User;
@@ -99,7 +100,19 @@ const Chats: NextPage = () => {
                       imgName={chatRoom.seller.name}
                     />
                   ) : (
-                    <div className="h-12 w-12 rounded-full bg-slate-500" />
+                    <ImgComponent
+                      imgAdd={`https:${gravatar.url(
+                        chatRoom.seller.email ? chatRoom.seller.email : "anonymous@email.com",
+                        {
+                          s: "48px",
+                          d: "retro",
+                        }
+                      )}`}
+                      width={48}
+                      height={48}
+                      clsProps="rounded-full"
+                      imgName={"UserAvatar"}
+                    />
                   )
                 ) : chatRoom.buyer.avatar ? (
                   <ImgComponent
@@ -110,7 +123,19 @@ const Chats: NextPage = () => {
                     imgName={chatRoom.buyer.name}
                   />
                 ) : (
-                  <div className="h-12 w-12 rounded-full bg-slate-500" />
+                  <ImgComponent
+                    imgAdd={`https:${gravatar.url(
+                      chatRoom.buyer.email ? chatRoom.buyer.email : "anonymous@email.com",
+                      {
+                        s: "48px",
+                        d: "retro",
+                      }
+                    )}`}
+                    width={48}
+                    height={48}
+                    clsProps="rounded-full"
+                    imgName={"UserAvatar"}
+                  />
                 )}
                 <div className="relative w-10/12">
                   <p className="text-gray-700">

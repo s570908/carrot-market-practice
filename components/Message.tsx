@@ -2,6 +2,7 @@ import { cls } from "@libs/utils";
 import Image from "next/image";
 import ImgComponent from "@components/ImgComponent";
 import RegDate from "@components/RegDate";
+import gravatar from "gravatar";
 
 interface MessageProps {
   message: string;
@@ -29,7 +30,16 @@ export default function Message({ message, reversed, name, avatar, date }: Messa
             imgName={name}
           />
         ) : (
-          <div className="h-8 w-8 rounded-full bg-slate-400" />
+          <ImgComponent
+            imgAdd={`https:${gravatar.url("anonymous@email.com", {
+              s: "48px",
+              d: "retro",
+            })}`}
+            width={48}
+            height={48}
+            clsProps="rounded-full"
+            imgName={"UserAvatar"}
+          />
         )}
       </div>
       <div
