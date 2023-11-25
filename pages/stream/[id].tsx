@@ -38,11 +38,25 @@ interface MessageForm {
 const StreamDetail: NextPage = () => {
   const { user } = useUser();
   const router = useRouter();
+
+  // 라이브스트림 메시지 리액트 훅 폼
   const { register, handleSubmit, reset } = useForm<MessageForm>();
+
   const { data, mutate } = useSWR<StreamResponse>(
     router.query.id ? `/api/streams/${router.query.id}` : null,
     { refreshInterval: 1000 }
   );
+
+  console.log("stream.[id].tsx---data: ", JSON.stringify(data, null, 2));
+
+  // 존재하지 않는 라이브스트림 접근시, 목록으로 replace
+  useEffect(() => {
+    if (data?.ok === false) {
+      router.replace("/streams");
+    }
+  }, [data, router]);
+
+  // 라이브스트림 메시지 생성 API (POST)
   const [sendMessage, { loading, data: sendMessageData }] = useMutation(
     `/api/streams/${router.query.id}/messages`
   );
@@ -64,12 +78,18 @@ const StreamDetail: NextPage = () => {
         } as any),
       false
     );
+    // 라이브스트림 메시지 API 요청 (POST)
     sendMessage(form);
   };
+
+  // 채팅창의 스크롤을 맨 밑으로 유지
   useEffect(() => {
     const msgBox = document.querySelector("#msg") as HTMLElement;
     msgBox.scrollTop = msgBox.scrollHeight;
   }, [data?.ok, sendMessageData]);
+
+  const preview = true;
+
   return (
     <Layout
       seoTitle={`${data?.stream.name} || 라이브`}
@@ -79,12 +99,25 @@ const StreamDetail: NextPage = () => {
     >
       <div className="space-y-4 px-4 py-10">
         <div className="relative bg-slate-300">
-          {data?.live ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+          {preview ? (
+            <iframe
+              src={`https://iframe.videodelivery.net/${data?.stream.cloudflareId}`}
               className="aspect-video w-full rounded-md shadow-sm"
-              src={`https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg`}
-              alt="rose"
+              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+              allowFullScreen={true}
+            />
+          ) : // <iframe
+          //   src="https://customer-y0bd4n6efcxpr8dy.cloudflarestream.com/b39153b8f79949a43bc38c3e2983d454/iframe"
+          //   className="w-full rounded-md shadow-sm aspect-video"
+          //   allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+          //   allowFullScreen={true}
+          // ></iframe>
+          data?.live ? (
+            <iframe
+              src={`https://iframe.videodelivery.net/${data?.stream.cloudflareId}`}
+              className="aspect-video w-full rounded-md shadow-sm"
+              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+              allowFullScreen={true}
             />
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
@@ -112,6 +145,7 @@ const StreamDetail: NextPage = () => {
           </div>
         </div>
         <div className="mt-5">
+          {/* 라이브 제목 */}
           <h1 className="text-3xl font-bold text-gray-900">{data?.stream.name}</h1>
           <div className="flex flex-row items-center justify-between">
             <span className="mt-3 text-2xl text-gray-900">￦ {data?.stream.price}</span>
@@ -144,7 +178,8 @@ const StreamDetail: NextPage = () => {
                 key={message.id}
                 name={message.user.name}
                 message={message.message}
-                avatar={"https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg"}
+                // avatar={"https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg"}
+                avatar={message.user.avatar}
               />
             ))}
           </div>

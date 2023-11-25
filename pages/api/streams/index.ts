@@ -9,11 +9,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
     session: { user },
     body: { name, price, description },
   } = req;
-  // const page = req.query.page ? (req.query.page as String) : "";
-  // const limit = req.query.limit ? (req.query.limit as String) : "";
-  if (!page || !limit) {
-    return res.status(404).end({ error: "request query is not given." });
-  }
+
   if (req.method === "POST") {
     const {
       result: {
@@ -54,6 +50,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
     });
   }
   if (req.method === "GET") {
+    // const page = req.query.page ? (req.query.page as String) : "";
+    // const limit = req.query.limit ? (req.query.limit as String) : "";
+    if (!page || !limit) {
+      return res.status(404).end({ error: "request query is not given." });
+    }
     const streams = await client.stream.findMany({
       orderBy: {
         createdAt: "desc",
