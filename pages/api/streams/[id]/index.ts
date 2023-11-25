@@ -41,6 +41,51 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
       },
     },
   });
+
+  console.log("api.streams.[id].index---stream: ", JSON.stringify(stream, null, 2));
+
+  let resultTmp: any;
+
+  fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ID}/stream/live_inputs/${stream?.cloudflareId}/videos`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.CF_STREAM_TOKEN}`,
+      },
+    }
+  )
+    .then(async (response) => {
+      return await response
+        .json()
+        .then((data) => {
+          resultTmp = data.result;
+        })
+        .catch((error) => {
+          console.log(error, "--response.json");
+        });
+    })
+    .catch((error) => {
+      console.log(error, "--fetch cloudflare/videos");
+    });
+
+  const response = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ID}/stream/live_inputs/${stream?.cloudflareId}/videos`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.CF_STREAM_TOKEN}`,
+      },
+    }
+  );
+  if (!response.ok) {
+    const errorMessage = await response.text();
+    throw new Error(`Request failed: ${errorMessage}`);
+  }
+  const dataTmp = await response.json();
+
   const { result } = await (
     await fetch(
       `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ID}/stream/live_inputs/${stream?.cloudflareId}/videos`,
@@ -53,6 +98,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
       }
     )
   ).json();
+
+  console.log("api.streams.[id].index---resultTmp: ", JSON.stringify(resultTmp, null, 2));
+  console.log("api.streams.[id].index---resultTmp2: ", JSON.stringify(dataTmp.result, null, 2));
+  console.log("api.streams.[id].index---result: ", JSON.stringify(result, null, 2));
+
   const { live } = await (
     await fetch(`https://videodelivery.net/${stream?.cloudflareId}/lifecycle`, {
       method: "POST",
@@ -62,7 +112,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
       },
     })
   ).json();
-  if (result) {
+
+  if (result && result.length !== 0) {
     await client.stream.update({
       where: {
         id: +id,

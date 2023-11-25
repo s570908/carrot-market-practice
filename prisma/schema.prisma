@@ -195,6 +195,7 @@ model Message {
   streamId  Int
 }
 
+// 중복되는 형태의 모델을 Enum과 Kind를 통해 하나의 모델로 처리
 model Record {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
