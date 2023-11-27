@@ -16,7 +16,7 @@ export default function Message({ message, reversed, name, avatar, date }: Messa
   return (
     <div
       className={cls(
-        "flex items-end",
+        "flex items-end space-y-8",
         reversed ? "flex-row-reverse space-x-2 space-x-reverse" : "space-x-2"
       )}
     >
@@ -32,11 +32,11 @@ export default function Message({ message, reversed, name, avatar, date }: Messa
         ) : (
           <ImgComponent
             imgAdd={`https:${gravatar.url("anonymous@email.com", {
-              s: "48px",
+              s: "32px",
               d: "retro",
             })}`}
-            width={48}
-            height={48}
+            width={32}
+            height={32}
             clsProps="rounded-full"
             imgName={"UserAvatar"}
           />

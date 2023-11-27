@@ -7,6 +7,7 @@ const nextConfig = {
       "videodelivery.net",
       "raw.githubusercontent.com",
       "www.gravatar.com",
+      "iframe.videodelivery.net",
     ],
   },
 };
