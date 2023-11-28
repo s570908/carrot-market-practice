@@ -24,7 +24,7 @@ export function useIntersectionObserver(
   // 콜백함수의 첫 인자는 observer.observe로 획득한 요소들을 배열로 받는다.
   // 여기서는 하나 뿐이어서 구조 분해 할당으로 맨 앞 요소만 가져왔다.
   const updateEntry = ([entry]: IntersectionObserverEntry[]): void => {
-    console.log("updateEntry called. entry: ", entry);
+    //console.log("updateEntry called. entry: ", entry);
     setEntry(entry);
   };
 

@@ -11,6 +11,7 @@ import { useForm } from "react-hook-form";
 import {
   DetailedHTMLProps,
   HTMLAttributes,
+  MutableRefObject,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -24,6 +25,8 @@ import Layout from "@components/Layout";
 import { ResponseType } from "@libs/server/withHandler";
 import Message from "@components/Message";
 import { useIntersectionObserver } from "@libs/client/useIntersectionObserver";
+import { FiChevronsDown } from "react-icons/fi";
+import { cls } from "@libs/utils";
 
 interface StreamDetailFormData {
   message: string;
@@ -104,13 +107,7 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
     freezeOnceVisible: false, // 계속하여 감지하겠다.
   });
 
-  // const [scrollRef, isVisible] = useIsVisible({
-  //   options: {
-  //     rootMargin: "0px",
-  //     threshold: 1.0, // visibleRef가 모두 보였을 때만 true
-  //   },
-  //   initialVisible: true,
-  // });
+  //console.log("Entry.isIntersecting: ", entry?.isIntersecting);
 
   const [streamMessageAddMutation, { loading: streamMessageAddLoading }] = useMutation(
     `/api/streams/${router.query.id}/messages`
@@ -194,6 +191,16 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
     }
   }, [data, router]);
 
+  const scrollToBottom = (elementRef: MutableRefObject<HTMLDivElement | null>) => {
+    if (elementRef) {
+      elementRef.current!.scrollIntoView({
+        behavior: "smooth",
+        block: "end",
+        inline: "nearest",
+      });
+    }
+  };
+  //
   // 채팅창의 스크롤을 맨 밑으로 유지
   // useEffect(() => {
   //   const msgBox = document.querySelector("#msg") as HTMLElement;
@@ -201,13 +208,7 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
   // }, [data?.ok]);
   // ref: https://velog.io/@lumpenop/TIL-nextron-React-%EC%B1%84%ED%8C%85%EC%B0%BD-%EA%B5%AC%ED%98%84-%EC%9E%85%EB%A0%A5-%EC%8B%9C-%EC%B1%84%ED%8C%85%EC%B0%BD-%EC%95%84%EB%9E%98%EB%A1%9C-%EC%8A%A4%ED%81%AC%EB%A1%A4-220724
   useEffect(() => {
-    if (scrollRef) {
-      scrollRef.current!.scrollIntoView({
-        behavior: "smooth",
-        block: "end",
-        inline: "nearest",
-      });
-    }
+    scrollToBottom(scrollRef);
   }, [data?.stream?.messages]);
 
   return (
@@ -282,21 +283,11 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
             </div>
           ) : null}
 
-          <div className="rounded-lg border border-gray-100">
-            <div
-              id="msg"
-              className="scrollbar-hide relative h-[40vh] overflow-auto bg-neutral-50 px-3 pt-4"
-            >
+          <div className="relative rounded-lg border border-gray-100">
+            <div id="msg" className="h-80 flex-col overflow-y-scroll">
               {data?.stream?.messages ? (
                 <>
                   {data?.stream?.messages.map((message: any) => (
-                    // <StreamMessage
-                    //   key={message.id}
-                    //   username={message.user.name}
-                    //   cloudflareImageId={message.user.avatar}
-                    //   text={message.message}
-                    //   isMe={message.user.id === user?.id}
-                    // />
                     <Message
                       reversed={message.user.id === user?.id}
                       key={message.id}
@@ -313,7 +304,18 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
                   <Loading color="orange" size={36} />
                 </div>
               )}
-              <div ref={scrollRef}>Observe Entry</div>
+              <button
+                onClick={() => {
+                  scrollToBottom(scrollRef);
+                }}
+                className={cls(
+                  entry?.isIntersecting ? "hidden" : "inline",
+                  "absolute bottom-28 right-1 z-20 flex h-7 w-7 cursor-pointer items-center justify-center bg-slate-700 "
+                )}
+              >
+                <FiChevronsDown className="text-xl text-gray-400" />
+              </button>
+              <div ref={scrollRef}></div>
             </div>
             <form onSubmit={handleSubmit(onValid)} className="w-full border-t px-1 py-1">
               <div className="relative w-full rounded-md bg-white px-2 py-2 outline-none">
