@@ -36,10 +36,15 @@ const Create: NextPage = () => {
   };
   useEffect(() => {
     if (data) {
+      console.log("streamcreate.tsx---data: ", JSON.stringify(data, null, 2));
       if (data.ok) {
         router.push(`/stream/${data.stream.id}`);
       } else {
-        setDuplicateName(true);
+        if (data.error === "이미 존재하는 스트리밍 제목입니다.") {
+          setDuplicateName(true);
+        } else {
+          setDuplicateName(false);
+        }
       }
     }
   }, [data, router]);

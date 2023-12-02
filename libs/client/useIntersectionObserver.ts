@@ -38,9 +38,9 @@ export function useIntersectionObserver(
     }
 
     const observerParams = { threshold, root, rootMargin };
-    const observer = new IntersectionObserver(updateEntry, observerParams);
+    const observer = new IntersectionObserver(updateEntry, observerParams); // 겹치는 것을 측정하는 동글을 만들고
 
-    observer.observe(node);
+    observer.observe(node); // 그 동글을 node에 부착한다.  node가 겹치는 조건에 해당하면 updateEntry를 수행한다.
 
     return () => observer.disconnect();
 

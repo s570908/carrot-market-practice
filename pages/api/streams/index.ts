@@ -78,7 +78,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
       // ref: https://velog.io/@real-bird/Next.js-ISR
       // await res.unstable_revalidate("/streams");
 
-      await res.revalidate("/stream");
+      // await res.revalidate("/stream");
 
       return res.status(200).json({
         ok: true,

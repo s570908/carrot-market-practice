@@ -103,7 +103,7 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
   const entry = useIntersectionObserver(scrollRef, {
     root: null,
     rootMargin: "0%",
-    threshold: 0, // visibleRef가 모두 보였을 때만 true,
+    threshold: 0, // visibleRef가 조금이라도 보이게 되면 true,
     freezeOnceVisible: false, // 계속하여 감지하겠다.
   });
 
