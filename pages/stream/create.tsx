@@ -7,8 +7,9 @@ import useUser from "@libs/client/useUser";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/router";
 import useMutation from "@libs/client/useMutation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Stream } from "@prisma/client";
+import FormError from "@components/FormError";
 
 interface CreateForm {
   name: string;
@@ -18,23 +19,36 @@ interface CreateForm {
 
 interface CreateResponse {
   ok: boolean;
+  error: string;
   stream: Stream;
 }
 
 const Create: NextPage = () => {
   const { user } = useUser();
   const router = useRouter();
+  const [duplicateName, setDuplicateName] = useState(false);
   const { register, handleSubmit } = useForm<CreateForm>();
   const [createStream, { loading, data }] = useMutation<CreateResponse>(`/api/streams`);
   const onValid = (form: CreateForm) => {
+    setDuplicateName(false);
     if (loading) return;
     createStream(form);
   };
   useEffect(() => {
-    if (data && data.ok) {
-      router.push(`/stream/${data.stream.id}`);
+    if (data) {
+      console.log("streamcreate.tsx---data: ", JSON.stringify(data, null, 2));
+      if (data.ok) {
+        router.push(`/stream/${data.stream.id}`);
+      } else {
+        if (data.error === "이미 존재하는 스트리밍 제목입니다.") {
+          setDuplicateName(true);
+        } else {
+          setDuplicateName(false);
+        }
+      }
     }
   }, [data, router]);
+
   return (
     <Layout seoTitle="Go Live" canGoBack title="Go Live" backUrl={"/stream"}>
       <form onSubmit={handleSubmit(onValid)} className="space-y-4 px-4 py-10 ">
@@ -44,6 +58,11 @@ const Create: NextPage = () => {
           name="name"
           type="text"
         />
+        {duplicateName ? (
+          <div className="mb-2">
+            <FormError text={data?.error + "다른 이름으로 입력하세요" || ""} />
+          </div>
+        ) : null}
         <Input
           register={register("price", { required: true, valueAsNumber: true })}
           label="Price"

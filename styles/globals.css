@@ -19,3 +19,61 @@ body {
 ::-webkit-scrollbar {
   display: none;
 }
+
+/* Tailwind class */
+.wrapper {
+  @apply box-border;
+}
+.without-header {
+  @apply h-[calc(100vh_-_63px)];
+}
+.without-header-footer {
+  @apply h-[calc(100vh_-_452px)];
+}
+.content {
+  @apply mx-auto h-full max-w-5xl;
+}
+.content-sub {
+  @apply mx-auto max-w-[700px] pb-16 pt-8;
+}
+.content-post {
+  @apply mx-auto h-full max-w-[800px] pb-16 pt-8;
+}
+.input {
+  @apply w-full rounded-md border px-2.5 py-2 outline-none placeholder:text-gray-300;
+}
+.input-space {
+  @apply w-full rounded-md border py-2 outline-none placeholder:text-gray-300;
+}
+.label-title {
+  @apply mb-1 cursor-pointer text-[15px] font-medium;
+}
+.ring-normal {
+  @apply ring-offset-0 focus:border-orange-400 focus:ring-1 focus:ring-orange-400;
+}
+
+/* Global style */
+* {
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji";
+}
+body {
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji";
+}
+*::selection {
+  background-color: #ffb98b;
+}
+
+/* 평점 */
+.rating-container fieldset {
+  display: inline-block;
+  direction: rtl;
+}
+.rating-container input[type="radio"]:checked ~ label {
+  color: gold;
+}

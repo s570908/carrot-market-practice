@@ -40,18 +40,16 @@ const Streams: NextPage = () => {
           <Link key={stream.id} href={`/stream/${stream.id}`}>
             <a className="block px-4 pt-4">
               <div className="relative aspect-video w-full overflow-hidden rounded-md bg-slate-300 shadow-sm">
-                {stream.live ? (
+              {stream.cloudflareId ? (
                   <Image
                     layout="fill"
-                    src={`https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg`}
-                    alt={stream.name}
+                    src={`https://videodelivery.net/${stream.cloudflareId}/thumbnails/thumbnail.jpg?height=320`}
+                    alt="썸네일"
                   />
                 ) : (
-                  <Image
-                    layout="fill"
-                    src={`https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg`}
-                    alt={stream.name}
-                  />
+                  <div className="bg-gray-200 flex h-full items-center justify-center font-bold text-gray-700">
+                     방송중이 아닙니다. 😅
+                  </div>
                 )}
               </div>
               <div className="flex flex-row items-center justify-evenly space-x-32">

@@ -1,15 +1,3 @@
-{
-  "result": {
-    "id": "528670e35f47ce168bd8eef7ec099c3c",
-    "status": "active"
-  },
-  "success": true,
-  "errors": [],
-  "messages": [
-    {
-      "code": 10000,
-      "message": "This API Token is valid and active",
-      "type": null
-    }
-  ]
-}
+curl -X GET \
+-H "Authorization: Bearer kYwqcaI6PH2FbpkhwB_wQzAPyg_U816koJ2KIsVK" \
+https://api.cloudflare.com/client/v4/accounts/a7a8213bf6c2dbdd841f1e6faf2f2ba1/stream/live_inputs/c6d71b4b41d1fa03f30793215b3f44a4/videos
