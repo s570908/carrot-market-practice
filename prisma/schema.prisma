@@ -143,32 +143,30 @@ model Review {
 }
 
 model SellerChat {
-  id                     Int       @id @default(autoincrement())
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
-  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade) // buyer
-  userId                 Int       @default(1)
-  chatMsg                String    @db.MediumText
-  chatRoom               ChatRoom  @relation(name: "sellerChat", fields: [chatRoomId], references: [id])
-  chatRoomId             Int       @default(1)
-  chatRoomForRecentMsg   ChatRoom? @relation(name: "sellerChatForRecentMsg")
-  chatRoomIdForRecentMsg Int       @default(1)
+  id                     Int      @id @default(autoincrement())
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade) // buyer
+  userId                 Int      @default(1)
+  chatMsg                String   @db.MediumText
+  chatRoom               ChatRoom @relation(name: "sellerChat", fields: [chatRoomId], references: [id], onDelete: Cascade)
+  chatRoomId             Int      @default(1)
+  chatRoomForRecentMsg   ChatRoom @relation(name: "sellerChatForRecentMsg", fields: [chatRoomForRecentMsgId], references: [id], onDelete: Cascade)
+  chatRoomForRecentMsgId Int      @unique @default(1)
   isNew                  Boolean?
 }
 
 model ChatRoom {
-  id           Int          @id @default(autoincrement())
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  buyer        User         @relation(name: "buyer", fields: [buyerId], references: [id], onDelete: Cascade)
-  buyerId      Int          @default(1)
-  seller       User         @relation(name: "seller", fields: [sellerId], references: [id], onDelete: Cascade)
-  sellerId     Int          @default(1)
-  recentMsg    SellerChat   @relation(name: "sellerChatForRecentMsg", fields: [recentMsgId], references: [id])
-  recentMsgId  Int          @unique
-  sellerChat   SellerChat[] @relation(name: "sellerChat")
-  sellerChatId Int
-  newCount     Int?
+  id         Int          @id @default(autoincrement())
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  buyer      User         @relation(name: "buyer", fields: [buyerId], references: [id], onDelete: Cascade)
+  buyerId    Int          @default(1)
+  seller     User         @relation(name: "seller", fields: [sellerId], references: [id], onDelete: Cascade)
+  sellerId   Int          @default(1)
+  recentMsg  SellerChat?  @relation(name: "sellerChatForRecentMsg")
+  sellerChat SellerChat[] @relation(name: "sellerChat")
+  newCount   Int?
 }
 
 model Stream {
