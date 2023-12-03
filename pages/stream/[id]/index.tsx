@@ -98,6 +98,7 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
   const { user } = useUser();
   const router: NextRouter = useRouter();
   const [showStreamInfo, setShowStreamInfo] = useState(false);
+  const [newMessageSubmitted, setNewMessageSubmitted] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const entry = useIntersectionObserver(scrollRef, {
@@ -107,7 +108,7 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
     freezeOnceVisible: false, // 계속하여 감지하겠다.
   });
 
-  //console.log("Entry.isIntersecting: ", entry?.isIntersecting);
+  console.log("Entry.isIntersecting: ", entry?.isIntersecting);
 
   const [streamMessageAddMutation, { loading: streamMessageAddLoading }] = useMutation(
     `/api/streams/${router.query.id}/messages`
@@ -163,8 +164,9 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
       }
     }, false);
 
-    streamMessageAddMutation({ message });
+    setNewMessageSubmitted(true);
 
+    streamMessageAddMutation({ message });
     reset();
   };
 
@@ -207,9 +209,12 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
   //   msgBox.scrollTop = msgBox.scrollHeight;
   // }, [data?.ok]);
   // ref: https://velog.io/@lumpenop/TIL-nextron-React-%EC%B1%84%ED%8C%85%EC%B0%BD-%EA%B5%AC%ED%98%84-%EC%9E%85%EB%A0%A5-%EC%8B%9C-%EC%B1%84%ED%8C%85%EC%B0%BD-%EC%95%84%EB%9E%98%EB%A1%9C-%EC%8A%A4%ED%81%AC%EB%A1%A4-220724
+
+  const isScrollToBottom = newMessageSubmitted === true;
   useEffect(() => {
     scrollToBottom(scrollRef);
-  }, [data?.stream?.messages]);
+    setNewMessageSubmitted(false);
+  }, [isScrollToBottom]);
 
   return (
     <Layout
@@ -304,20 +309,22 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
                   <Loading color="orange" size={36} />
                 </div>
               )}
-              <button
-                onClick={() => {
-                  scrollToBottom(scrollRef);
-                }}
-                className={cls(
-                  entry?.isIntersecting ? "hidden" : "inline",
-                  "absolute bottom-28 right-1 z-20 flex h-7 w-7 cursor-pointer items-center justify-center bg-slate-700 "
-                )}
-              >
-                <FiChevronsDown className="text-xl text-gray-400" />
-              </button>
               <div ref={scrollRef}></div>
+              {!entry?.isIntersecting ? (
+                <button
+                  onClick={() => {
+                    scrollToBottom(scrollRef);
+                  }}
+                  className={cls(
+                    "inline",
+                    "absolute bottom-28 right-1 z-20 flex h-7 w-7 cursor-pointer items-center justify-center bg-slate-700 "
+                  )}
+                >
+                  <FiChevronsDown className="text-xl text-gray-400" />
+                </button>
+              ) : null}
             </div>
-            <form onSubmit={handleSubmit(onValid)} className="w-full border-t px-1 py-1">
+            <form onSubmit={handleSubmit(onValid)} className="mt-10 w-full border-t px-1 py-1">
               <div className="relative w-full rounded-md bg-white px-2 py-2 outline-none">
                 <input
                   {...register("message", { required: true, maxLength: 80 })}
