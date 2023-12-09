@@ -99,7 +99,7 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
   const router: NextRouter = useRouter();
   const [showStreamInfo, setShowStreamInfo] = useState(false);
   const [newMessageSubmitted, setNewMessageSubmitted] = useState(false);
-  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const entry = useIntersectionObserver(scrollRef, {
     root: null,

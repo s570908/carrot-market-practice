@@ -7,7 +7,7 @@ import { SellerChat, User } from "@prisma/client";
 import { useForm } from "react-hook-form";
 import useMutation from "@libs/client/useMutation";
 import Message from "@components/Message";
-import { MutableRefObject, useEffect, useRef } from "react";
+import { MutableRefObject, useEffect, useRef, useState } from "react";
 import { useIntersectionObserver } from "@libs/client/useIntersectionObserver";
 import { FiChevronsDown } from "react-icons/fi";
 import { cls } from "@libs/utils";
@@ -31,6 +31,7 @@ interface ChatFormResponse {
 }
 
 const ChatDetail: NextPage = () => {
+  const [newMessageSubmitted, setNewMessageSubmitted] = useState(false);
   const { user } = useUser();
   const router = useRouter();
   //// router.query.id: chatRoom id
@@ -86,6 +87,9 @@ const ChatDetail: NextPage = () => {
       },
       false // cache만 업데이트한다. 즉 optimistic UI이다. 서버의 데이터를 업데이트하지 않는다. 이것이 true라면 서버의 데이터를 이 시점에서 업데이트를 한다.
     );
+
+    setNewMessageSubmitted(true);
+
     sendChat(chatForm); // mutate에서 option을 false로 하였기 때문에 서버의 데이터가 아직 업데이트되지 않았으므로 지금 여기서 서버의 데이터를 업데이트한다.
   };
   // useEffect(() => {
@@ -94,9 +98,12 @@ const ChatDetail: NextPage = () => {
   //   chatBox.scrollTop = chatBox.scrollHeight + 20;
   // }, [data?.ok, sendChatData, mutate]);
   // ref: https://velog.io/@lumpenop/TIL-nextron-React-%EC%B1%84%ED%8C%85%EC%B0%BD-%EA%B5%AC%ED%98%84-%EC%9E%85%EB%A0%A5-%EC%8B%9C-%EC%B1%84%ED%8C%85%EC%B0%BD-%EC%95%84%EB%9E%98%EB%A1%9C-%EC%8A%A4%ED%81%AC%EB%A1%A4-220724
+
+  const isScrollToBottom = newMessageSubmitted === true;
   useEffect(() => {
     scrollToBottom(scrollRef);
-  }, [data?.ok, sendChatData, mutate]);
+    setNewMessageSubmitted(false);
+  }, [isScrollToBottom]);
 
   return (
     <Layout
