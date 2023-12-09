@@ -7,10 +7,11 @@ import { SellerChat, User } from "@prisma/client";
 import { useForm } from "react-hook-form";
 import useMutation from "@libs/client/useMutation";
 import Message from "@components/Message";
-import { MutableRefObject, useEffect, useRef } from "react";
+import { MutableRefObject, useEffect, useRef, useState } from "react";
 import { useIntersectionObserver } from "@libs/client/useIntersectionObserver";
 import { FiChevronsDown } from "react-icons/fi";
 import { cls } from "@libs/utils";
+import Loading from "@components/Loading";
 
 interface ChatWithUser extends SellerChat {
   user: User;
@@ -30,6 +31,7 @@ interface ChatFormResponse {
 }
 
 const ChatDetail: NextPage = () => {
+  const [newMessageSubmitted, setNewMessageSubmitted] = useState(false);
   const { user } = useUser();
   const router = useRouter();
   //// router.query.id: chatRoom id
@@ -60,29 +62,34 @@ const ChatDetail: NextPage = () => {
 
   const { register, handleSubmit, reset } = useForm<ChatFormResponse>();
   //// api server를 통해서 chatRoom에 chat data를 보내기
-  const [sendChat, { loading, data: sendChatData }] = useMutation(
+  const [sendChat, { loading: sendChatDataLoading, data: sendChatData }] = useMutation(
     `/api/chat/${router.query.id}/chats`
   );
   const onValid = (chatForm: ChatFormResponse) => {
-    if (loading) return;
+    if (sendChatDataLoading) return;
     reset();
+
+    const newMessage = {
+      id: Date.now(),
+      chatMsg: chatForm.chatMsg,
+      user: { ...user },
+      userId: user?.id,
+    };
+
     mutate(
-      (prev) =>
-        prev &&
-        ({
-          ...prev,
-          sellerChat: [
-            ...prev.sellerChat,
-            {
-              id: Date.now(),
-              chatMsg: chatForm.chatMsg,
-              user: { ...user },
-              userId: user?.id,
-            },
-          ],
-        } as any),
+      (prev) => {
+        if (prev) {
+          return {
+            ...prev,
+            sellerChat: [...prev.sellerChat, newMessage],
+          } as any;
+        }
+      },
       false // cache만 업데이트한다. 즉 optimistic UI이다. 서버의 데이터를 업데이트하지 않는다. 이것이 true라면 서버의 데이터를 이 시점에서 업데이트를 한다.
     );
+
+    setNewMessageSubmitted(true);
+
     sendChat(chatForm); // mutate에서 option을 false로 하였기 때문에 서버의 데이터가 아직 업데이트되지 않았으므로 지금 여기서 서버의 데이터를 업데이트한다.
   };
   // useEffect(() => {
@@ -91,9 +98,12 @@ const ChatDetail: NextPage = () => {
   //   chatBox.scrollTop = chatBox.scrollHeight + 20;
   // }, [data?.ok, sendChatData, mutate]);
   // ref: https://velog.io/@lumpenop/TIL-nextron-React-%EC%B1%84%ED%8C%85%EC%B0%BD-%EA%B5%AC%ED%98%84-%EC%9E%85%EB%A0%A5-%EC%8B%9C-%EC%B1%84%ED%8C%85%EC%B0%BD-%EC%95%84%EB%9E%98%EB%A1%9C-%EC%8A%A4%ED%81%AC%EB%A1%A4-220724
+
+  const isScrollToBottom = newMessageSubmitted === true;
   useEffect(() => {
     scrollToBottom(scrollRef);
-  }, [data?.ok, sendChatData, mutate]);
+    setNewMessageSubmitted(false);
+  }, [isScrollToBottom]);
 
   return (
     <Layout
@@ -128,32 +138,59 @@ const ChatDetail: NextPage = () => {
               />
             );
           })}
-          <button
-            onClick={() => {
-              scrollToBottom(scrollRef);
-            }}
-            className={cls(
-              entry?.isIntersecting ? "hidden" : "inline",
-              "absolute bottom-28 right-1 z-20 flex h-7 w-7 cursor-pointer items-center justify-center bg-slate-700 "
-            )}
-          >
-            <FiChevronsDown className="text-xl text-gray-400" />
-          </button>
+          {!entry?.isIntersecting ? (
+            <button
+              onClick={() => {
+                scrollToBottom(scrollRef);
+              }}
+              className={cls(
+                "inline",
+                "absolute bottom-28 right-1 z-20 flex h-7 w-7 cursor-pointer items-center justify-center bg-slate-700 "
+              )}
+            >
+              <FiChevronsDown className="text-xl text-gray-400" />
+            </button>
+          ) : null}
           <div ref={scrollRef}></div>
         </div>
         <div>
-          <form onSubmit={handleSubmit(onValid)} className="fixed inset-x-0 bottom-0 bg-white py-2">
-            <div className="relative mx-auto flex w-full max-w-md items-center pl-2">
+          {/* <form onSubmit={handleSubmit(onValid)} className="fixed inset-x-0 bottom-0 py-2 bg-white">
+            <div className="relative flex items-center w-full max-w-md pl-2 mx-auto">
               <input
                 {...register("chatMsg", { required: true })}
                 type="text"
-                className="w-full rounded-full border-gray-300 pr-12 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-orange-500"
+                className="w-full pr-12 border-gray-300 rounded-full shadow-sm focus:border-orange-500 focus:outline-none focus:ring-orange-500"
               />
               <div className="absolute inset-y-0 right-0 flex py-1.5 pr-1.5">
-                <button className="flex items-center rounded-full bg-orange-500 px-3 text-sm text-white hover:bg-orange-600 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">
+                <button className="flex items-center px-3 text-sm text-white bg-orange-500 rounded-full hover:bg-orange-600 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">
                   &rarr;
                 </button>
               </div>
+            </div>
+          </form> */}
+          <form onSubmit={handleSubmit(onValid)} className="mt-10 w-full border-t px-1 py-1">
+            <div className="relative w-full rounded-md bg-white px-2 py-2 outline-none">
+              <input
+                {...register("chatMsg", { required: true, maxLength: 80 })}
+                maxLength={80}
+                placeholder={
+                  user === undefined ? "로그인 후 이용가능합니다." : "메세지를 입력해주세요."
+                }
+                className="w-full text-[15px] outline-none placeholder:text-gray-300"
+              />
+              <button
+                disabled={user === undefined}
+                type="submit"
+                className="absolute bottom-1 right-0.5 flex h-8 items-end rounded-md bg-orange-400 px-4 py-1.5 text-sm text-white hover:bg-orange-500"
+              >
+                {sendChatDataLoading === true ? (
+                  <div>
+                    <Loading color="" size={12} />
+                  </div>
+                ) : (
+                  "전송"
+                )}
+              </button>
             </div>
           </form>
         </div>
