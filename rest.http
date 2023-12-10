@@ -1,6 +1,12 @@
 ### Global Scope
 
 ### @index=44
+# @title = https://api.cloudflare.com/client/v4/accounts/<ACCOUNT_ID>/stream/
+GET  https://api.cloudflare.com/client/v4/accounts/{{$dotenv CF_ID}}/stream/
+Authorization: Bearer {{$dotenv CF_STREAM_TOKEN}}
+Content-Type: application/json
+
+### @index=44
 # @title = https://api.cloudflare.com/client/v4/accounts/<ACCOUNT_ID>/stream/live_inputs/<LIVE_INPUT_UID>/videos
 # @prompt LIVE_INPUT_UID44 Your LIVE_INPUT_UID
 GET  https://api.cloudflare.com/client/v4/accounts/{{$dotenv CF_ID}}/stream/live_inputs/{{LIVE_INPUT_UID44}}/videos
