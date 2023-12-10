@@ -25,6 +25,12 @@ const Streams: NextPage = () => {
   const { data } = useSWR<StreamsResponse>(`/api/streams?page=${page}&limit=${limit}`, {
     refreshInterval: 1000,
   });
+
+  console.log(
+    "strem/index.tsx---/api/streams?page=${page}&limit=${limit} data: ",
+    JSON.stringify(data, null, 2)
+  );
+
   const onPrevBtn = (page: number) => {
     router.push(`${router.pathname}?page=${page - 1}&limit=${limit}`);
     setPage((prev) => prev - 1);
@@ -40,15 +46,15 @@ const Streams: NextPage = () => {
           <Link key={stream.id} href={`/stream/${stream.id}`}>
             <a className="block px-4 pt-4">
               <div className="relative aspect-video w-full overflow-hidden rounded-md bg-slate-300 shadow-sm">
-              {stream.cloudflareId ? (
+                {stream.cloudflareId ? (
                   <Image
                     layout="fill"
                     src={`https://videodelivery.net/${stream.cloudflareId}/thumbnails/thumbnail.jpg?height=320`}
                     alt="썸네일"
                   />
                 ) : (
-                  <div className="bg-gray-200 flex h-full items-center justify-center font-bold text-gray-700">
-                     방송중이 아닙니다. 😅
+                  <div className="flex h-full items-center justify-center bg-gray-200 font-bold text-gray-700">
+                    방송중이 아닙니다. 😅
                   </div>
                 )}
               </div>

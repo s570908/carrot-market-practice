@@ -124,10 +124,10 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
     { refreshInterval: 10000 }
   );
 
-  // console.log(
-  //   "strem/[id]/index.tsx---/api/streams/${router.query.id} data: ",
-  //   JSON.stringify(data, null, 2)
-  // );
+  console.log(
+    "strem/[id]/index.tsx---/api/streams/${router.query.id} data: ",
+    JSON.stringify(data, null, 2)
+  );
 
   const { data: viewsData } = useSWR<ViewsResult>(
     data?.stream?.cloudflareId
@@ -138,10 +138,10 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
     }
   );
 
-  // console.log(
-  //   "strem/[id]/index.tsx---https://videodelivery.net/${data?.stream?.cloudflareId}/views viewsData: ",
-  //   JSON.stringify(viewsData, null, 2)
-  // );
+  console.log(
+    "strem/[id]/index.tsx---https://videodelivery.net/${data?.stream?.cloudflareId}/views viewsData: ",
+    JSON.stringify(viewsData, null, 2)
+  );
 
   const { data: lifecycleData } = useSWR<LifecycleResult>(
     data?.stream?.cloudflareId
@@ -152,10 +152,10 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
     }
   );
 
-  // console.log(
-  //   "strem/[id]/index.tsx---https://videodelivery.net/${data?.stream?.cloudflareId}/lifecycle lifecycleData: ",
-  //   JSON.stringify(lifecycleData, null, 2)
-  // );
+  console.log(
+    "strem/[id]/index.tsx---https://videodelivery.net/${data?.stream?.cloudflareId}/lifecycle lifecycleData: ",
+    JSON.stringify(lifecycleData, null, 2)
+  );
 
   const onValid = async () => {
     if (streamMessageAddLoading === true) {
@@ -245,7 +245,7 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
             <div className="aspect-video w-full rounded-lg border">
               {data?.stream?.cloudflareId ? (
                 <iframe
-                  src={`https://iframe.videodelivery.net/${data?.stream?.cloudflareId}?preload=true&poster=https://iframe.videodelivery.net/${data?.stream?.cloudflareId}/thumbnails/thumbnail.jpg?time=2s`}
+                  src={`https://iframe.videodelivery.net/${data?.stream?.cloudflareId}`}
                   allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
                   allowFullScreen={true}
                   className="h-full w-full rounded-lg"
