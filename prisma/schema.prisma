@@ -62,6 +62,7 @@ model Product {
   purchases      Purchase[]
   records        Record[]
   productReviews Review[]   @relation(name: "productReviews")
+  ChatRoom       ChatRoom[] @relation(name: "product")
 }
 
 model Fav {
@@ -160,6 +161,8 @@ model ChatRoom {
   id         Int          @id @default(autoincrement())
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
+  product    Product      @relation(name: "product", fields: [productId], references: [id], onDelete: Cascade)
+  productId  Int          @default(1)
   buyer      User         @relation(name: "buyer", fields: [buyerId], references: [id], onDelete: Cascade)
   buyerId    Int          @default(1)
   seller     User         @relation(name: "seller", fields: [sellerId], references: [id], onDelete: Cascade)
