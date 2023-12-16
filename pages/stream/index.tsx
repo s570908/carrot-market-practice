@@ -42,44 +42,47 @@ const Streams: NextPage = () => {
   return (
     <Layout seoTitle="라이브" title="라이브" hasTabBar notice>
       <div className="space-y-8 divide-y-2 px-4">
-        {data?.streams?.map((stream) => (
-          <Link key={stream.id} href={`/stream/${stream.id}`}>
-            <a className="block px-4 pt-4">
-              <div className="relative aspect-video w-full overflow-hidden rounded-md bg-slate-300 shadow-sm">
-                {stream.cloudflareId ? (
-                  <Image
-                    layout="fill"
-                    src={`https://videodelivery.net/${stream.cloudflareId}/thumbnails/thumbnail.jpg?height=320`}
-                    alt="썸네일"
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center bg-gray-200 font-bold text-gray-700">
-                    방송중이 아닙니다. 😅
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-row items-center justify-evenly space-x-32">
-                <h1 className="mt-2 text-2xl font-bold text-gray-900">{stream.name}</h1>
-                <div>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className={cls(stream.live ? "text-red-500" : "text-gray-500", "h-6 w-6")}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z"
+        {data?.streams?.map((stream) => {
+          console.log("stream: ", JSON.stringify(stream, null, 2));
+          return (
+            <Link key={stream.id} href={`/stream/${stream.id}`}>
+              <a className="block px-4 pt-4">
+                <div className="relative aspect-video w-full overflow-hidden rounded-md bg-slate-300 shadow-sm">
+                  {stream.cloudflareId ? (
+                    <Image
+                      layout="fill"
+                      src={`https://videodelivery.net/${stream.cloudflareId}/thumbnails/thumbnail.jpg?height=320`}
+                      alt="썸네일"
                     />
-                  </svg>
+                  ) : (
+                    <div className="flex h-full items-center justify-center bg-gray-200 font-bold text-gray-700">
+                      방송중이 아닙니다. 😅
+                    </div>
+                  )}
                 </div>
-              </div>
-            </a>
-          </Link>
-        ))}
+                <div className="flex flex-row items-center justify-evenly space-x-32">
+                  <h1 className="mt-2 text-2xl font-bold text-gray-900">{stream.name}</h1>
+                  <div>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className={cls(stream.live ? "text-red-500" : "text-gray-500", "h-6 w-6")}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M5.636 18.364a9 9 0 010-12.728m12.728 0a9 9 0 010 12.728m-9.9-2.829a5 5 0 010-7.07m7.072 0a5 5 0 010 7.07M13 12a1 1 0 11-2 0 1 1 0 012 0z"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              </a>
+            </Link>
+          );
+        })}
       </div>
       <PaginationButton onClick={onPrevBtn} direction="prev" page={page} isGroup={true}>
         <svg

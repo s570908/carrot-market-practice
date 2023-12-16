@@ -121,7 +121,7 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
 
   const { data, mutate } = useSWR<ResponseType>(
     router.query.id ? `/api/streams/${router.query.id}` : null,
-    { refreshInterval: 10000 }
+    { refreshInterval: 1000 }
   );
 
   // console.log(
@@ -134,7 +134,7 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
       ? `https://videodelivery.net/${data?.stream?.cloudflareId}/views`
       : null,
     {
-      refreshInterval: 10000,
+      refreshInterval: 1000,
     }
   );
 

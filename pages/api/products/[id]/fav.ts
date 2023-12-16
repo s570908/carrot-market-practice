@@ -23,6 +23,7 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
   //console.log("alreadyEx: ", alreadyEx);
 
   if (alreadyEx) {
+    // true 이라면 이전의 fav을 없애버리면 된다.
     // delete: unique한 속성으로만 삭제가 가능하게 설계되어 있습니다.
     // deleteMany: unique하지 않은 값을 없애고 싶을 때는 deleteMany를 사용하면 됩니다.
     const fav = await client.fav.delete({
@@ -30,6 +31,7 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
     });
     // console.log("product/[id]/fav handler--fav deleted: ", fav);
   } else {
+    // false 이라면 fav을 새롭게 생성하면 된다.
     // create
     const fav = await client.fav.create({
       data: {
