@@ -6,7 +6,7 @@ import Head from "next/head";
 import useSWR from "swr";
 import useUser from "@libs/client/useUser";
 import { IoEllipsisVerticalSharp } from "react-icons/io5";
-import Modal from "./Modal";
+import Modal from "@components/Modal";
 
 interface LayoutProps {
   title?: string;
@@ -81,9 +81,10 @@ export default function Layout({
       <Head>
         <title>{titleHead}</title>
       </Head>
-      <div
+      <div>edit page</div>
+        {/* <div
         {...rest}
-        className="fixed top-0 z-10 flex items-center justify-center w-full h-12 max-w-xl px-10 text-lg font-medium text-gray-800 border-b"
+        className="fixed top-0 z-10 flex items-center justify-center w-full h-12 max-w-xl px-10 text-lg font-medium text-gray-800 bg-white border-b"
       >
         {canGoBack ? (
           <button onClick={onClick} className="absolute left-4 z-[2]">
@@ -114,25 +115,18 @@ export default function Layout({
           </Link>
         ) : null}
         {openModal ? (
-          <div className="">
+          <div className="relative">
             <div>
               <IoEllipsisVerticalSharp
                 onClick={handleIconClick}
                 className="cursor-pointer"
               />
             </div>
-            <div className="">
+            <div className="absolute right-0 mt-2 top-full">
               {!showConfirm ? (
                 <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
-                  <div className="flex flex-col items-center justify-center cursor-pointer">
-                    <div
-                      className="mb-2"
-                      onClick={() => {
-                        router.push("/myItem/edit");
-                      }}
-                    >
-                      게시글 수정
-                    </div>
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="mb-2" onClick={() => {router.push('/myItem/edit')}}>게시글 수정</div>
                     <div onClick={handleDeleteClick}>삭제</div>
                   </div>
                 </Modal>
@@ -140,23 +134,21 @@ export default function Layout({
                 <Modal
                   isOpen={isModalOpen}
                   onClose={handleCloseModal}
-                  // style={{
-                  //   top: "50%",
-                  //   left: "50%",
-                  //   bottom: "auto",
-                  //   right: "auto",
-                  // }}
+                  style={{
+                    top: "50%",
+                    left: "50%",
+                    bottom: "auto",
+                    right: "auto",
+                    
+                  }}
                 >
                   <div className="flex flex-col items-center justify-center">
                     <div className="mb-2"> 삭제하시겠습니까?</div>
                     <div className="flex">
-                      <button className="flex-1 w-[70px] mr-2 bg-gray-400 rounded-md" onClick={handleCloseModal} >
+                      <button onClick={handleCloseModal} className="mr-2">
                         취소
                       </button>
-                      <button className="flex-1 w-[70px] bg-orange-500 rounded-md" onClick={() => {
-                        console.log("삭제를 클릭했습니다.")
-                      }}>확인</button>
-                      
+                      <button>확인</button>
                     </div>
                   </div>
                 </Modal>
@@ -172,47 +164,7 @@ export default function Layout({
           isProfile ? "pb-5 sm:pb-10" : ""
         )}
       >
-        <>
-          {children}
-          {/* <div className="">
-            {!showConfirm ? (
-              <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
-                <div className="flex flex-col items-center justify-center cursor-pointer">
-                  <div
-                    className="mb-2"
-                    onClick={() => {
-                      router.push("/myItem/edit");
-                    }}
-                  >
-                    게시글 수정
-                  </div>
-                  <div onClick={handleDeleteClick}>삭제</div>
-                </div>
-              </Modal>
-            ) : (
-              <Modal
-                isOpen={isModalOpen}
-                onClose={handleCloseModal}
-                style={{
-                  top: "50%",
-                  left: "50%",
-                  bottom: "auto",
-                  right: "auto",
-                }}
-              >
-                <div className="flex flex-col items-center justify-center">
-                  <div className="mb-2"> 삭제하시겠습니까?</div>
-                  <div className="flex">
-                    <button onClick={handleCloseModal} className="mr-2">
-                      취소
-                    </button>
-                    <button>확인</button>
-                  </div>
-                </div>
-              </Modal>
-            )}
-          </div> */}
-        </>
+        {children}
       </div>
       {hasTabBar ? (
         <nav className="fixed bottom-0 flex justify-between w-full max-w-xl px-10 pt-3 pb-5 text-xs text-gray-700 bg-white border-t">
@@ -359,7 +311,7 @@ export default function Layout({
             </a>
           </Link>
         </nav>
-      ) : null}
+      ) : null} */}
     </div>
   );
 }

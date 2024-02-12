@@ -9,10 +9,12 @@ import useMutation from "@libs/client/useMutation";
 import { cls } from "@libs/utils";
 import useUser from "@libs/client/useUser";
 import ImgComponent from "@components/ImgComponent";
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useState } from "react";
 import RegDate from "@components/RegDate";
 import { Skeleton } from "@mui/material";
 import gravatar from "gravatar";
+import Dropdown from "@components/Dropdown";
+import { IoEllipsisVerticalSharp } from "react-icons/io5";
 
 interface ProductWithReview extends Review {
   createdBy: User;
@@ -50,7 +52,7 @@ const ItemDetail: NextPage = () => {
     toggleFav({});
   };
   const onItemClick = () => {
-    router.push(`/myItem`);
+    router.push(`/products`);
   };
   const onChatClick = () => {
     console.log("onChatClick clicked.");
@@ -76,17 +78,19 @@ const ItemDetail: NextPage = () => {
         : router.push(`/chats/${talkToSellerData.createChatRoom.id}`);
     }
   }, [router, talkToSellerData]);
+
   return (
-    <Layout seoTitle="댕댕마켓" title="댕댕마켓" canGoBack backUrl={"back"}>
+    <Layout seoTitle="댕댕마켓" title="댕댕마켓" canGoBack backUrl={"back"} openModal>
       <div className="px-4 py-4">
         <div className="mb-8">
           <ImgComponent
             isLayout={true}
             layoutHeight="h-80"
-            imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.product?.image}/public`}
-            // imgAdd={`https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg`}
+            // imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.product?.image}/public`}
+            imgAdd={`https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg`}
             clsProps="object-scale-down"
-            imgName={data?.product?.name}
+            // imgName={data?.product?.name}
+            imgName="장미꽃"
           />
           <div className="flex items-center py-3 space-x-3 border-t border-b cursor-pointer">
             {data?.product?.user?.avatar ? (
@@ -125,6 +129,7 @@ const ItemDetail: NextPage = () => {
               </Link>
             </div>
           </div>
+          <div><Dropdown /></div>
           <div className="mt-5">
             <h1 className="text-3xl font-bold text-gray-900">
               {data ? data?.product?.name : "Now Loading..."}
