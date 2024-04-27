@@ -12,9 +12,19 @@ interface ItemProps {
   photo?: string;
   kind?: string;
   date?: Date;
+  // isReserved: boolean;
 }
 
-const Item = ({ title, price, comments, hearts, id, isLike, photo, date }: ItemProps) => {
+const Item = ({
+  title,
+  price,
+  comments,
+  hearts,
+  id,
+  isLike,
+  photo,
+  date,
+}: ItemProps) => {
   return (
     <Link href={`/products/${id}`}>
       <a className="flex cursor-pointer justify-between px-4 pt-5">
@@ -31,6 +41,8 @@ const Item = ({ title, price, comments, hearts, id, isLike, photo, date }: ItemP
             <span className="mt-1 font-medium text-gray-900">￦{price}</span>
           </div>
         </div>
+        <div>예약됨</div>
+        {/* <div>{isReserved && <span className="mt-1 text-xs text-red-500">예약됨</span>}</div> */}
         <div className="flex items-end justify-end space-x-2">
           <div
             className={cls(

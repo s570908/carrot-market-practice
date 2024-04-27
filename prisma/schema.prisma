@@ -11,13 +11,13 @@ datasource db {
 }
 
 model User {
-  id               Int          @id @default(autoincrement())
-  phone            String?      @unique
-  email            String?      @unique
+  id               Int           @id @default(autoincrement())
+  phone            String?       @unique
+  email            String?       @unique
   name             String
   avatar           String?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
   tokens           Token[]
   products         Product[]
   favs             Fav[]
@@ -26,14 +26,15 @@ model User {
   posts            Post[]
   answers          Answer[]
   wonderings       Wondering[]
-  writtenReviews   Review[]     @relation("writtenReviews")
-  receivedReviews  Review[]     @relation("receivedReviews")
+  writtenReviews   Review[]      @relation("writtenReviews")
+  receivedReviews  Review[]      @relation("receivedReviews")
   records          Record[]
   streams          Stream[]
   messages         Message[]
   sellerchats      SellerChat[]
-  chatrooms_buyer  ChatRoom[]   @relation(name: "buyer")
-  chatrooms_seller ChatRoom[]   @relation(name: "seller")
+  chatrooms_buyer  ChatRoom[]    @relation(name: "buyer")
+  chatrooms_seller ChatRoom[]    @relation(name: "seller")
+  Reservations     Reservation[]
 }
 
 model Token {
@@ -46,32 +47,40 @@ model Token {
   updatedAt DateTime @updatedAt
 }
 
+enum Status {
+  selling
+  reserved
+  sold
+}
+
 model Product {
-  id             Int        @id @default(autoincrement())
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             Int           @id @default(autoincrement())
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId         Int
   image          String
   name           String
   price          Int
-  description    String     @db.MediumText
-  isSell         Boolean    @default(false)
+  description    String        @db.MediumText
+  isSold         Boolean       @default(false)
   favs           Fav[]
   sales          Sale[]
   purchases      Purchase[]
   records        Record[]
-  productReviews Review[]   @relation(name: "productReviews")
-  ChatRoom       ChatRoom[] @relation(name: "product")
+  productReviews Review[]      @relation(name: "productReviews")
+  chatRoom       ChatRoom[]    @relation(name: "product")
+  Reservations   Reservation[]
+  status         Status        @default(selling)
 }
 
 model Fav {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    Int
-  product   Product  @relation(fields: [productId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   productId Int
 }
 
@@ -143,33 +152,65 @@ model Review {
   productForId Int      @default(1)
 }
 
+// model SellerChat {
+//   id                     Int      @id @default(autoincrement())
+//   createdAt              DateTime @default(now())
+//   updatedAt              DateTime @updatedAt
+//   user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade) // buyer
+//   userId                 Int      @default(1)
+//   chatMsg                String   @db.MediumText
+//   chatRoom               ChatRoom @relation(name: "sellerChat", fields: [chatRoomId], references: [id], onDelete: Cascade)
+//   chatRoomId             Int      @default(1)
+//   // chatRoomForRecentMsg   ChatRoom @relation(name: "sellerChatForRecentMsg", fields: [chatRoomForRecentMsgId], references: [id], onDelete: Cascade)
+//   // chatRoomForRecentMsgId Int      @unique @default(1)
+//   chatRoomForRecentMsg   ChatRoom? @relation(name: "sellerChatForRecentMsg")
+//   isNew                  Boolean?
+// }
+
+// model ChatRoom {
+//   id         Int          @id @default(autoincrement())
+//   createdAt  DateTime     @default(now())
+//   updatedAt  DateTime     @updatedAt
+//   product    Product      @relation(name: "product", fields: [productId], references: [id], onDelete: Cascade)
+//   productId  Int          @default(1)
+//   buyer      User         @relation(name: "buyer", fields: [buyerId], references: [id], onDelete: Cascade)
+//   buyerId    Int          @default(1)
+//   seller     User         @relation(name: "seller", fields: [sellerId], references: [id], onDelete: Cascade)
+//   sellerId   Int          @default(1)
+//   recentMsg  SellerChat?  @relation(name: "sellerChatForRecentMsg", fields: [recentMsgId], references: [id])
+//   recentMsgId Int?        @unique
+//   sellerChat SellerChat[] @relation(name: "sellerChat")
+//   newCount   Int?
+// }
+
+//sellerChat은 chatMessage
 model SellerChat {
-  id                     Int      @id @default(autoincrement())
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
-  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade) // buyer
-  userId                 Int      @default(1)
-  chatMsg                String   @db.MediumText
-  chatRoom               ChatRoom @relation(name: "sellerChat", fields: [chatRoomId], references: [id], onDelete: Cascade)
-  chatRoomId             Int      @default(1)
-  chatRoomForRecentMsg   ChatRoom @relation(name: "sellerChatForRecentMsg", fields: [chatRoomForRecentMsgId], references: [id], onDelete: Cascade)
-  chatRoomForRecentMsgId Int      @unique @default(1)
-  isNew                  Boolean?
+  id                   Int       @id @default(autoincrement())
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade) // speaker
+  userId               Int       @default(1)
+  chatMsg              String    @db.MediumText
+  chatRoom             ChatRoom  @relation(name: "sellerChat", fields: [chatRoomId], references: [id], onDelete: Cascade)
+  chatRoomId           Int       @default(1)
+  chatRoomForRecentMsg ChatRoom? @relation(name: "recentMsg")
+  isNew                Boolean?
 }
 
 model ChatRoom {
-  id         Int          @id @default(autoincrement())
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
-  product    Product      @relation(name: "product", fields: [productId], references: [id], onDelete: Cascade)
-  productId  Int          @default(1)
-  buyer      User         @relation(name: "buyer", fields: [buyerId], references: [id], onDelete: Cascade)
-  buyerId    Int          @default(1)
-  seller     User         @relation(name: "seller", fields: [sellerId], references: [id], onDelete: Cascade)
-  sellerId   Int          @default(1)
-  recentMsg  SellerChat?  @relation(name: "sellerChatForRecentMsg")
-  sellerChat SellerChat[] @relation(name: "sellerChat")
-  newCount   Int?
+  id          Int          @id @default(autoincrement())
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  product     Product      @relation(name: "product", fields: [productId], references: [id], onDelete: Cascade)
+  productId   Int          @default(1)
+  buyer       User         @relation(name: "buyer", fields: [buyerId], references: [id], onDelete: Cascade)
+  buyerId     Int          @default(1)
+  seller      User         @relation(name: "seller", fields: [sellerId], references: [id], onDelete: Cascade)
+  sellerId    Int          @default(1)
+  recentMsg   SellerChat?  @relation(name: "recentMsg", fields: [recentMsgId], references: [id])
+  recentMsgId Int?         @unique
+  sellerChat  SellerChat[] @relation(name: "sellerChat")
+  newCount    Int?
 }
 
 model Stream {
@@ -198,6 +239,16 @@ model Message {
   message   String   @db.MediumText
   stream    Stream   @relation(fields: [streamId], references: [id], onDelete: Cascade)
   streamId  Int
+}
+
+model Reservation {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId Int
 }
 
 // 중복되는 형태의 모델을 Enum과 Kind를 통해 하나의 모델로 처리

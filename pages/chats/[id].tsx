@@ -1,9 +1,9 @@
-import type { NextPage } from "next";
+import type { GetServerSideProps, NextPage } from "next";
 import Layout from "@components/Layout";
 import useUser from "@libs/client/useUser";
 import { useRouter } from "next/router";
 import useSWR from "swr";
-import { SellerChat, User } from "@prisma/client";
+import { ChatRoom, Product, SellerChat, User } from "@prisma/client";
 import { useForm } from "react-hook-form";
 import useMutation from "@libs/client/useMutation";
 import Message from "@components/Message";
@@ -12,6 +12,8 @@ import { useIntersectionObserver } from "@libs/client/useIntersectionObserver";
 import { FiChevronsDown } from "react-icons/fi";
 import { cls } from "@libs/utils";
 import Loading from "@components/Loading";
+import ImgComponent from "@components/ImgComponent";
+import { getChatRoomData } from "@libs/server/chatUtils";
 
 interface ChatWithUser extends SellerChat {
   user: User;
@@ -22,20 +24,41 @@ interface SellerChatResponse {
   chatRoomOfSeller: {
     buyerId: number;
     sellerId: number;
+    productId: number;
     buyer: User;
     seller: User;
+    product: Product;
   };
 }
 interface ChatFormResponse {
   chatMsg: string;
 }
 
-const ChatDetail: NextPage = () => {
+interface ChatRoomWithDetails extends ChatRoom {
+  buyer: User;
+  seller: User;
+  product: Product;
+  // chats: ChatMessage[];
+}
+
+interface ChatDetailProps {
+  chatRoomData: ChatRoomWithDetails;
+}
+
+const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
+  console.log("chatRoomData: ", chatRoomData);
   const [newMessageSubmitted, setNewMessageSubmitted] = useState(false);
   const { user } = useUser();
   const router = useRouter();
   //// router.query.id: chatRoom id
   //// chatRoom list 가져오기
+  const { buyerId, sellerId, productId } = router.query;
+  console.log(
+    "chats.id.tsx -------- buyerId, sellerId, productId: ",
+    buyerId,
+    sellerId,
+    productId
+  );
   const { data, mutate } = useSWR<SellerChatResponse>(
     router.query.id ? `/api/chat/${router.query.id}` : null,
     { refreshInterval: 1000 }
@@ -48,7 +71,9 @@ const ChatDetail: NextPage = () => {
     threshold: 0, // visibleRef가 모두 보였을 때만 true,
     freezeOnceVisible: false, // 계속하여 감지하겠다.
   });
-  const scrollToBottom = (elementRef: MutableRefObject<HTMLDivElement | null>) => {
+  const scrollToBottom = (
+    elementRef: MutableRefObject<HTMLDivElement | null>
+  ) => {
     if (elementRef) {
       elementRef.current!.scrollIntoView({
         behavior: "smooth",
@@ -62,9 +87,8 @@ const ChatDetail: NextPage = () => {
 
   const { register, handleSubmit, reset } = useForm<ChatFormResponse>();
   //// api server를 통해서 chatRoom에 chat data를 보내기
-  const [sendChat, { loading: sendChatDataLoading, data: sendChatData }] = useMutation(
-    `/api/chat/${router.query.id}/chats`
-  );
+  const [sendChat, { loading: sendChatDataLoading, data: sendChatData }] =
+    useMutation(`/api/chat/${router.query.id}/chats`);
   const onValid = (chatForm: ChatFormResponse) => {
     if (sendChatDataLoading) return;
     reset();
@@ -118,11 +142,34 @@ const ChatDetail: NextPage = () => {
           : data?.chatRoomOfSeller?.buyer.name
       }`}
       canGoBack
-      backUrl={"/chats"}
+      // backUrl={"/chats"}
+      backUrl={data?.chatRoomOfSeller?.buyerId === user?.id ? "back" : "/chats"}
     >
-      <div className="relative px-4 pb-12 pt-5">
+      <div className="relative h-full px-4 pb-12">
+        <div className="w-full max-w-xl p-4 bg-red-200 border-b border-gray-200">
+          <div className="flex items-center">
+            <div className="flex space-x-4">
+              <ImgComponent
+                width={80}
+                height={80}
+                clsProps="rounded-md bg-gray-400"
+                imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.chatRoomOfSeller?.product?.image}/public`}
+                imgName="사진"
+              />
+              <div className="flex flex-col pt-2">
+                <h3 className="text-sm font-medium text-gray-900">
+                  {data?.chatRoomOfSeller?.product?.name}
+                </h3>
+                <span className="mt-1 font-medium text-gray-900">
+                  ￦{data?.chatRoomOfSeller?.product?.price}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="text-lg">후기</div>
+        </div>
         <div
-          className="flex h-[calc(95vh-106px)] flex-col space-y-2 overflow-y-scroll py-5 transition-all"
+          className="flex h-[calc(95vh-300px)] flex-col space-y-2 overflow-y-auto py-5 transition-all"
           id="chatBox"
         >
           {data?.sellerChat?.map((message) => {
@@ -168,13 +215,18 @@ const ChatDetail: NextPage = () => {
               </div>
             </div>
           </form> */}
-          <form onSubmit={handleSubmit(onValid)} className="mt-10 w-full border-t px-1 py-1">
-            <div className="relative w-full rounded-md bg-white px-2 py-2 outline-none">
+          <form
+            onSubmit={handleSubmit(onValid)}
+            className="w-full px-1 py-1 mt-10 border-t"
+          >
+            <div className="relative w-full px-2 py-2 bg-white rounded-md outline-none">
               <input
                 {...register("chatMsg", { required: true, maxLength: 80 })}
                 maxLength={80}
                 placeholder={
-                  user === undefined ? "로그인 후 이용가능합니다." : "메세지를 입력해주세요."
+                  user === undefined
+                    ? "로그인 후 이용가능합니다."
+                    : "메세지를 입력해주세요."
                 }
                 className="w-full text-[15px] outline-none placeholder:text-gray-300"
               />
@@ -197,6 +249,23 @@ const ChatDetail: NextPage = () => {
       </div>
     </Layout>
   );
+};
+
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const chatRoomId = Number(context.params?.id);
+  let chatRoomData = await getChatRoomData(chatRoomId);
+
+  if (!chatRoomData) {
+    return {
+      notFound: true,
+    };
+  }
+
+  chatRoomData = JSON.parse(JSON.stringify(chatRoomData));
+
+  return {
+    props: { chatRoomData },
+  };
 };
 
 export default ChatDetail;

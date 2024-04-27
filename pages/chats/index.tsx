@@ -33,6 +33,7 @@ import ImgComponent from "@components/ImgComponent";
 import { ChatRoom, SellerChat, User } from "@prisma/client";
 import { useEffect, useState } from "react";
 import gravatar from "gravatar";
+import { useRouter } from "next/router";
 
 interface ChatRoomWithUser extends ChatRoom {
   buyer: User;
@@ -46,47 +47,52 @@ interface ChatRoomResponse {
 }
 
 const Chats: NextPage = () => {
+  const router = useRouter();
+  // const { productId } = router.query; // URL에서 productId 쿼리 파라미터를 추출
+  // console.log("productId: ", productId);
   const { user } = useUser();
-  const { data } = useSWR<ChatRoomResponse>(`/api/chat`, {
+  const { data } = useSWR("/api/chat", {
     refreshInterval: 1000,
-  });
+  }); // SWR을 사용하여 채팅방 목록을 불러옵니다, 제품 ID에 따라 필터링
   const [recentMessageShown, setRecentMessageShown] = useState("");
 
-  //console.log("Chats---data:", JSON.stringify(data, null, 2));
+  console.log("Chats---data:", JSON.stringify(data, null, 2));
+  // console.log("Chats---data:", JSON.stringify(data, null, 2));
+  // useEffect(() => {
+  //   if (data && data.ok) {
+  //     data.chatRoomList.map((room: any) => {
+  //       if (!room.recentMsgId) {
+  //         fetch(`/api/chat?roomId=${room.id}`, {
+  //           method: "DELETE",
+  //           headers: {
+  //             "Content-Type": "application/json",
+  //           },
+  //         });
+  //       }
+  //     });
+  //   }
+  // }, [data]);
 
-  useEffect(() => {
-    if (data && data.ok) {
-      data.chatRoomList.map((room) => {
-        if (!room.recentMsgId) {
-          fetch(`/api/chat?roomId=${room.id}`, {
-            method: "DELETE",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          });
-        }
-      });
-    }
-  }, [data]);
-
-  // console.log("chats---data.chatRoomList: ", JSON.stringify(data?.chatRoomList, null, 2));
+  console.log(
+    "chats---data.chatRoomList: ",
+    JSON.stringify(data?.chatRoomList, null, 2)
+  );
   // console.log("chats---login user: ", JSON.stringify(user, null, 2));
-
   return (
     <Layout seoTitle="채팅" title="채팅" hasTabBar notice>
       <div className="divide-y-[1px] py-10">
-        {data?.chatRoomList?.map((chatRoom) => {
-          // console.log(
-          //   "chatRoom: ",
-          //   JSON.stringify(chatRoom, null, 2),
-          //   chatRoom.recentMsg.userId,
-          //   chatRoom.seller.id,
-          //   chatRoom.seller.name,
-          //   chatRoom.buyer.name,
-          //   chatRoom.recentMsg.userId === chatRoom.seller.id
-          //     ? chatRoom.seller.name
-          //     : chatRoom.buyer.name
-          // );
+        {data?.chatRoomList?.map((chatRoom: any) => {
+          console.log(
+            "chatRoom: ",
+            JSON.stringify(chatRoom, null, 2)
+            // chatRoom.recentMsg?.userId,
+            // chatRoom.seller.id,
+            // chatRoom.seller.name,
+            // chatRoom.buyer.name,
+            // chatRoom.recentMsg?.userId === chatRoom.seller.id
+            //   ? chatRoom.seller.name
+            //   : chatRoom.buyer.name
+          );
           return (
             <Link href={`/chats/${chatRoom.id}`} key={chatRoom.id}>
               <a className="flex cursor-pointer items-center space-x-3 px-4 py-3">
@@ -102,7 +108,9 @@ const Chats: NextPage = () => {
                   ) : (
                     <ImgComponent
                       imgAdd={`https:${gravatar.url(
-                        chatRoom.seller.email ? chatRoom.seller.email : "anonymous@email.com",
+                        chatRoom.seller.email
+                          ? chatRoom.seller.email
+                          : "anonymous@email.com",
                         {
                           s: "48px",
                           d: "retro",
@@ -125,7 +133,9 @@ const Chats: NextPage = () => {
                 ) : (
                   <ImgComponent
                     imgAdd={`https:${gravatar.url(
-                      chatRoom.buyer.email ? chatRoom.buyer.email : "anonymous@email.com",
+                      chatRoom.buyer.email
+                        ? chatRoom.buyer.email
+                        : "anonymous@email.com",
                       {
                         s: "48px",
                         d: "retro",
@@ -139,29 +149,44 @@ const Chats: NextPage = () => {
                 )}
                 <div className="relative w-10/12">
                   <p className="text-gray-700">
-                    {chatRoom.buyerId === user?.id ? chatRoom.seller.name : chatRoom.buyer.name}
+                    {chatRoom.buyerId === user?.id
+                      ? chatRoom.seller.name
+                      : chatRoom.buyer.name}
                   </p>
-                  <div className="inline flex-row">
-                    <span className="inline rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
-                      {chatRoom.recentMsg.userId === chatRoom.seller.id
-                        ? chatRoom.seller.name
-                        : chatRoom.buyer.name}
-                    </span>
-                    <p className="inline text-sm text-gray-500">{chatRoom.recentMsg?.chatMsg}</p>
+                  <div className="flex flex-row items-center justify-between">
+                    <div className="flex flex-row items-center">
+                      <div className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
+                        {chatRoom.recentMsg?.userId === chatRoom.seller.id
+                          ? chatRoom.seller.name
+                          : chatRoom.buyer.name}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {chatRoom.recentMsg?.chatMsg}
+                        {/* 최신 메시지가 보여지는 곳입니다. */}
+                      </div>
+                    </div>
+                    {data.unreadCountsPerRoom[chatRoom.id] !== 0 ? (
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500">
+                        <div className="text-sm">
+                          {data.unreadCountsPerRoom[chatRoom.id]}
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
 
-                  {chatRoom.recentMsg?.isNew && chatRoom.recentMsg.userId !== user?.id ? (
-                    <span className="absolute right-0 top-2 text-orange-500">
+                  {/* {chatRoom.recentMsg?.isNew &&
+                  chatRoom.recentMsg.userId !== user?.id ? (
+                    <span className="absolute right-0 text-orange-500 top-2">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5"
+                        className="w-5 h-5"
                         viewBox="0 0 20 20"
                         fill="currentColor"
                       >
                         <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
                       </svg>
                     </span>
-                  ) : null}
+                  ) : null} */}
                 </div>
               </a>
             </Link>

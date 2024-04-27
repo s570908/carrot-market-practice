@@ -65,12 +65,12 @@ export default function Layout({
       </Head>
       <div
         {...rest}
-        className="fixed top-0 z-10 flex h-12 w-full max-w-xl items-center justify-center border-b bg-white px-10 text-lg font-medium text-gray-800"
+        className="fixed top-0 z-10 flex items-center justify-center w-full h-12 max-w-xl px-10 text-lg font-medium text-gray-800 bg-white border-b"
       >
         {canGoBack ? (
           <button onClick={onClick} className="absolute left-4 z-[2]">
             <svg
-              className="h-6 w-6"
+              className="w-6 h-6"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -88,7 +88,7 @@ export default function Layout({
         {title ? <span className={cls(canGoBack ? "mx-auto" : "", "")}>{title}</span> : null}
         {notice ? (
           <Link href="/blog">
-            <a className="absolute right-4 rounded-md border-2 bg-orange-500 p-1 text-sm text-white hover:bg-orange-600">
+            <a className="absolute p-1 text-sm text-white bg-orange-500 border-2 rounded-md right-4 hover:bg-orange-600">
               <span>공지사항</span>
             </a>
           </Link>
@@ -98,7 +98,7 @@ export default function Layout({
         {children}
       </div>
       {hasTabBar ? (
-        <nav className="fixed bottom-0 flex w-full max-w-xl justify-between border-t bg-white px-10 pb-5 pt-3 text-xs text-gray-700">
+        <nav className="fixed bottom-0 flex justify-between w-full max-w-xl px-10 pt-3 pb-5 text-xs text-gray-700 bg-white border-t">
           <Link href="/">
             <a
               className={cls(
@@ -109,7 +109,7 @@ export default function Layout({
               )}
             >
               <svg
-                className="h-6 w-6"
+                className="w-6 h-6"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -135,7 +135,7 @@ export default function Layout({
               )}
             >
               <svg
-                className="h-6 w-6"
+                className="w-6 h-6"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -161,7 +161,7 @@ export default function Layout({
               )}
             >
               <svg
-                className="h-6 w-6"
+                className="w-6 h-6"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -178,7 +178,7 @@ export default function Layout({
                 <div className="absolute left-[15.5rem] top-0 text-orange-500 sm:left-72">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5"
+                    className="w-5 h-5"
                     viewBox="0 0 20 20"
                     fill="currentColor"
                   >
@@ -199,7 +199,7 @@ export default function Layout({
               )}
             >
               <svg
-                className="h-6 w-6"
+                className="w-6 h-6"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -225,7 +225,7 @@ export default function Layout({
               )}
             >
               <svg
-                className="h-6 w-6"
+                className="w-6 h-6"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"

@@ -9,6 +9,7 @@ import { useRouter } from "next/router";
 import { Suspense, useState } from "react";
 import PaginationButton from "@components/PaginationButton";
 import client from "@libs/client/client";
+import { ReserveResponse } from "./api/apiTypes";
 export interface ProductWithCount extends Product {
   favs: Fav[];
   _count: {
@@ -27,6 +28,13 @@ const Home: NextPage = () => {
   const router = useRouter();
   const [page, setPage] = useState(1);
   const { data } = useSWR<ProductsResponse>(`/api/products?page=${page}`);
+  const {
+    data: reserveData,
+    isLoading: reserveLoading,
+    mutate: reserveMutate,
+  } = useSWR<ReserveResponse>(
+    router.query.id ? `/api/products/${router.query.id}/reservation` : null
+  );
   const onPrevBtn = () => {
     router.push(`${router.pathname}?page=${page - 1}`);
     setPage((prev) => prev - 1);
@@ -35,6 +43,8 @@ const Home: NextPage = () => {
     router.push(`${router.pathname}?page=${page + 1}`);
     setPage((prev) => prev + 1);
   };
+
+  console.log("reserveData: ", reserveData);
   return (
     <Layout seoTitle="Home" title="홈" hasTabBar notice>
       <div className="flex flex-col space-y-5 divide-y px-4">
@@ -51,6 +61,11 @@ const Home: NextPage = () => {
                 if (uid.userId === user?.id) return true;
               })
               .includes(true)}
+            // isReserved={product.reservation
+            //   .map((uid) => {
+            //     if (uid.userId === user?.id) return true;
+            //   })
+            //   .includes(true)}
           />
         ))}
       </div>

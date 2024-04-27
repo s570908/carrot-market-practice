@@ -2,17 +2,23 @@ import { NextApiRequest, NextApiResponse } from "next";
 import withHandler, { ResponseType } from "@libs/server/withHandler";
 import client from "@libs/client/client";
 import { withApiSession } from "@libs/server/withSession";
+import { TRACE_OUTPUT_VERSION } from "next/dist/shared/lib/constants";
 
-async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) {
-  if (req.method === "POST") {
+async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<ResponseType>
+) {
+  if (req.method === "POST") { // consumer가 provider한테 product를 사고 싶을때 생성
     const {
-      body: { buyerId, sellerId },
+      body: { buyerId, sellerId, productId },
     } = req;
+    console.log("buyerId, sellerId, productId: ", buyerId, sellerId, productId);
     const chatRoom = await client.chatRoom.findFirst({
       where: {
-        AND: [{ buyerId }, { sellerId }],
+        AND: [{ buyerId }, { sellerId }, { productId }],
       },
     });
+    console.log("chatRoom: ", chatRoom);
     if (chatRoom) {
       res.json({
         ok: true,
@@ -31,6 +37,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
               id: sellerId,
             },
           },
+          product: {
+            connect: {
+              id: productId,
+            },
+          },
+          recentMsgId: undefined, // `recentMsgId`를 명시적으로 null로 설정
         },
       });
       res.json({
@@ -42,7 +54,26 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
   if (req.method === "GET") {
     const {
       session: { user },
+      // query: { productId }, // 쿼리에서 productId 추출
     } = req;
+    
+    // productId가 배열인 경우 첫 번째 요소 사용, 문자열인 경우 그대로 사용
+    // const productIdValue = productId === undefined ? undefined : Array.isArray(productId) ? productId[0] : productId;
+    // console.log("============productId: ", productId);
+    let condition;
+    // productIdValue !== undefined
+    //   ? (condition = {
+    //       AND: [
+    //         {
+    //           OR: [{ buyerId: user?.id }, { sellerId: user?.id }],
+    //         },
+    //         { productId: parseInt(productIdValue, 10) }, // productId가 있을 경우만 조건에 포함
+    //       ],
+    //     })
+    //   : (condition = {
+    //       OR: [{ buyerId: user?.id }, { sellerId: user?.id }],
+    //     });
+     
     const chatRoomList = await client.chatRoom.findMany({
       where: {
         OR: [{ buyerId: user?.id }, { sellerId: user?.id }],
@@ -69,11 +100,40 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
             id: true,
           },
         },
+        product: {
+          select: {
+            id: true,
+            userId: true,
+            name: true,
+          },
+        },
+        sellerChat: {
+          select: {
+            chatMsg: true,
+            isNew: true,
+          }
+        }
       },
     });
+    const unreadCountsPerRoom: { [roomId: string]: number } = {};
+    chatRoomList.forEach(chatRoom => {
+      let unreadCount = 0;
+  
+      if (chatRoom.sellerChat) {
+        chatRoom.sellerChat.forEach(chat => {
+          if (chat.isNew === true) {
+            unreadCount++;
+          }
+        });
+      }
+  
+      unreadCountsPerRoom[chatRoom.id] = unreadCount;
+    });
+    console.log("==================unreadCountsPerRoom: ", JSON.stringify(unreadCountsPerRoom, null, 2))
     res.json({
       ok: true,
       chatRoomList,
+      unreadCountsPerRoom
     });
   }
   if (req.method === "DELETE") {

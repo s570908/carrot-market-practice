@@ -83,7 +83,7 @@ export default function Layout({
       </Head>
       <div
         {...rest}
-        className="fixed top-0 z-10 flex items-center justify-center w-full h-12 max-w-xl px-10 text-lg font-medium text-gray-800 border-b"
+        className="fixed top-0 z-10 flex items-center justify-center w-full h-12 max-w-xl px-10 text-lg font-medium text-gray-800 bg-white border-b"
       >
         {canGoBack ? (
           <button onClick={onClick} className="absolute left-4 z-[2]">
@@ -128,7 +128,7 @@ export default function Layout({
                     <div
                       className="mb-2"
                       onClick={() => {
-                        router.push("/myItem/edit");
+                        router.push(`/myItem/${router.query.id}/edit`);
                       }}
                     >
                       게시글 수정
@@ -150,13 +150,20 @@ export default function Layout({
                   <div className="flex flex-col items-center justify-center">
                     <div className="mb-2"> 삭제하시겠습니까?</div>
                     <div className="flex">
-                      <button className="flex-1 w-[70px] mr-2 bg-gray-400 rounded-md" onClick={handleCloseModal} >
+                      <button
+                        className="mr-2 w-[70px] flex-1 rounded-md bg-gray-400"
+                        onClick={handleCloseModal}
+                      >
                         취소
                       </button>
-                      <button className="flex-1 w-[70px] bg-orange-500 rounded-md" onClick={() => {
-                        console.log("삭제를 클릭했습니다.")
-                      }}>확인</button>
-                      
+                      <button
+                        className="w-[70px] flex-1 rounded-md bg-orange-500"
+                        onClick={() => {
+                          console.log("삭제를 클릭했습니다.");
+                        }}
+                      >
+                        확인
+                      </button>
                     </div>
                   </div>
                 </Modal>
@@ -172,47 +179,7 @@ export default function Layout({
           isProfile ? "pb-5 sm:pb-10" : ""
         )}
       >
-        <>
-          {children}
-          {/* <div className="">
-            {!showConfirm ? (
-              <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
-                <div className="flex flex-col items-center justify-center cursor-pointer">
-                  <div
-                    className="mb-2"
-                    onClick={() => {
-                      router.push("/myItem/edit");
-                    }}
-                  >
-                    게시글 수정
-                  </div>
-                  <div onClick={handleDeleteClick}>삭제</div>
-                </div>
-              </Modal>
-            ) : (
-              <Modal
-                isOpen={isModalOpen}
-                onClose={handleCloseModal}
-                style={{
-                  top: "50%",
-                  left: "50%",
-                  bottom: "auto",
-                  right: "auto",
-                }}
-              >
-                <div className="flex flex-col items-center justify-center">
-                  <div className="mb-2"> 삭제하시겠습니까?</div>
-                  <div className="flex">
-                    <button onClick={handleCloseModal} className="mr-2">
-                      취소
-                    </button>
-                    <button>확인</button>
-                  </div>
-                </div>
-              </Modal>
-            )}
-          </div> */}
-        </>
+        {children}
       </div>
       {hasTabBar ? (
         <nav className="fixed bottom-0 flex justify-between w-full max-w-xl px-10 pt-3 pb-5 text-xs text-gray-700 bg-white border-t">
@@ -268,7 +235,7 @@ export default function Layout({
               <span>동네생활</span>
             </a>
           </Link>
-          <Link href="/chats">
+          <Link href="/chats?productId=0">
             <a
               className={cls(
                 "flex flex-col items-center space-y-2",

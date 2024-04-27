@@ -36,7 +36,7 @@ export default function useUser() {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
   });
-  //console.log("useUser--data: ", data);
+  console.log("useUser--data: ", data);
   const router = useRouter();
   useEffect(() => {
     if (data && !data.ok) {

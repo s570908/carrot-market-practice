@@ -15,7 +15,7 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
     const limit = 10;
     const products = await client.product.findMany({
       where: {
-        isSell: false,
+        isSold: false,
       },
       include: {
         _count: {
@@ -40,7 +40,7 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
     });
     const nextProducts = await client.product.findMany({
       where: {
-        isSell: false,
+        isSold: false,
       },
       include: {
         _count: {

@@ -6,14 +6,14 @@ import client from "@libs/client/client";
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === "POST") {
     const {
-      query: { id, seller },
+      query: { id, buyer },
       session: { user },
     } = req;
-    if (!id || !seller) {
+    if (!id || !buyer) {
       return res.status(404).end({ error: "request query, id or sellor, is not given." });
     }
-    // login user purchasees
-    const purchaseProduct = await client.purchase.create({
+    // login user sells
+    const saleProduct = await client.sale.create({
       data: {
         user: {
           connect: {
@@ -28,12 +28,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       },
     });
 
-    // seller sells
-    const saleProduct = await client.sale.create({
+    // buyer purchases
+    const purchaseProduct = await client.purchase.create({
       data: {
         user: {
           connect: {
-            id: +seller,
+            id: +buyer,
           },
         },
         product: {
@@ -48,7 +48,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         id: +id,
       },
       data: {
-        isSell: true, // this product has been sold. isSell is absurd and isSold is correct but I will leave unchanged
+        isSold: true, // this product has been sold. isSell is absurd and isSold is correct but I will leave unchanged
       },
     });
     res.json({ ok: true, purchaseProduct, saleProduct });

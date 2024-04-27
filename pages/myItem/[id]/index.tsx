@@ -4,7 +4,7 @@ import Layout from "@components/Layout";
 import useSWR, { mutate, useSWRConfig } from "swr";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { Product, Review, User } from "@prisma/client";
+import { Product, Reservation, Review, User } from "@prisma/client";
 import useMutation from "@libs/client/useMutation";
 import { cls } from "@libs/utils";
 import useUser from "@libs/client/useUser";
@@ -15,6 +15,8 @@ import { Skeleton } from "@mui/material";
 import gravatar from "gravatar";
 import Dropdown from "@components/Dropdown";
 import { IoEllipsisVerticalSharp } from "react-icons/io5";
+import { ReserveResponse } from "pages/api/apiTypes";
+import EventEmitter from "eventemitter3";
 
 interface ProductWithReview extends Review {
   createdBy: User;
@@ -43,8 +45,17 @@ const ItemDetail: NextPage = () => {
   const [talkToSeller, { loading: talkToSellerLoading, data: talkToSellerData }] =
     useMutation(`/api/chat`);
   const [buyItem, { loading: buyItemLoading, data: buyItemData }] = useMutation(
-    `/api/products/${router.query.id}?seller=${data?.product.userId.toString()}`
+    `/api/products/${router.query.id}?buyer=${data?.product.userId.toString()}`
   );
+  const {
+    data: reserveDataSWR,
+    isLoading: reserveLoadingSWR,
+    mutate: reserveMutateSWR,
+  } = useSWR<ReserveResponse>(
+    router.query.id ? `/api/products/${router.query.id}/reservation` : null
+  );
+  const [reservedApi, { loading: reserveMutateLoadingApi, data: reserveMutateDataApi }] =
+    useMutation(`/api/products/${router.query.id}/reservation`);
   const onFavClick = () => {
     if (!data) return;
     boundMutate((prev) => prev && { ...prev, isLike: !prev.isLike }, false);
@@ -60,6 +71,9 @@ const ItemDetail: NextPage = () => {
     //// login user가 buyer이고 product를 upload한 사람이 seller이다.
     talkToSeller({ buyerId: user?.id, sellerId: data?.product.userId });
   };
+
+  const eventEmitter = new EventEmitter();
+
   const onBuyClick = () => {
     //console.log("onBuyClick clicked.");
     if (confirm("정말 구매하시겠어요?")) {
@@ -70,6 +84,33 @@ const ItemDetail: NextPage = () => {
   };
   const onReviewClick = () => {
     router.push(`/products/${data?.product.id}/review`);
+  };
+  const handleDropdownChange = (selectedValue: string) => {
+    // Dropdown에서 선택값이 변경될 때 호출될 함수
+    // 예: 선택된 값으로 API 호출
+    if (reserveMutateLoadingApi) return;
+    if (selectedValue === '예약중') {
+      reserveMutateSWR(
+        (prev) =>
+          prev && {
+            ...prev,
+            isReserved: !prev.isReserved,
+          },
+        false
+      );
+      reservedApi({ variables: { selectedValue }});
+    } else if(selectedValue === '거래완료') {
+      if (reserveDataSWR?.isReserved === true) {
+        reservedApi({ variables: { selectedValue }});
+      } 
+      
+    } else {
+      // 판매중
+      console.log("reserveDataSWR?.isReserved: ", reserveDataSWR?.isReserved)
+      if (reserveDataSWR?.isReserved === true) {
+        reservedApi({ variables: { selectedValue }});
+      }
+    }
   };
   useEffect(() => {
     if (talkToSellerData && talkToSellerData.ok) {
@@ -129,7 +170,7 @@ const ItemDetail: NextPage = () => {
               </Link>
             </div>
           </div>
-          <div><Dropdown /></div>
+          <div><Dropdown onValueChange={handleDropdownChange} /></div>
           <div className="mt-5">
             <h1 className="text-3xl font-bold text-gray-900">
               {data ? data?.product?.name : "Now Loading..."}
@@ -197,7 +238,7 @@ const ItemDetail: NextPage = () => {
               {/*@ts-ignore*/}
               {data?.product?.productReviews?.length > 0 ? (
                 <Button disabled large text="Good Carrot!" />
-              ) : data?.product.isSell ? (
+              ) : data?.product.isSold ? (
                 <Button onClick={onReviewClick} large text="Go to Review!" />
               ) : data?.product?.userId === user?.id ? (
                 <Button onClick={onItemClick} large text="My item" />
@@ -207,7 +248,7 @@ const ItemDetail: NextPage = () => {
                   <Button onClick={onBuyClick} large text="Buy It" />
                 </>
               )}
-              {data?.product.isSell ? null : (
+              {data?.product.isSold ? null : (
                 <button
                   onClick={onFavClick}
                   disabled={data?.product?.userId === user?.id}
@@ -253,7 +294,7 @@ const ItemDetail: NextPage = () => {
             </div>
           </div>
         </div>
-        {data?.product.isSell ? null : (
+        {data?.product.isSold ? null : (
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Similar Items</h2>
             <div className="grid grid-cols-2 gap-4">

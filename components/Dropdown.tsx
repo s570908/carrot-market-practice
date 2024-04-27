@@ -70,27 +70,35 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 //   );
 // };
 
-const Dropdown: React.FC = () => {
-  const [selectedValue, setSelectedValue] = useState<string>("초기값");
+interface DropdownProps {
+  onValueChange: (value: string) => void;
+}
+
+const Dropdown: React.FC<DropdownProps> = ({ onValueChange }) => {
+  const [selectedValue, setSelectedValue] = useState<string>("판매중");
 
   const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedValue(event.target.value);
+    onValueChange(event.target.value)
     // handleSubmit()
   };
 
 
-  const handleSubmit = useCallback(() => {
-    console.log("handleSubmit: ", selectedValue);
-    // form 제출 시 실행할 동작, 예를 들어 API 호출 등
-    // alert(`선택된 값: ${selectedValue}`);
-  }, [selectedValue]);
+  // const handleSubmit = useCallback(() => {
+  //   // console.log("handleSubmit: ", selectedValue);
+  //   // // onValueChange(selectedValue);
+  //   // form 제출 시 실행할 동작, 예를 들어 API 호출 등
+  //   // alert(`선택된 값: ${selectedValue}`);
+  // }, [selectedValue]);
 
-useEffect(() => {
-  handleSubmit();
-}, [handleSubmit, setSelectedValue])
+// useEffect(() => {
+//   handleSubmit();
+// }, [handleSubmit, setSelectedValue])
+
+console.log("selectedValue: ", selectedValue)
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={() => {}}>
       <select
         value={selectedValue}
         onChange={handleChange}

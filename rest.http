@@ -1,5 +1,21 @@
 ### Global Scope
 
+### @index=45
+# @title = /api/products/:id/reservation
+@cookie45=carrotsession=Fe26.2*1*af3ccf1dfa49933538e8778572e4d5c5da0f9e813bed376aee73b5504f508437*knNkIzY66K0olFoMdePhJg*3jgiCowYnU0F5OJCxjCwuKu6KdxZ0WheWws8nIONzqw*1709478251197*0d741ea69df93647ee83be1a41d848028d700199a8cced5fdd2194a827998b6c*d4U1MFYaNdv2L7u11pbpggrtKj3lNhqdkSmtETE4_lI~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
+# @prompt idForProduct45 Your productID
+GET  http://localhost:3000/api/products/{{idForProduct45}}/reservation
+Cookie: {{cookie45}}
+Content-Type: application/json
+
+### @index=45
+# @title = /api/products/:id/reservation
+@cookie45=carrotsession=Fe26.2*1*af3ccf1dfa49933538e8778572e4d5c5da0f9e813bed376aee73b5504f508437*knNkIzY66K0olFoMdePhJg*3jgiCowYnU0F5OJCxjCwuKu6KdxZ0WheWws8nIONzqw*1709478251197*0d741ea69df93647ee83be1a41d848028d700199a8cced5fdd2194a827998b6c*d4U1MFYaNdv2L7u11pbpggrtKj3lNhqdkSmtETE4_lI~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
+# @prompt idForProduct45 Your productID
+POST  http://localhost:3000/api/products/{{idForProduct45}}/reservation
+Cookie: {{cookie45}}
+Content-Type: application/json
+
 ### @index=44
 # @title = https://api.cloudflare.com/client/v4/accounts/<ACCOUNT_ID>/stream/
 GET  https://api.cloudflare.com/client/v4/accounts/{{$dotenv CF_ID}}/stream/

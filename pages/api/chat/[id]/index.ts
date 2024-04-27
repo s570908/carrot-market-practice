@@ -11,13 +11,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
   if (!id) {
     return res.status(404).end({ error: "request query is not given." });
   }
-  const sellerChat = await client.sellerChat.findMany({
+  const allChatMessages = await client.sellerChat.findMany({
     where: {
       chatRoomId: +id, // chatroom 은 seller 와 one to one 이다. 즉 seller 에 대해서 하나의 chatroom이 형성된다.
     },
     include: {
       user: {
-        // chat을 보내는 사람, 즉 buyer이다.
+        // chat message를 보내는 사람
         select: {
           name: true,
           avatar: true,
@@ -26,6 +26,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
     },
   });
   //console.log("api.chat.[id].index---sellerChat: ", JSON.stringify(sellerChat, null, 2));
+  // const newChatCount = allChatMessages.filter(chat => chat.isNew === true).length;
+
   const chatRoomOfSeller = await client.chatRoom.findUnique({
     where: {
       id: +id,
@@ -33,34 +35,44 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
     include: {
       buyer: {
         select: {
+          id: true,
           name: true,
           avatar: true,
         },
       },
       seller: {
         select: {
+          id: true,
           name: true,
           avatar: true,
         },
       },
+      product: {
+        select: {
+          price: true,
+          image: true,
+          name: true,
+          status: true
+        }
+      },
     },
   });
-  sellerChat.map(async (chat) => {
-    if (chat.userId !== user?.id) {
-      await client.sellerChat.updateMany({
-        where: {
-          AND: [{ chatRoomId: +id }, { userId: chat.userId }],
-        },
-        data: {
-          isNew: false,
-        },
-      });
-    }
+  // chatRoomOfSeller?.buyerId
+  // chatRoomOfSeller?.sellerId
+  // 가져온 상대방의 메세지 모두는 이미 읽은 것으로 결정한다.
+  const yourId = user?.id === chatRoomOfSeller?.buyerId ? chatRoomOfSeller?.sellerId : chatRoomOfSeller?.buyerId 
+  await client.sellerChat.updateMany({ // DB의 모든 chatMessage를 update함
+    where: {
+      AND: [{ chatRoomId: +id }, { userId: yourId }],
+    },
+    data: {
+      isNew: false, // 상대방이 작성한 메세지를 내가 읽었으면 false로 만든다. 초기에는 true로 되어 있다. 
+    },
   });
   if (chatRoomOfSeller?.buyerId !== user?.id && chatRoomOfSeller?.sellerId !== user?.id) {
     res.json({ ok: false, error: "접근 권한이 없습니다." });
   } else {
-    res.json({ ok: true, sellerChat, chatRoomOfSeller });
+    res.json({ ok: true, sellerChat: allChatMessages, chatRoomOfSeller });
   }
 }
 
