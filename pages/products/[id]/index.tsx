@@ -17,6 +17,8 @@ import gravatar from "gravatar";
 import { useState } from "react";
 import eventEmitter from "@libs/eventEmitter";
 import Dropdown from "@components/Dropdown";
+import axios from "axios";
+import { toast } from "react-toastify";
 
 interface ProductWithReview extends Review {
   createdBy: User;
@@ -43,10 +45,15 @@ const ItemDetail: NextPage = () => {
   const { user, isLoading } = useUser();
   const router = useRouter();
   const [notification, setNotification] = useState("");
+  const [chatRoomCount, setChatRoomCount] = useState(0);
   // const { mutate: unboundMutate } = useSWRConfig();
   const { data, mutate: boundMutate } = useSWR<ItemDetailResponse>(
     router.query.id ? `/api/products/${router.query.id}` : null
   );
+  // const url = router.query.id ? `/api/chat?productId=${router.query.id}` : "/api/chat";
+  // const { data: dataChatRoom } = useSWR(
+  //   `/api/chat?productId=${router.query.id}`
+  // ); // SWR을 사용하여 채팅방 목록을 불러옵니다, 제품 ID에 따라 필터링
 
   const [toggleFav] = useMutation(`/api/products/${router.query.id}/fav`);
   const [
@@ -64,13 +71,36 @@ const ItemDetail: NextPage = () => {
     // unboundMutate("/api/users/me", (prev: any) => ({ ok: !prev.ok }), false);
     toggleFav({});
   };
-  const onChatRoomList = () => {
+  const onChatRoomList = async () => {
+    // 1. 해당 chatRoom을 찾는다.
+    //    해당 chatRoom을 찾는 방법: productId, 로그인한 user가 product.provider인 chatRoom을 모두 찾는다.
+    // 2. 해당 chatRoom이 없으면 toast message를 띄운다.
+    // 3. 해당 chatRoom이 있으면 해당 chatRoom목록 페이지로 이동한다.
+    console.log("=============router.query.id: ", router.query.id);
+    const res = await axios({
+      method: "GET",
+      url: `/api/chat?productId=${router.query.id}`,
+    });
+    if (res.data) {
+      // setList((prev) => [...prev, { ...res.data[0] }]); //리스트 추가
+      // preventRef.current = true;
+      console.log("===========res.data: ", res.data);
+      // setChatRoomCount(res.data.chatRoomListRelatedProduct.length);
+      if (res.data.chatRoomListRelatedProduct.length === 0) {
+        toast.success("대화 중인 채팅방이 없습니다.");
+      } else {
+        router.push(`/chats?productId=${router.query.id}`);
+      }
+    } else {
+      console.log(res); //에러
+    }
+
     const productId = router.query.id;
     // router.push 메서드를 사용하여 쿼리 파라미터와 함께 URL로 이동합니다.
-    router.push({
-      pathname: "/chats",
-      query: { productId }, // 쿼리 파라미터로 제품 ID를 전달합니다.
-    });
+    // router.push({
+    //   pathname: "/chats",
+    //   query: { productId }, // 쿼리 파라미터로 제품 ID를 전달합니다.
+    // });
   };
   const onChatClick = () => {
     console.log("onChatClick clicked.");
@@ -120,13 +150,16 @@ const ItemDetail: NextPage = () => {
       talkToSellerData.chatRoom
         ? router.push({
             pathname: `/chats/${talkToSellerData.chatRoom.id}`,
-            query: {
-              buyerId: user?.id,
-              sellerId: data?.product.userId,
-              productId: data?.product.id,
-            },
+            // query: {
+            //   buyerId: user?.id,
+            //   sellerId: data?.product.userId,
+            //   productId: data?.product.id,
+            // },
           })
-        : router.push(`/chats/${talkToSellerData.createChatRoom.id}`);
+        : router.push({
+            pathname: `/chats/${talkToSellerData.createChatRoom.id}`,
+            // query: { productId: data?.product.id },
+          });
     }
   }, [router, talkToSellerData]);
 
@@ -177,6 +210,26 @@ const ItemDetail: NextPage = () => {
       }
     };
   }); // isProvider가 변경될 때마다 이펙트를 다시 실행합니다.
+
+  useEffect(() => {
+    const fetchChatRooms = async () => {
+      // 페이지 로드 시 productId를 기반으로 API 요청을 보냅니다.
+      const productId = router.query.id;
+      if (productId) {
+        try {
+          const response = await axios.get(`/api/chat?productId=${productId}`);
+          const chatRooms = response.data.chatRoomListRelatedProduct;
+          // 채팅방 목록의 개수를 상태로 설정합니다.
+          setChatRoomCount(chatRooms.length);
+        } catch (error) {
+          console.error("Failed to fetch chat rooms", error);
+          // 에러 처리, 예를 들어 토스트 메시지를 표시할 수 있습니다.
+        }
+      }
+    };
+
+    fetchChatRooms();
+  }, [router.query.id]);
 
   return (
     <Layout
@@ -378,7 +431,12 @@ const ItemDetail: NextPage = () => {
                 <Button
                   onClick={onChatRoomList}
                   large
-                  text="대화 중인 채팅방"
+                  // text="대화 중인 채팅방"
+                  text={
+                    chatRoomCount > 0
+                      ? `대화 중인 채팅방 ${chatRoomCount}`
+                      : "대화 중인 채팅방"
+                  }
                 />
               ) : (
                 <>

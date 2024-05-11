@@ -34,6 +34,8 @@ import { ChatRoom, SellerChat, User } from "@prisma/client";
 import { useEffect, useState } from "react";
 import gravatar from "gravatar";
 import { useRouter } from "next/router";
+import axios from "axios";
+import { fetchChatRooms } from "@libs/server/fetchChatRooms";
 
 interface ChatRoomWithUser extends ChatRoom {
   buyer: User;
@@ -48,12 +50,15 @@ interface ChatRoomResponse {
 
 const Chats: NextPage = () => {
   const router = useRouter();
-  // const { productId } = router.query; // URL에서 productId 쿼리 파라미터를 추출
+  const { productId } = router.query; // URL에서 productId 쿼리 파라미터를 추출
   // console.log("productId: ", productId);
   const { user } = useUser();
-  const { data } = useSWR("/api/chat", {
-    refreshInterval: 1000,
-  }); // SWR을 사용하여 채팅방 목록을 불러옵니다, 제품 ID에 따라 필터링
+  // URL을 조건부로 설정
+  const url = productId ? `/api/chat?productId=${productId}` : "/api/chat";
+  // const { data } = useSWR("/api/chats", {
+  //   refreshInterval: 1000,
+  // }); // SWR을 사용하여 채팅방 목록을 불러옵니다, 제품 ID에 따라 필터링
+  const { data, error } = useSWR(url);
   const [recentMessageShown, setRecentMessageShown] = useState("");
 
   console.log("Chats---data:", JSON.stringify(data, null, 2));
@@ -77,11 +82,15 @@ const Chats: NextPage = () => {
     "chats---data.chatRoomList: ",
     JSON.stringify(data?.chatRoomList, null, 2)
   );
+  const chatRooms = productId
+    ? data?.chatRoomListRelatedProduct
+    : data?.chatRoomList;
   // console.log("chats---login user: ", JSON.stringify(user, null, 2));
+  console.log("---------------data: ", data);
   return (
-    <Layout seoTitle="채팅" title="채팅" hasTabBar notice>
+    <Layout seoTitle="채팅" title="채팅" hasTabBar={!productId}>
       <div className="divide-y-[1px] py-10">
-        {data?.chatRoomList?.map((chatRoom: any) => {
+        {chatRooms?.map((chatRoom: any) => {
           console.log(
             "chatRoom: ",
             JSON.stringify(chatRoom, null, 2)
@@ -147,14 +156,14 @@ const Chats: NextPage = () => {
                     imgName={"UserAvatar"}
                   />
                 )}
-                <div className="relative w-10/12">
+                <div className="relative w-10/12 space-y-1">
                   <p className="text-gray-700">
                     {chatRoom.buyerId === user?.id
                       ? chatRoom.seller.name
                       : chatRoom.buyer.name}
                   </p>
                   <div className="flex flex-row items-center justify-between">
-                    <div className="flex flex-row items-center">
+                    <div className="flex flex-row items-center space-x-2">
                       <div className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
                         {chatRoom.recentMsg?.userId === chatRoom.seller.id
                           ? chatRoom.seller.name
@@ -167,13 +176,27 @@ const Chats: NextPage = () => {
                     </div>
                     {data.unreadCountsPerRoom[chatRoom.id] !== 0 ? (
                       <div className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500">
-                        <div className="text-sm">
+                        <div className="text-sm text-white">
                           {data.unreadCountsPerRoom[chatRoom.id]}
                         </div>
                       </div>
                     ) : null}
                   </div>
-
+                  <div className="flex flex-row items-center space-x-2">
+                    <ImgComponent
+                      width={48}
+                      height={48}
+                      clsProps="rounded-md bg-gray-400"
+                      imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${chatRoom?.product?.image}/public`}
+                      imgName="사진"
+                    />
+                    <div className="flex flex-col">
+                      <div className="text-gray-700">
+                        {chatRoom?.product?.name}
+                      </div>
+                      <div className="">{chatRoom.seller.name}</div>
+                    </div>
+                  </div>
                   {/* {chatRoom.recentMsg?.isNew &&
                   chatRoom.recentMsg.userId !== user?.id ? (
                     <span className="absolute right-0 text-orange-500 top-2">

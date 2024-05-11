@@ -2,13 +2,13 @@ import { NextApiRequest, NextApiResponse } from "next";
 import withHandler, { ResponseType } from "@libs/server/withHandler";
 import client from "@libs/client/client";
 import { withApiSession } from "@libs/server/withSession";
-import { TRACE_OUTPUT_VERSION } from "next/dist/shared/lib/constants";
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<ResponseType>
 ) {
-  if (req.method === "POST") { // consumer가 provider한테 product를 사고 싶을때 생성
+  if (req.method === "POST") {
+    // consumer가 provider한테 product를 사고 싶을때 생성
     const {
       body: { buyerId, sellerId, productId },
     } = req;
@@ -54,13 +54,90 @@ async function handler(
   if (req.method === "GET") {
     const {
       session: { user },
-      // query: { productId }, // 쿼리에서 productId 추출
+      query: { productId }, // 쿼리에서 productId 추출
     } = req;
-    
+
+    console.log("==========req.query: ", req.query);
+    console.log("==============user, productId: ", user, productId);
+
+    if (productId) {
+      const productIdValue = parseInt(productId as string, 10);
+      const chatRoomListRelatedProduct = await client.chatRoom.findMany({
+        // where: {
+        //   AND: [
+        //     { productId: productIdValue },
+        //     {
+        //        sellerId: user?.id ,
+        //     },
+        //   ],
+        // },
+        where: {
+          productId: productIdValue,
+        },
+        include: {
+          recentMsg: {
+            select: {
+              chatMsg: true,
+              isNew: true,
+              userId: true,
+            },
+          },
+          buyer: {
+            select: {
+              name: true,
+              avatar: true,
+              id: true,
+            },
+          },
+          seller: {
+            select: {
+              name: true,
+              avatar: true,
+              id: true,
+            },
+          },
+          product: {
+            select: {
+              id: true,
+              userId: true,
+              name: true,
+              image: true,
+            },
+          },
+          sellerChat: {
+            select: {
+              chatMsg: true,
+              isNew: true,
+              user: true,
+            },
+          },
+        },
+      });
+      const unreadCountsPerRoom: { [roomId: string]: number } = {};
+      chatRoomListRelatedProduct.forEach((chatRoom) => {
+        let unreadCount = 0;
+
+        if (chatRoom.sellerChat) {
+          chatRoom.sellerChat.forEach((chat) => {
+            if (chat.user !== user) {
+              if (chat.isNew === true) {
+                unreadCount++;
+              }
+            }
+          });
+        }
+
+        unreadCountsPerRoom[chatRoom.id] = unreadCount;
+      });
+      res.json({
+        ok: true,
+        chatRoomListRelatedProduct,
+        unreadCountsPerRoom,
+      });
+    }
     // productId가 배열인 경우 첫 번째 요소 사용, 문자열인 경우 그대로 사용
     // const productIdValue = productId === undefined ? undefined : Array.isArray(productId) ? productId[0] : productId;
     // console.log("============productId: ", productId);
-    let condition;
     // productIdValue !== undefined
     //   ? (condition = {
     //       AND: [
@@ -73,68 +150,74 @@ async function handler(
     //   : (condition = {
     //       OR: [{ buyerId: user?.id }, { sellerId: user?.id }],
     //     });
-     
-    const chatRoomList = await client.chatRoom.findMany({
-      where: {
-        OR: [{ buyerId: user?.id }, { sellerId: user?.id }],
-      },
-      include: {
-        recentMsg: {
-          select: {
-            chatMsg: true,
-            isNew: true,
-            userId: true,
+    else {
+      let condition;
+      const chatRoomList = await client.chatRoom.findMany({
+        where: {
+          OR: [{ buyerId: user?.id }, { sellerId: user?.id }],
+        },
+        include: {
+          recentMsg: {
+            select: {
+              chatMsg: true,
+              isNew: true,
+              userId: true,
+            },
+          },
+          buyer: {
+            select: {
+              name: true,
+              avatar: true,
+              id: true,
+            },
+          },
+          seller: {
+            select: {
+              name: true,
+              avatar: true,
+              id: true,
+            },
+          },
+          product: {
+            select: {
+              id: true,
+              userId: true,
+              name: true,
+              image: true,
+            },
+          },
+          sellerChat: {
+            select: {
+              chatMsg: true,
+              isNew: true,
+            },
           },
         },
-        buyer: {
-          select: {
-            name: true,
-            avatar: true,
-            id: true,
-          },
-        },
-        seller: {
-          select: {
-            name: true,
-            avatar: true,
-            id: true,
-          },
-        },
-        product: {
-          select: {
-            id: true,
-            userId: true,
-            name: true,
-          },
-        },
-        sellerChat: {
-          select: {
-            chatMsg: true,
-            isNew: true,
-          }
+      });
+      const unreadCountsPerRoom: { [roomId: string]: number } = {};
+      chatRoomList.forEach((chatRoom) => {
+        let unreadCount = 0;
+
+        if (chatRoom.sellerChat) {
+          chatRoom.sellerChat.forEach((chat) => {
+            if (chat.isNew === true) {
+              unreadCount++;
+            }
+          });
         }
-      },
-    });
-    const unreadCountsPerRoom: { [roomId: string]: number } = {};
-    chatRoomList.forEach(chatRoom => {
-      let unreadCount = 0;
-  
-      if (chatRoom.sellerChat) {
-        chatRoom.sellerChat.forEach(chat => {
-          if (chat.isNew === true) {
-            unreadCount++;
-          }
-        });
-      }
-  
-      unreadCountsPerRoom[chatRoom.id] = unreadCount;
-    });
-    console.log("==================unreadCountsPerRoom: ", JSON.stringify(unreadCountsPerRoom, null, 2))
-    res.json({
-      ok: true,
-      chatRoomList,
-      unreadCountsPerRoom
-    });
+
+        unreadCountsPerRoom[chatRoom.id] = unreadCount;
+      });
+      console.log(
+        "==================unreadCountsPerRoom: ",
+        JSON.stringify(unreadCountsPerRoom, null, 2)
+      );
+      res.json({
+        ok: true,
+        chatRoomList,
+        unreadCountsPerRoom,
+      });
+    }
   }
   if (req.method === "DELETE") {
     const {

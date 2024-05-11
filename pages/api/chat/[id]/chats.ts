@@ -40,18 +40,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
     },
   });
 
-  await client.sellerChat.updateMany({
-    where: {
-      AND: [
-        { chatRoomId: +id }, // 해당 채팅방에 속한
-        { createdAt: { lt: sellerChat.createdAt } }, // 현재 시간 이전에 생성된
-        { isNew: true }, // isNew가 true인
-      ],
-    },
-    data: {
-      isNew: false, // isNew를 false로 설정하여 읽음 상태로 표시
-    },
-  });
+  // await client.sellerChat.updateMany({
+  //   where: {
+  //     AND: [
+  //       { chatRoomId: +id }, // 해당 채팅방에 속한
+  //       { createdAt: { lt: sellerChat.createdAt } }, // 현재 시간 이전에 생성된
+  //       { isNew: true }, // isNew가 true인
+  //     ],
+  //   },
+  //   data: {
+  //     isNew: false, // isNew를 false로 설정하여 읽음 상태로 표시
+  //   },
+  // });
 
   res.json({ ok: true, sellerChat });
 }

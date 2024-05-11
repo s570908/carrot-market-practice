@@ -143,12 +143,17 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       }`}
       canGoBack
       // backUrl={"/chats"}
-      backUrl={data?.chatRoomOfSeller?.buyerId === user?.id ? "back" : "/chats"}
+      backUrl={data?.chatRoomOfSeller?.buyerId === user?.id ? "/chats" : "back"}
     >
       <div className="relative h-full px-4 pb-12">
-        <div className="w-full max-w-xl p-4 bg-red-200 border-b border-gray-200">
-          <div className="flex items-center">
-            <div className="flex space-x-4">
+        <div className="w-full max-w-xl border-b border-gray-200 bg-red-200 p-4">
+          <div
+            className="flex cursor-pointer items-center"
+            onClick={() => {
+              router.push(`/products/${data?.chatRoomOfSeller?.productId}`);
+            }}
+          >
+            <div className="flex items-center space-x-4">
               <ImgComponent
                 width={80}
                 height={80}
@@ -156,17 +161,66 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                 imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.chatRoomOfSeller?.product?.image}/public`}
                 imgName="사진"
               />
-              <div className="flex flex-col pt-2">
-                <h3 className="text-sm font-medium text-gray-900">
-                  {data?.chatRoomOfSeller?.product?.name}
-                </h3>
-                <span className="mt-1 font-medium text-gray-900">
+              <div className="flex flex-col space-y-1">
+                <div className="flex flex-row items-center space-x-2">
+                  <div className="text-gray-900">
+                    {data?.chatRoomOfSeller?.product?.status}
+                  </div>
+                  <div className="text-gray-900">
+                    {data?.chatRoomOfSeller?.product?.name}
+                  </div>
+                </div>
+                <span className="text-gray-900">
                   ￦{data?.chatRoomOfSeller?.product?.price}
                 </span>
+                <div className="text-gray-900">
+                  {data?.chatRoomOfSeller?.seller?.name}
+                </div>
               </div>
             </div>
           </div>
-          <div className="text-lg">후기</div>
+          <div className="mt-2 flex flex-row justify-between">
+            <div
+              className="text-md cursor-pointer rounded-md border border-black p-1"
+              onClick={() => {
+                console.log("약속잡기가 클릭 되었습니다.");
+              }}
+            >
+              약속잡기
+            </div>
+            <div
+              className="text-md cursor-pointer rounded-md border border-black p-1"
+              onClick={() => {
+                console.log("송금요청이 클릭 되었습니다.");
+              }}
+            >
+              송금요청
+            </div>
+            <div
+              className="text-md cursor-pointer rounded-md border border-black p-1"
+              onClick={() => {
+                console.log("후기 보내기가 클릭 되었습니다.");
+              }}
+            >
+              후기 보내기
+            </div>
+            <div
+              className="text-md cursor-pointer rounded-md border border-black p-1"
+              onClick={() => {
+                console.log("장소공유가 클릭 되었습니다.");
+              }}
+            >
+              장소공유
+            </div>
+            <div
+              className="text-md cursor-pointer rounded-md border border-black p-1"
+              onClick={() => {
+                console.log("기타가 클릭 되었습니다.");
+              }}
+            >
+              기타
+            </div>
+          </div>
         </div>
         <div
           className="flex h-[calc(95vh-300px)] flex-col space-y-2 overflow-y-auto py-5 transition-all"
@@ -217,9 +271,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
           </form> */}
           <form
             onSubmit={handleSubmit(onValid)}
-            className="w-full px-1 py-1 mt-10 border-t"
+            className="mt-10 w-full border-t px-1 py-1"
           >
-            <div className="relative w-full px-2 py-2 bg-white rounded-md outline-none">
+            <div className="relative w-full rounded-md bg-white px-2 py-2 outline-none">
               <input
                 {...register("chatMsg", { required: true, maxLength: 80 })}
                 maxLength={80}
