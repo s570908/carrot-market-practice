@@ -36,6 +36,7 @@ import gravatar from "gravatar";
 import { useRouter } from "next/router";
 import axios from "axios";
 import { fetchChatRooms } from "@libs/server/fetchChatRooms";
+import Dropdown from "@components/Dropdown";
 
 interface ChatRoomWithUser extends ChatRoom {
   buyer: User;
@@ -61,7 +62,6 @@ const Chats: NextPage = () => {
   const { data, error } = useSWR(url);
   const [recentMessageShown, setRecentMessageShown] = useState("");
 
-  console.log("Chats---data:", JSON.stringify(data, null, 2));
   // console.log("Chats---data:", JSON.stringify(data, null, 2));
   // useEffect(() => {
   //   if (data && data.ok) {
@@ -78,30 +78,60 @@ const Chats: NextPage = () => {
   //   }
   // }, [data]);
 
-  console.log(
-    "chats---data.chatRoomList: ",
-    JSON.stringify(data?.chatRoomList, null, 2)
-  );
   const chatRooms = productId
     ? data?.chatRoomListRelatedProduct
     : data?.chatRoomList;
   // console.log("chats---login user: ", JSON.stringify(user, null, 2));
-  console.log("---------------data: ", data);
+
+  const handleClick = () => {
+    console.log("chatRoomList Product Detail clicked");
+    router.push(`/products/${productId}`);
+  };
+
   return (
-    <Layout seoTitle="채팅" title="채팅" hasTabBar={!productId}>
-      <div className="divide-y-[1px] py-10">
+    <Layout
+      seoTitle="채팅"
+      title="채팅"
+      hasTabBar={!productId}
+      canGoBack={!!productId}
+      backUrl="back"
+    >
+      <div className="divide-y-[1px]">
+        {productId ? (
+          <div className="w-full max-w-xl border-b border-gray-200 bg-red-200 p-4">
+            <div
+              className="flex cursor-pointer items-center"
+              onClick={handleClick}
+            >
+              <div className="flex items-center space-x-4">
+                <ImgComponent
+                  width={80}
+                  height={80}
+                  clsProps="rounded-md bg-gray-400"
+                  imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.chatRoomListRelatedProduct[0]?.product?.image}/public`}
+                  imgName="사진"
+                />
+                <div className="flex flex-col space-y-1">
+                  <div className="flex flex-row items-center space-x-2">
+                    <div className="text-gray-900">
+                      {data?.chatRoomListRelatedProduct[0]?.product?.status}
+                    </div>
+                    <div className="text-gray-900">
+                      {data?.chatRoomListRelatedProduct[0]?.product?.name}
+                    </div>
+                  </div>
+                  <span className="text-gray-900">
+                    ￦{data?.chatRoomListRelatedProduct[0]?.product?.price}
+                  </span>
+                  <div className="text-gray-900">
+                    {data?.chatRoomListRelatedProduct[0]?.seller?.name}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
         {chatRooms?.map((chatRoom: any) => {
-          console.log(
-            "chatRoom: ",
-            JSON.stringify(chatRoom, null, 2)
-            // chatRoom.recentMsg?.userId,
-            // chatRoom.seller.id,
-            // chatRoom.seller.name,
-            // chatRoom.buyer.name,
-            // chatRoom.recentMsg?.userId === chatRoom.seller.id
-            //   ? chatRoom.seller.name
-            //   : chatRoom.buyer.name
-          );
           return (
             <Link href={`/chats/${chatRoom.id}`} key={chatRoom.id}>
               <a className="flex cursor-pointer items-center space-x-3 px-4 py-3">
@@ -182,7 +212,7 @@ const Chats: NextPage = () => {
                       </div>
                     ) : null}
                   </div>
-                  <div className="flex flex-row items-center space-x-2">
+                  {/* <div className="flex flex-row items-center space-x-2">
                     <ImgComponent
                       width={48}
                       height={48}
@@ -196,7 +226,7 @@ const Chats: NextPage = () => {
                       </div>
                       <div className="">{chatRoom.seller.name}</div>
                     </div>
-                  </div>
+                  </div> */}
                   {/* {chatRoom.recentMsg?.isNew &&
                   chatRoom.recentMsg.userId !== user?.id ? (
                     <span className="absolute right-0 text-orange-500 top-2">

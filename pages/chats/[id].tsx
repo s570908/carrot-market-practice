@@ -14,6 +14,7 @@ import { cls } from "@libs/utils";
 import Loading from "@components/Loading";
 import ImgComponent from "@components/ImgComponent";
 import { getChatRoomData } from "@libs/server/chatUtils";
+import Dropdown from "@components/Dropdown";
 
 interface ChatWithUser extends SellerChat {
   user: User;
@@ -143,7 +144,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       }`}
       canGoBack
       // backUrl={"/chats"}
-      backUrl={data?.chatRoomOfSeller?.buyerId === user?.id ? "/chats" : "back"}
+      // backUrl={data?.chatRoomOfSeller?.buyerId === user?.id ? "/chats" : "back"}
+      backUrl={"back"}
     >
       <div className="relative h-full px-4 pb-12">
         <div className="w-full max-w-xl border-b border-gray-200 bg-red-200 p-4">
@@ -163,9 +165,12 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               />
               <div className="flex flex-col space-y-1">
                 <div className="flex flex-row items-center space-x-2">
-                  <div className="text-gray-900">
-                    {data?.chatRoomOfSeller?.product?.status}
+                  <div className="">
+                    <Dropdown />
                   </div>
+                  {/* <div className="text-gray-900">
+                    {data?.chatRoomOfSeller?.product?.status}
+                  </div> */}
                   <div className="text-gray-900">
                     {data?.chatRoomOfSeller?.product?.name}
                   </div>
