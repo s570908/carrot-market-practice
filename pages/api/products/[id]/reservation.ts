@@ -6,40 +6,58 @@ import { withApiSession } from "@libs/server/withSession";
 async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) {
   const {
     query: { id },
+    body: { buyerId },
     session: { user },
   } = req;
 
-  const alreadyExists = await client.reservation.findFirst({
+  // const alreadyExists = await client.reservation.findFirst({
+  //   where: {
+  //     productId: Number(id),
+  //     userId: user?.id,
+  //   },
+  // });
+
+  const reserveExist = await client.reservation.findFirst({
     where: {
       productId: Number(id),
-      userId: user?.id,
     },
-  });
-
-  const reservExists = Boolean(
-    await client.reservation.findFirst({
-      where: {
-        productId: Number(id),
-      },
-    })
-  );
+  })
 
   if (req.method === "GET") {
-    res.json({ ok: true, isReserved: reservExists ? true : false, reserve: alreadyExists });
+    res.json({ ok: true, isReserved: reserveExist ? true : false, reserve: reserveExist });
   } else if (req.method === "POST") {
-    if (alreadyExists) {
+    if (reserveExist) {
       await client.reservation.delete({
         where: {
-          id: alreadyExists.id,
+          id: reserveExist.id,
+        },
+      });
+      // Update the product to set isReserved to false when the reservation is deleted
+      await client.product.update({
+        where: {
+          id: Number(id), // Ensure you are targeting the correct product
+        },
+        data: {
+          isReserved: false,
         },
       });
       res.json({ ok: true, isReserved: false });
     } else {
+      if (!buyerId) {
+        return res.status(404).json({ ok: false, error: "buyerId is not given in request body." });
+      }
+      const buyerExist = Boolean(await client.user.findUnique({
+        where: { id: +buyerId}
+      }))
+      console.log("=== buyerExist: ",  buyerExist)
+      if (buyerExist === false) {
+        return res.status(404).json({ ok: false, error: "buyerId is not valid." });
+      } 
       await client.reservation.create({
         data: {
           user: {
             connect: {
-              id: user?.id,
+              id: +buyerId,
             },
           },
           product: {
@@ -47,6 +65,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
               id: Number(id),
             },
           },
+        },
+      });
+      // Update the product to set isReserved to true once the reservation is made
+      await client.product.update({
+        where: {
+          id: Number(id),
+        },
+        data: {
+          isReserved: true,
         },
       });
       res.json({ ok: true, isReserved: true });

@@ -98,9 +98,9 @@ const Chats: NextPage = () => {
     >
       <div className="divide-y-[1px]">
         {productId ? (
-          <div className="w-full max-w-xl border-b border-gray-200 bg-red-200 p-4">
+          <div className="w-full max-w-xl p-4 bg-red-200 border-b border-gray-200">
             <div
-              className="flex cursor-pointer items-center"
+              className="flex items-center cursor-pointer"
               onClick={handleClick}
             >
               <div className="flex items-center space-x-4">
@@ -114,7 +114,8 @@ const Chats: NextPage = () => {
                 <div className="flex flex-col space-y-1">
                   <div className="flex flex-row items-center space-x-2">
                     <div className="text-gray-900">
-                      {data?.chatRoomListRelatedProduct[0]?.product?.status}
+                      to do
+                      {/* {data?.chatRoomListRelatedProduct[0]?.product?.status} */}
                     </div>
                     <div className="text-gray-900">
                       {data?.chatRoomListRelatedProduct[0]?.product?.name}
@@ -134,7 +135,7 @@ const Chats: NextPage = () => {
         {chatRooms?.map((chatRoom: any) => {
           return (
             <Link href={`/chats/${chatRoom.id}`} key={chatRoom.id}>
-              <a className="flex cursor-pointer items-center space-x-3 px-4 py-3">
+              <a className="flex items-center px-4 py-3 space-x-3 cursor-pointer">
                 {chatRoom.buyerId === user?.id ? (
                   chatRoom.seller.avatar ? (
                     <ImgComponent
@@ -205,7 +206,7 @@ const Chats: NextPage = () => {
                       </div>
                     </div>
                     {data.unreadCountsPerRoom[chatRoom.id] !== 0 ? (
-                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500">
+                      <div className="flex items-center justify-center w-5 h-5 bg-red-500 rounded-full">
                         <div className="text-sm text-white">
                           {data.unreadCountsPerRoom[chatRoom.id]}
                         </div>

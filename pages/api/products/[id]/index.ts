@@ -6,13 +6,39 @@ import client from "@libs/client/client";
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === "POST") {
     const {
-      query: { id, buyer },
+      query: { id },
+      body: { buyerId },
       session: { user },
     } = req;
-    if (!id || !buyer) {
-      return res.status(404).end({ error: "request query, id or sellor, is not given." });
+    if (!id || !buyerId) {
+      return res
+        .status(404)
+        .end({ error: "request query, id or sellor, is not given." });
+    }
+    const reserveExist = await client.reservation.findFirst({
+      where: {
+        productId: Number(id),
+      },
+    });
+    if (reserveExist) {
+      // 예약한 사람과 사려는 사람이 다른 경우에 에러 메세지가 나온다.
+      if (reserveExist.userId !== Number(buyerId)) {
+        return res
+          .status(404)
+          .json({
+            error: "buyer is not the reserved user. so you can't sell.",
+          });
+      } else {
+        // 예약한 사람에게 물건을 판매하는 경우 기존의 예약은 삭제하고 거래완료를 한다.
+        await client.reservation.delete({
+          where: {
+            id: reserveExist.id,
+          },
+        });
+      }
     }
     // login user sells
+    // 사려는 자에게 물건을 파는 경우 sale과 purchase를 만든다.
     const saleProduct = await client.sale.create({
       data: {
         user: {
@@ -33,7 +59,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       data: {
         user: {
           connect: {
-            id: +buyer,
+            id: +buyerId,
           },
         },
         product: {
@@ -49,8 +75,41 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       },
       data: {
         isSold: true, // this product has been sold. isSell is absurd and isSold is correct but I will leave unchanged
+        isReserved: false,
       },
     });
+
+    const product = await client.product.findUnique({
+      where: {
+        id: +id,
+      },
+      select: {
+        isSold: true,
+        isReserved: true,
+      },
+      // user: {
+      //   select: {
+      //     id: true,
+      //     name: true,
+      //     avatar: true,
+      //   },
+      // },
+      // productReviews: {
+      //   select: {
+      //     createdBy: {
+      //       select: {
+      //         name: true,
+      //         avatar: true,
+      //       },
+      //     },
+      //     review: true,
+      //     score: true,
+      //     createdAt: true,
+      //   },
+      // },
+    });
+    console.log("product.isReserved: ", product?.isReserved);
+    console.log("product.isSold: ", product?.isSold);
     res.json({ ok: true, purchaseProduct, saleProduct });
   }
   if (req.method === "GET") {
@@ -60,7 +119,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     } = req;
     // const page = req.query.page ? (req.query.page as String) : "";
     if (!id) {
-      return res.status(404).end({ error: "request query is not given." });
+      return res.status(404).json({ error: "request query is not given." });
     }
     const product = await client.product.findUnique({
       where: {
@@ -147,8 +206,17 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     //console.log("product: ", product);
     //console.log("relatedProducts: ", relatedProducts);
     console.log("/api/products/[id] : id, isLiked ", id, isLiked);
-    res.status(200).json({ ok: true, isLiked, product: product, relatedProducts: relatedProducts });
+    res
+      .status(200)
+      .json({
+        ok: true,
+        isLiked,
+        product: product,
+        relatedProducts: relatedProducts,
+      });
   }
 };
 
-export default withApiSession(withHandler({ methods: ["GET", "POST"], handler, isPrivate: true }));
+export default withApiSession(
+  withHandler({ methods: ["GET", "POST"], handler, isPrivate: true })
+);

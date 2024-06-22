@@ -7,7 +7,7 @@ import { ChatRoom, Product, SellerChat, User } from "@prisma/client";
 import { useForm } from "react-hook-form";
 import useMutation from "@libs/client/useMutation";
 import Message from "@components/Message";
-import { MutableRefObject, useEffect, useRef, useState } from "react";
+import { MutableRefObject, useEffect, useRef, useState, useMemo } from "react";
 import { useIntersectionObserver } from "@libs/client/useIntersectionObserver";
 import { FiChevronsDown } from "react-icons/fi";
 import { cls } from "@libs/utils";
@@ -47,22 +47,28 @@ interface ChatDetailProps {
 }
 
 const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
-  console.log("chatRoomData: ", chatRoomData);
+  // console.log("chatRoomData: ", chatRoomData);
   const [newMessageSubmitted, setNewMessageSubmitted] = useState(false);
   const { user } = useUser();
   const router = useRouter();
   //// router.query.id: chatRoom id
   //// chatRoom list 가져오기
-  const { buyerId, sellerId, productId } = router.query;
-  console.log(
-    "chats.id.tsx -------- buyerId, sellerId, productId: ",
-    buyerId,
-    sellerId,
-    productId
-  );
+  // const { buyerId, sellerId, productId } = router.query;
+  // console.log(
+  //   "chats.id.tsx -------- buyerId, sellerId, productId: ",
+  //   buyerId,
+  //   sellerId,
+  //   productId
+  // );
   const { data, mutate } = useSWR<SellerChatResponse>(
-    router.query.id ? `/api/chat/${router.query.id}` : null,
-    { refreshInterval: 1000 }
+    router.query.id ? `/api/chat/${router.query.id}` : null
+    // { refreshInterval: 1000 }
+  );
+
+  console.log("/api/chat/${router.query.id}: ", JSON.stringify(data, null, 2));
+  console.log(
+    "data?.chatRoomOfSeller?.buyerId: ",
+    data?.chatRoomOfSeller?.buyerId
   );
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -90,6 +96,12 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   //// api server를 통해서 chatRoom에 chat data를 보내기
   const [sendChat, { loading: sendChatDataLoading, data: sendChatData }] =
     useMutation(`/api/chat/${router.query.id}/chats`);
+  const [toggleReservation] = useMutation(
+    `/api/products/${data?.chatRoomOfSeller?.productId}/reservation`
+  );
+  const [sellComplete] = useMutation(
+    `/api/products/${data?.chatRoomOfSeller?.productId}`
+  );
   const onValid = (chatForm: ChatFormResponse) => {
     if (sendChatDataLoading) return;
     reset();
@@ -130,6 +142,147 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     setNewMessageSubmitted(false);
   }, [isScrollToBottom]);
 
+  const [selectedValue, setSelectedValue] = useState("");
+  const [productStatus, setProductStatus] = useState("");
+
+  const initialOptions = useMemo(
+    () => [
+      { value: "판매중", label: "판매중", active: false },
+      { value: "예약중", label: "예약중", active: true },
+      { value: "거래완료", label: "거래완료", active: true },
+    ],
+    []
+  );
+
+  // 드롭다운에서 선택 변경 시 호출되는 함수
+  const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedValue(event.target.value);
+  };
+
+  const [options, setOptions] = useState(initialOptions);
+
+  useEffect(() => {
+    const reserved = data?.chatRoomOfSeller?.product?.isReserved;
+    const sold = data?.chatRoomOfSeller?.product?.isSold;
+    const status =
+      (data?.chatRoomOfSeller?.product?.isReserved && "예약중") ||
+      (data?.chatRoomOfSeller?.product?.isSold && "거래완료") ||
+      "판매중";
+    setProductStatus(status);
+    setSelectedValue(status);
+  }, [
+    // productStatus,
+    data?.chatRoomOfSeller?.product?.isReserved,
+    data?.chatRoomOfSeller?.product?.isSold,
+  ]);
+
+  useEffect(() => {
+    const reserved = data?.chatRoomOfSeller?.product?.isReserved;
+    const sold = data?.chatRoomOfSeller?.product?.isSold;
+    const getUpdatedOptions = (pStatus: string) => {
+      if (pStatus === "판매중") {
+        return initialOptions.map((option: any) => ({
+          ...option,
+          active: option.value !== "판매중",
+        }));
+      }
+      if (pStatus === "예약중") {
+        return initialOptions.map((option: any) => ({
+          ...option,
+          active: option.value !== "예약중",
+        }));
+      }
+      if (pStatus === "거래완료") {
+        return initialOptions.map((option: any) => ({
+          ...option,
+          active: false,
+        }));
+      }
+      return initialOptions;
+    };
+    setOptions(getUpdatedOptions(productStatus));
+  }, [
+    productStatus,
+    initialOptions,
+    data?.chatRoomOfSeller?.product?.isReserved,
+    data?.chatRoomOfSeller?.product?.isSold,
+  ]);
+
+  // useEffect(() => {
+  //   let statusIsSold;
+  //   let statusIsReserved;
+  //   statusIsSold = data?.chatRoomOfSeller.product.isSold;
+  //   statusIsReserved = data?.chatRoomOfSeller.product.isReserved;
+  //   // 선택된 값이 유효하고 빈 값이 아닐 때만 API 요청을 보냅니다.
+
+  //   if (statusIsSold === false && statusIsReserved === false) {
+  //     setSelectedValue("판매중");
+  //   }
+  //   if (statusIsSold === true) {
+  //     setSelectedValue("거래완료");
+  //   }
+  //   if (statusIsReserved === true) {
+  //     setSelectedValue("예약중");
+  //   }
+  //   if (statusIsSold === true && statusIsReserved === true) {
+  //     console.error(
+  //       "isSold and isReserved should not be true at the same time."
+  //     );
+  //   }
+  // }, [
+  //   data?.chatRoomOfSeller?.product.isSold,
+  //   data?.chatRoomOfSeller?.product.isReserved,
+  // ]);
+
+  // api server call is here
+  useEffect(() => {
+    const reserved = data?.chatRoomOfSeller?.product?.isReserved;
+    const sold = data?.chatRoomOfSeller?.product?.isSold;
+    const selling = !reserved && !sold;
+    console.log("selectedValue: ", selectedValue);
+    console.log("reserved: ", reserved);
+    // console.log("sold: ", sold);
+    if (selling) {
+      // 로그인 유저가 파는 사람이고 구매자가 예약 하겠다고 하면 예약중으로 변경한다.
+      if (selectedValue === "예약중") {
+        console.log("api to do: 예약중");
+        toggleReservation({ buyerId: data?.chatRoomOfSeller?.buyerId });
+      }
+      // 로그인 유저가 파는 사람이고 구매자가 예약중이면 구매자의 예약을 제거하고 구매자에게 판매 완료한다.
+      if (selectedValue === "거래완료") {
+        console.log("api to do: 거래완료");
+        sellComplete({ buyerId: data?.chatRoomOfSeller?.buyerId });
+      }
+    } else if (reserved) {
+      if (selectedValue === "판매중") {
+        // 로그인 유저가 파는 사람이고 구매자가 예약중인 상태에서 구매자의 예약을 취소한다.
+        console.log("api to do: 예약중에서 판매중으로 바뀌도록 한다.");
+        toggleReservation({ buyerId: data?.chatRoomOfSeller?.buyerId });
+      } else if (selectedValue === "거래완료") {
+        // 로그인 유저가 파는 사람이고 구매자가 예약중이면 구매자의 예약을 제거하고 구매자에게 판매 완료한다.
+        console.log("api to do: 거래완료");
+        sellComplete({ buyerId: data?.chatRoomOfSeller?.buyerId });
+      } else if (selectedValue === "거래완료") {
+        // 거래 완료시 거래 완료 선택시 할일 없음
+        console.log("할일 없음");
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    selectedValue,
+    data?.chatRoomOfSeller?.product?.isReserved,
+    data?.chatRoomOfSeller?.product?.isSold,
+    data?.chatRoomOfSeller?.buyerId,
+  ]);
+
+  // useEffect(() => {
+  //   setOptions(getUpdatedOptions(selectedValue));
+  // }, [selectedValue]);
+
+  // console.log("=====data: ", JSON.stringify(data, null, 2));
+  // console.log("isReserved: ", data?.chatRoomOfSeller?.product?.isReserved);
+  // console.log("isSold: ", data?.chatRoomOfSeller?.product?.isSold);
+  // console.log(data?.chatRoomOfSeller?.product?.isReserved)
   return (
     <Layout
       seoTitle={`${
@@ -165,9 +318,19 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               />
               <div className="flex flex-col space-y-1">
                 <div className="flex flex-row items-center space-x-2">
-                  <div className="">
-                    <Dropdown />
-                  </div>
+                  {productStatus !== "거래완료" ? (
+                    <div className="">
+                      <Dropdown
+                        options={options}
+                        value={selectedValue}
+                        onChange={handleChange}
+                      />
+                    </div>
+                  ) : (
+                    <div className="rounded-full bg-white px-2 py-1">
+                      거래완료
+                    </div>
+                  )}
                   {/* <div className="text-gray-900">
                     {data?.chatRoomOfSeller?.product?.status}
                   </div> */}

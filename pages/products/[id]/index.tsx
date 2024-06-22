@@ -61,7 +61,9 @@ const ItemDetail: NextPage = () => {
     { loading: talkToSellerLoading, data: talkToSellerData },
   ] = useMutation(`/api/chat/`);
   const [buyItem, { loading: buyItemLoading, data: buyItemData }] = useMutation(
-    `/api/products/${router.query.id}?seller=${data?.product.userId.toString()}`
+    `/api/products/${
+      router.query.id
+    }?seller=${data?.product?.userId.toString()}`
   );
   const isProvider = data?.product?.userId === user?.id;
   const isConsumer = data?.product?.userId !== user?.id;
@@ -249,7 +251,7 @@ const ItemDetail: NextPage = () => {
             clsProps="object-scale-down"
             imgName={data?.product?.name}
           />
-          <div className="flex cursor-pointer items-center space-x-3 border-b border-t py-3">
+          <div className="flex items-center py-3 space-x-3 border-t border-b cursor-pointer">
             {data?.product?.user?.avatar ? (
               <ImgComponent
                 imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.product?.user?.avatar}/public`}
@@ -292,13 +294,32 @@ const ItemDetail: NextPage = () => {
             </div>
           </div>
           <div className="mt-5">
-            {isProvider ? (
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-row gap-3">
+                <div className="text-base">거래완료:</div>
+                <div className="text-base">말론</div>
+                <button className="text-sm bg-slate-200">
+                  채팅방으로 가기
+                </button>
+              </div>
+              <div className="flex flex-row gap-3">
+                <div className="text-base">예약중:</div>
+                <div className="text-base">브란도</div>
+                <button className="text-sm bg-slate-200">
+                  채팅방으로 가기
+                </button>
+              </div>
+              <div className="flex flex-row gap-3">
+                <div className="text-sm">팬매중</div>
+              </div>
+            </div>
+            {/* {isProvider ? (
               <Dropdown onValueChange={handleDropdownChange} />
-            ) : null}
-            <h1 className="text-3xl font-bold text-gray-900">
+            ) : null} */}
+            <h1 className="mt-4 text-3xl font-bold text-gray-900">
               {data ? data?.product?.name : "Now Loading..."}
             </h1>
-            <span className="mt-3 block text-3xl text-gray-900">
+            <span className="block mt-3 text-3xl text-gray-900">
               ￦{data ? data?.product?.price : "Now Loading..."}
             </span>
             {/* <div className="flex items-center justify-between space-x-2">
@@ -355,7 +376,7 @@ const ItemDetail: NextPage = () => {
               </button>
             </div> */}
             <div className="my-3">
-              <div className="border-t py-3 text-xl font-bold">
+              <div className="py-3 text-xl font-bold border-t">
                 {/*@ts-ignore*/}
                 {data?.product?.productReviews?.length > 0
                   ? "Review"
@@ -366,7 +387,7 @@ const ItemDetail: NextPage = () => {
                 data?.product?.productReviews.map((review) => (
                   <div
                     key={review.id}
-                    className="flex flex-row justify-items-start space-x-12"
+                    className="flex flex-row space-x-12 justify-items-start"
                   >
                     <div className="flex flex-col items-center justify-center space-y-1">
                       {review.createdBy?.avatar ? (
@@ -378,13 +399,13 @@ const ItemDetail: NextPage = () => {
                           imgName={review.createdBy?.name}
                         />
                       ) : (
-                        <div className="h-12 w-12 rounded-full bg-slate-500" />
+                        <div className="w-12 h-12 rounded-full bg-slate-500" />
                       )}
                       <span className="font-medium text-gray-900">
                         {review?.createdBy.name}
                       </span>
                     </div>
-                    <div className="flex flex-row items-center justify-evenly space-x-20">
+                    <div className="flex flex-row items-center space-x-20 justify-evenly">
                       <div className="flex flex-col items-start">
                         <div className="flex items-center">
                           {[1, 2, 3, 4, 5].map((star) => (
@@ -458,7 +479,7 @@ const ItemDetail: NextPage = () => {
                   {data?.isLike ? (
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="h-6 w-6"
+                      className="w-6 h-6"
                       viewBox="0 0 20 20"
                       fill="currentColor"
                     >
@@ -470,7 +491,7 @@ const ItemDetail: NextPage = () => {
                     </svg>
                   ) : (
                     <svg
-                      className="h-6 w-6 "
+                      className="w-6 h-6 "
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"

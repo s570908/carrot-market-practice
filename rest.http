@@ -1,8 +1,26 @@
 ### Global Scope
 
+### @index=47
+# @title = /api/products/:id
+@cookie47=carrotsession=Fe26.2*1*aa94a242d07ed5e50d05223e590c470dea0aabc98be64b9240b41fd32c93ea05*1eI0rQodaQgCDZphaJLGjQ*miv0ne_9iTi8x_hnso0WujaYus_u8-B8Dqv_wwyE-D4*1719119550711*a575562d6c2a33703ebcc4cdd86e0af344f08d485669198c4036029bf6b12287*zE7DD5sfEHslgXIly_kJQL3N09JEOHl1dRZpiAaXjqI~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
+# @prompt idForSale47 Your productID for sale
+POST  http://localhost:3000/api/products/{{idForSale47}}
+Cookie: {{cookie47}}
+Content-Type: application/json
+
+{"buyerId": "6"}
+
+### @index=46
+# @title = /api/products/:id
+@cookie46=carrotsession=Fe26.2*1*9f4cfa13aa24a341dbcc6c61d9a036009b04ace5b4c831e54ec3894db6545443*hjr5EcHKfR8tLPiVkUwNsw*VM6G9XvGBGHnLhB1ZgTEYE4DF_b2wZYUzy78l-xG9kA*1717912993265*70a01b52d53768f49184fa1b3d1affde5d18033d6b1086568d8dca301f82c06e*FY1b_6ZUcM4ElwibuLYr5Dry2MYyGob5IIslbvj8t24~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
+# @prompt idForSale46 Your productID for sale
+GET http://localhost:3000/api/products/{{idForSale46}}
+Cookie: {{cookie46}}
+Content-Type: application/json
+
 ### @index=45
 # @title = /api/products/:id/reservation
-@cookie45=carrotsession=Fe26.2*1*af3ccf1dfa49933538e8778572e4d5c5da0f9e813bed376aee73b5504f508437*knNkIzY66K0olFoMdePhJg*3jgiCowYnU0F5OJCxjCwuKu6KdxZ0WheWws8nIONzqw*1709478251197*0d741ea69df93647ee83be1a41d848028d700199a8cced5fdd2194a827998b6c*d4U1MFYaNdv2L7u11pbpggrtKj3lNhqdkSmtETE4_lI~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
+@cookie45=carrotsession=Fe26.2*1*8451570640afd1f5557b4b338fff2bc8e8254cc6826aedfbbce750866406c9cc*Yi4bMgjgE9BmTx9TxwptNg*3XpFlBeaZN9PpOqsZc_dKB5a94AQ9ZbVUQe8-nf_Lhw*1719115629742*945381c932b3ef3917b1aa2689cb5fe7c5c7c21dc9c7cde3027265dce70543df*QbgKlviNiT8wGqy8fri3xWTl8-QbPl1COmBpzpHwB3Q~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
 # @prompt idForProduct45 Your productID
 GET  http://localhost:3000/api/products/{{idForProduct45}}/reservation
 Cookie: {{cookie45}}
@@ -10,11 +28,13 @@ Content-Type: application/json
 
 ### @index=45
 # @title = /api/products/:id/reservation
-@cookie45=carrotsession=Fe26.2*1*af3ccf1dfa49933538e8778572e4d5c5da0f9e813bed376aee73b5504f508437*knNkIzY66K0olFoMdePhJg*3jgiCowYnU0F5OJCxjCwuKu6KdxZ0WheWws8nIONzqw*1709478251197*0d741ea69df93647ee83be1a41d848028d700199a8cced5fdd2194a827998b6c*d4U1MFYaNdv2L7u11pbpggrtKj3lNhqdkSmtETE4_lI~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
+@cookie45=carrotsession=Fe26.2*1*aa94a242d07ed5e50d05223e590c470dea0aabc98be64b9240b41fd32c93ea05*1eI0rQodaQgCDZphaJLGjQ*miv0ne_9iTi8x_hnso0WujaYus_u8-B8Dqv_wwyE-D4*1719119550711*a575562d6c2a33703ebcc4cdd86e0af344f08d485669198c4036029bf6b12287*zE7DD5sfEHslgXIly_kJQL3N09JEOHl1dRZpiAaXjqI~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
 # @prompt idForProduct45 Your productID
 POST  http://localhost:3000/api/products/{{idForProduct45}}/reservation
 Cookie: {{cookie45}}
 Content-Type: application/json
+
+{"buyerId" : "6"}
 
 ### @index=44
 # @title = https://api.cloudflare.com/client/v4/accounts/<ACCOUNT_ID>/stream/
@@ -376,9 +396,9 @@ Content-Type: application/json
 
 ### @index=13
 # @title=POST /users/login
-@email13=client0@client.com
+@email13=kimchulsoo@client.com
 @password13=121212
-POST http://localhost:3095/api/users/login
+POST http://localhost:3000/api/users/login
 Content-Type: application/json
 
 {

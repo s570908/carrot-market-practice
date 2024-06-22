@@ -47,12 +47,6 @@ model Token {
   updatedAt DateTime @updatedAt
 }
 
-enum Status {
-  selling
-  reserved
-  sold
-}
-
 model Product {
   id             Int           @id @default(autoincrement())
   createdAt      DateTime      @default(now())
@@ -64,6 +58,7 @@ model Product {
   price          Int
   description    String        @db.MediumText
   isSold         Boolean       @default(false)
+  isReserved     Boolean       @default(false)
   favs           Fav[]
   sales          Sale[]
   purchases      Purchase[]
@@ -71,7 +66,6 @@ model Product {
   productReviews Review[]      @relation(name: "productReviews")
   chatRoom       ChatRoom[]    @relation(name: "product")
   Reservations   Reservation[]
-  status         Status        @default(selling)
 }
 
 model Fav {

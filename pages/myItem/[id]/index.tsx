@@ -170,7 +170,7 @@ const ItemDetail: NextPage = () => {
               </Link>
             </div>
           </div>
-          <div><Dropdown onValueChange={handleDropdownChange} /></div>
+          {/* <div><Dropdown onValueChange={handleDropdownChange} /></div> */}
           <div className="mt-5">
             <h1 className="text-3xl font-bold text-gray-900">
               {data ? data?.product?.name : "Now Loading..."}
