@@ -54,10 +54,15 @@ function Dropdown({
 }) {
   return (
     <select
+      className="rounded-full"
       onClick={(e) => e.stopPropagation()}
-      value={value}
+      // value={value}
+      value=""
       onChange={onChange}
     >
+      <option value="" hidden>
+        상태 변경
+      </option>
       {options.map((option: any) =>
         option.active ? (
           <option key={option.value} value={option.value}>

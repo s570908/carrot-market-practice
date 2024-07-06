@@ -21,6 +21,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
     where: {
       productId: Number(id),
     },
+    include: {
+      user: {
+        select: {
+          id: true,
+          name: true
+        }
+      }
+    }
   })
 
   if (req.method === "GET") {

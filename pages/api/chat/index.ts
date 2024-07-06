@@ -103,6 +103,8 @@ async function handler(
               name: true,
               image: true,
               price: true,
+              isReserved: true,
+              isSold: true
             },
           },
           sellerChat: {

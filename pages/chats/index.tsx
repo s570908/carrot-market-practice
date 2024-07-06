@@ -114,8 +114,12 @@ const Chats: NextPage = () => {
                 <div className="flex flex-col space-y-1">
                   <div className="flex flex-row items-center space-x-2">
                     <div className="text-gray-900">
-                      to do
-                      {/* {data?.chatRoomListRelatedProduct[0]?.product?.status} */}
+                      
+                      {data?.chatRoomListRelatedProduct[0]?.product?.isReserved
+                        ? "예약중"
+                        : data?.chatRoomListRelatedProduct[0]?.product?.isSold
+                        ? "거래완료"
+                        : "판매중"}
                     </div>
                     <div className="text-gray-900">
                       {data?.chatRoomListRelatedProduct[0]?.product?.name}
