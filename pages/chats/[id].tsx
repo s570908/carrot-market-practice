@@ -284,6 +284,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       }
     }
     setSelectedValue("");
+    reservationMutate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedValue, reserved, sold, data?.chatRoomOfSeller?.buyerId]);
 
@@ -320,13 +321,19 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       ];
     }
   }
-  console.log("A: ", user?.id !== sellerUserId);
-  console.log("B: ", sold);
-  console.log("C: ", reserved && chatUserId !== reservationUserId);
-  console.log("C1: ", reserved);
-  console.log("C2: ", chatUserId !== reservationUserId);
+  console.log("A, user?.id !== sellerUserId: ", user?.id !== sellerUserId);
+  console.log("B, sold: ", sold);
   console.log(
-    "D: ",
+    "C, reserved && chatUserId !== reservationUserId: ",
+    reserved && chatUserId !== reservationUserId
+  );
+  console.log("C1, reserved: ", reserved);
+  console.log(
+    "C2, chatUserId !== reservationUserId: ",
+    chatUserId !== reservationUserId
+  );
+  console.log(
+    "D = !(A || B || C): ",
     !(
       user?.id !== sellerUserId ||
       sold ||
