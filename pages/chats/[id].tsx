@@ -1,17 +1,20 @@
-import type { NextPage } from "next";
+import type { GetServerSideProps, NextPage } from "next";
 import Layout from "@components/Layout";
 import useUser from "@libs/client/useUser";
 import { useRouter } from "next/router";
 import useSWR from "swr";
-import { SellerChat, User } from "@prisma/client";
+import { ChatRoom, Product, SellerChat, User } from "@prisma/client";
 import { useForm } from "react-hook-form";
 import useMutation from "@libs/client/useMutation";
 import Message from "@components/Message";
-import { MutableRefObject, useEffect, useRef, useState } from "react";
+import { MutableRefObject, useEffect, useRef, useState, useMemo } from "react";
 import { useIntersectionObserver } from "@libs/client/useIntersectionObserver";
 import { FiChevronsDown } from "react-icons/fi";
 import { cls } from "@libs/utils";
 import Loading from "@components/Loading";
+import ImgComponent from "@components/ImgComponent";
+import { getChatRoomData } from "@libs/server/chatUtils";
+import Dropdown from "@components/Dropdown";
 
 interface ChatWithUser extends SellerChat {
   user: User;
@@ -22,23 +25,50 @@ interface SellerChatResponse {
   chatRoomOfSeller: {
     buyerId: number;
     sellerId: number;
+    productId: number;
     buyer: User;
     seller: User;
+    product: Product;
   };
 }
 interface ChatFormResponse {
   chatMsg: string;
 }
 
-const ChatDetail: NextPage = () => {
+interface ChatRoomWithDetails extends ChatRoom {
+  buyer: User;
+  seller: User;
+  product: Product;
+  // chats: ChatMessage[];
+}
+
+interface ChatDetailProps {
+  chatRoomData: ChatRoomWithDetails;
+}
+
+const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
+  // console.log("chatRoomData: ", chatRoomData);
   const [newMessageSubmitted, setNewMessageSubmitted] = useState(false);
   const { user } = useUser();
   const router = useRouter();
   //// router.query.id: chatRoom id
   //// chatRoom list 가져오기
+  // const { buyerId, sellerId, productId } = router.query;
+  // console.log(
+  //   "chats.id.tsx -------- buyerId, sellerId, productId: ",
+  //   buyerId,
+  //   sellerId,
+  //   productId
+  // );
   const { data, mutate } = useSWR<SellerChatResponse>(
-    router.query.id ? `/api/chat/${router.query.id}` : null,
-    { refreshInterval: 1000 }
+    router.query.id ? `/api/chat/${router.query.id}` : null
+    // { refreshInterval: 1000 }
+  );
+
+  console.log("/api/chat/${router.query.id}: ", JSON.stringify(data, null, 2));
+  console.log(
+    "data?.chatRoomOfSeller?.buyerId: ",
+    data?.chatRoomOfSeller?.buyerId
   );
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -48,7 +78,9 @@ const ChatDetail: NextPage = () => {
     threshold: 0, // visibleRef가 모두 보였을 때만 true,
     freezeOnceVisible: false, // 계속하여 감지하겠다.
   });
-  const scrollToBottom = (elementRef: MutableRefObject<HTMLDivElement | null>) => {
+  const scrollToBottom = (
+    elementRef: MutableRefObject<HTMLDivElement | null>
+  ) => {
     if (elementRef) {
       elementRef.current!.scrollIntoView({
         behavior: "smooth",
@@ -62,8 +94,13 @@ const ChatDetail: NextPage = () => {
 
   const { register, handleSubmit, reset } = useForm<ChatFormResponse>();
   //// api server를 통해서 chatRoom에 chat data를 보내기
-  const [sendChat, { loading: sendChatDataLoading, data: sendChatData }] = useMutation(
-    `/api/chat/${router.query.id}/chats`
+  const [sendChat, { loading: sendChatDataLoading, data: sendChatData }] =
+    useMutation(`/api/chat/${router.query.id}/chats`);
+  const [toggleReservation] = useMutation(
+    `/api/products/${data?.chatRoomOfSeller?.productId}/reservation`
+  );
+  const [sellComplete] = useMutation(
+    `/api/products/${data?.chatRoomOfSeller?.productId}`
   );
   const onValid = (chatForm: ChatFormResponse) => {
     if (sendChatDataLoading) return;
@@ -105,6 +142,147 @@ const ChatDetail: NextPage = () => {
     setNewMessageSubmitted(false);
   }, [isScrollToBottom]);
 
+  const [selectedValue, setSelectedValue] = useState("");
+  const [productStatus, setProductStatus] = useState("");
+
+  const initialOptions = useMemo(
+    () => [
+      { value: "판매중", label: "판매중", active: false },
+      { value: "예약중", label: "예약중", active: true },
+      { value: "거래완료", label: "거래완료", active: true },
+    ],
+    []
+  );
+
+  // 드롭다운에서 선택 변경 시 호출되는 함수
+  const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedValue(event.target.value);
+  };
+
+  const [options, setOptions] = useState(initialOptions);
+
+  useEffect(() => {
+    const reserved = data?.chatRoomOfSeller?.product?.isReserved;
+    const sold = data?.chatRoomOfSeller?.product?.isSold;
+    const status =
+      (data?.chatRoomOfSeller?.product?.isReserved && "예약중") ||
+      (data?.chatRoomOfSeller?.product?.isSold && "거래완료") ||
+      "판매중";
+    setProductStatus(status);
+    setSelectedValue(status);
+  }, [
+    // productStatus,
+    data?.chatRoomOfSeller?.product?.isReserved,
+    data?.chatRoomOfSeller?.product?.isSold,
+  ]);
+
+  useEffect(() => {
+    const reserved = data?.chatRoomOfSeller?.product?.isReserved;
+    const sold = data?.chatRoomOfSeller?.product?.isSold;
+    const getUpdatedOptions = (pStatus: string) => {
+      if (pStatus === "판매중") {
+        return initialOptions.map((option: any) => ({
+          ...option,
+          active: option.value !== "판매중",
+        }));
+      }
+      if (pStatus === "예약중") {
+        return initialOptions.map((option: any) => ({
+          ...option,
+          active: option.value !== "예약중",
+        }));
+      }
+      if (pStatus === "거래완료") {
+        return initialOptions.map((option: any) => ({
+          ...option,
+          active: false,
+        }));
+      }
+      return initialOptions;
+    };
+    setOptions(getUpdatedOptions(productStatus));
+  }, [
+    productStatus,
+    initialOptions,
+    data?.chatRoomOfSeller?.product?.isReserved,
+    data?.chatRoomOfSeller?.product?.isSold,
+  ]);
+
+  // useEffect(() => {
+  //   let statusIsSold;
+  //   let statusIsReserved;
+  //   statusIsSold = data?.chatRoomOfSeller.product.isSold;
+  //   statusIsReserved = data?.chatRoomOfSeller.product.isReserved;
+  //   // 선택된 값이 유효하고 빈 값이 아닐 때만 API 요청을 보냅니다.
+
+  //   if (statusIsSold === false && statusIsReserved === false) {
+  //     setSelectedValue("판매중");
+  //   }
+  //   if (statusIsSold === true) {
+  //     setSelectedValue("거래완료");
+  //   }
+  //   if (statusIsReserved === true) {
+  //     setSelectedValue("예약중");
+  //   }
+  //   if (statusIsSold === true && statusIsReserved === true) {
+  //     console.error(
+  //       "isSold and isReserved should not be true at the same time."
+  //     );
+  //   }
+  // }, [
+  //   data?.chatRoomOfSeller?.product.isSold,
+  //   data?.chatRoomOfSeller?.product.isReserved,
+  // ]);
+
+  // api server call is here
+  useEffect(() => {
+    const reserved = data?.chatRoomOfSeller?.product?.isReserved;
+    const sold = data?.chatRoomOfSeller?.product?.isSold;
+    const selling = !reserved && !sold;
+    console.log("selectedValue: ", selectedValue);
+    console.log("reserved: ", reserved);
+    // console.log("sold: ", sold);
+    if (selling) {
+      // 로그인 유저가 파는 사람이고 구매자가 예약 하겠다고 하면 예약중으로 변경한다.
+      if (selectedValue === "예약중") {
+        console.log("api to do: 예약중");
+        toggleReservation({ buyerId: data?.chatRoomOfSeller?.buyerId });
+      }
+      // 로그인 유저가 파는 사람이고 구매자가 예약중이면 구매자의 예약을 제거하고 구매자에게 판매 완료한다.
+      if (selectedValue === "거래완료") {
+        console.log("api to do: 거래완료");
+        sellComplete({ buyerId: data?.chatRoomOfSeller?.buyerId });
+      }
+    } else if (reserved) {
+      if (selectedValue === "판매중") {
+        // 로그인 유저가 파는 사람이고 구매자가 예약중인 상태에서 구매자의 예약을 취소한다.
+        console.log("api to do: 예약중에서 판매중으로 바뀌도록 한다.");
+        toggleReservation({ buyerId: data?.chatRoomOfSeller?.buyerId });
+      } else if (selectedValue === "거래완료") {
+        // 로그인 유저가 파는 사람이고 구매자가 예약중이면 구매자의 예약을 제거하고 구매자에게 판매 완료한다.
+        console.log("api to do: 거래완료");
+        sellComplete({ buyerId: data?.chatRoomOfSeller?.buyerId });
+      } else if (selectedValue === "거래완료") {
+        // 거래 완료시 거래 완료 선택시 할일 없음
+        console.log("할일 없음");
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    selectedValue,
+    data?.chatRoomOfSeller?.product?.isReserved,
+    data?.chatRoomOfSeller?.product?.isSold,
+    data?.chatRoomOfSeller?.buyerId,
+  ]);
+
+  // useEffect(() => {
+  //   setOptions(getUpdatedOptions(selectedValue));
+  // }, [selectedValue]);
+
+  // console.log("=====data: ", JSON.stringify(data, null, 2));
+  // console.log("isReserved: ", data?.chatRoomOfSeller?.product?.isReserved);
+  // console.log("isSold: ", data?.chatRoomOfSeller?.product?.isSold);
+  // console.log(data?.chatRoomOfSeller?.product?.isReserved)
   return (
     <Layout
       seoTitle={`${
@@ -118,11 +296,102 @@ const ChatDetail: NextPage = () => {
           : data?.chatRoomOfSeller?.buyer.name
       }`}
       canGoBack
-      backUrl={"/chats"}
+      // backUrl={"/chats"}
+      // backUrl={data?.chatRoomOfSeller?.buyerId === user?.id ? "/chats" : "back"}
+      backUrl={"back"}
     >
-      <div className="relative px-4 pb-12 pt-5">
+      <div className="relative h-full px-4 pb-12">
+        <div className="w-full max-w-xl border-b border-gray-200 bg-red-200 p-4">
+          <div
+            className="flex cursor-pointer items-center"
+            onClick={() => {
+              router.push(`/products/${data?.chatRoomOfSeller?.productId}`);
+            }}
+          >
+            <div className="flex items-center space-x-4">
+              <ImgComponent
+                width={80}
+                height={80}
+                clsProps="rounded-md bg-gray-400"
+                imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.chatRoomOfSeller?.product?.image}/public`}
+                imgName="사진"
+              />
+              <div className="flex flex-col space-y-1">
+                <div className="flex flex-row items-center space-x-2">
+                  {productStatus !== "거래완료" ? (
+                    <div className="">
+                      <Dropdown
+                        options={options}
+                        value={selectedValue}
+                        onChange={handleChange}
+                      />
+                    </div>
+                  ) : (
+                    <div className="rounded-full bg-white px-2 py-1">
+                      거래완료
+                    </div>
+                  )}
+                  {/* <div className="text-gray-900">
+                    {data?.chatRoomOfSeller?.product?.status}
+                  </div> */}
+                  <div className="text-gray-900">
+                    {data?.chatRoomOfSeller?.product?.name}
+                  </div>
+                </div>
+                <span className="text-gray-900">
+                  ￦{data?.chatRoomOfSeller?.product?.price}
+                </span>
+                <div className="text-gray-900">
+                  {data?.chatRoomOfSeller?.seller?.name}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="mt-2 flex flex-row justify-between">
+            <div
+              className="text-md cursor-pointer rounded-md border border-black p-1"
+              onClick={() => {
+                console.log("약속잡기가 클릭 되었습니다.");
+              }}
+            >
+              약속잡기
+            </div>
+            <div
+              className="text-md cursor-pointer rounded-md border border-black p-1"
+              onClick={() => {
+                console.log("송금요청이 클릭 되었습니다.");
+              }}
+            >
+              송금요청
+            </div>
+            <div
+              className="text-md cursor-pointer rounded-md border border-black p-1"
+              onClick={() => {
+                console.log("후기 보내기가 클릭 되었습니다.");
+              }}
+            >
+              후기 보내기
+            </div>
+            <div
+              className="text-md cursor-pointer rounded-md border border-black p-1"
+              onClick={() => {
+                console.log("장소공유가 클릭 되었습니다.");
+              }}
+            >
+              장소공유
+            </div>
+            <div
+              className="text-md cursor-pointer rounded-md border border-black p-1"
+              onClick={() => {
+                console.log("기타가 클릭 되었습니다.");
+              }}
+            >
+              기타
+            </div>
+          </div>
+        </div>
         <div
-          className="flex h-[calc(95vh-106px)] flex-col space-y-2 overflow-y-scroll py-5 transition-all"
+          className="flex h-[calc(95vh-300px)] flex-col space-y-2 overflow-y-auto py-5 transition-all"
           id="chatBox"
         >
           {data?.sellerChat?.map((message) => {
@@ -168,13 +437,18 @@ const ChatDetail: NextPage = () => {
               </div>
             </div>
           </form> */}
-          <form onSubmit={handleSubmit(onValid)} className="mt-10 w-full border-t px-1 py-1">
+          <form
+            onSubmit={handleSubmit(onValid)}
+            className="mt-10 w-full border-t px-1 py-1"
+          >
             <div className="relative w-full rounded-md bg-white px-2 py-2 outline-none">
               <input
                 {...register("chatMsg", { required: true, maxLength: 80 })}
                 maxLength={80}
                 placeholder={
-                  user === undefined ? "로그인 후 이용가능합니다." : "메세지를 입력해주세요."
+                  user === undefined
+                    ? "로그인 후 이용가능합니다."
+                    : "메세지를 입력해주세요."
                 }
                 className="w-full text-[15px] outline-none placeholder:text-gray-300"
               />
@@ -197,6 +471,23 @@ const ChatDetail: NextPage = () => {
       </div>
     </Layout>
   );
+};
+
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const chatRoomId = Number(context.params?.id);
+  let chatRoomData = await getChatRoomData(chatRoomId);
+
+  if (!chatRoomData) {
+    return {
+      notFound: true,
+    };
+  }
+
+  chatRoomData = JSON.parse(JSON.stringify(chatRoomData));
+
+  return {
+    props: { chatRoomData },
+  };
 };
 
 export default ChatDetail;

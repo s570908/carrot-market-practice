@@ -12,7 +12,13 @@ interface MessageProps {
   date?: any;
 }
 
-export default function Message({ message, reversed, name, avatar, date }: MessageProps) {
+export default function Message({
+  message,
+  reversed,
+  name,
+  avatar,
+  date,
+}: MessageProps) {
   return (
     <div
       className={cls(

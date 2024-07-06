@@ -12,6 +12,27 @@ interface ImgComponentProps {
   imgName?: string;
 }
 
+// const ImgComponent = ({
+//   isLayout,
+//   width,
+//   height,
+//   imgAdd,
+//   clsProps,
+//   layoutHeight,
+//   imgName,
+// }: ImgComponentProps) => {
+//   //console.log("imgAdd: ", imgAdd);
+//   return (
+//     <div className={cls(isLayout ? `relative ${layoutHeight}` : "")}>
+//       {isLayout ? (
+//         <Image src={`${imgAdd}`} layout="fill" className={clsProps} alt={imgName} />
+//       ) : (
+//         <Image src={`${imgAdd}`} width={width} height={height} className={clsProps} alt={imgName} />
+//       )}
+//     </div>
+//   );
+// };
+
 const ImgComponent = ({
   isLayout,
   width,
@@ -21,14 +42,26 @@ const ImgComponent = ({
   layoutHeight,
   imgName,
 }: ImgComponentProps) => {
-  //console.log("imgAdd: ", imgAdd);
   return (
-    <div className={cls(isLayout ? `relative ${layoutHeight}` : "")}>
-      {isLayout ? (
-        <Image src={`${imgAdd}`} layout="fill" className={clsProps} alt={imgName} />
-      ) : (
-        <Image src={`${imgAdd}`} width={width} height={height} className={clsProps} alt={imgName} />
-      )}
+    <div>
+      <div className={cls(isLayout ? `relative ${layoutHeight}` : "")}>
+        {isLayout ? (
+          <Image
+            src={`${imgAdd}`}
+            layout="fill"
+            className={clsProps}
+            alt={imgName}
+          />
+        ) : (
+          <Image
+            src={`${imgAdd}`}
+            width={width}
+            height={height}
+            className={clsProps}
+            alt={imgName}
+          />
+        )}
+      </div>
     </div>
   );
 };

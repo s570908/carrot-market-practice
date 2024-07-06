@@ -5,6 +5,9 @@ import { useRouter } from "next/router";
 import Head from "next/head";
 import useSWR from "swr";
 import useUser from "@libs/client/useUser";
+import { IoEllipsisVerticalSharp } from "react-icons/io5";
+import Modal from "./Modal";
+
 interface LayoutProps {
   title?: string;
   canGoBack?: boolean;
@@ -14,6 +17,7 @@ interface LayoutProps {
   seoTitle: string;
   isProfile?: boolean;
   notice?: boolean;
+  openModal?: boolean;
   [key: string]: any;
 }
 
@@ -38,10 +42,23 @@ export default function Layout({
   seoTitle,
   isProfile,
   notice,
+  openModal,
   ...rest
 }: LayoutProps) {
   const { user } = useUser();
   const [isNew, setIsNew] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const handleIconClick = () => {
+    setIsModalOpen(true); // 모달을 열기
+  };
+  const handleCloseModal = () => {
+    setIsModalOpen(false); // 모달 닫기
+    setShowConfirm(false);
+  };
+  const handleDeleteClick = () => {
+    setShowConfirm(true);
+  };
   const router = useRouter();
   const onClick = () => {
     if (backUrl === "back") {
@@ -53,7 +70,8 @@ export default function Layout({
   const { data } = useSWR<NewChatProps>(`/api/newchat`);
   useEffect(() => {
     data?.newChat?.map((chat) => {
-      if (chat.recentMsg?.isNew && chat.recentMsg.userId !== user?.id) setIsNew(true);
+      if (chat.recentMsg?.isNew && chat.recentMsg.userId !== user?.id)
+        setIsNew(true);
     });
   }, [data, user]);
 
@@ -85,7 +103,9 @@ export default function Layout({
             </svg>
           </button>
         ) : null}
-        {title ? <span className={cls(canGoBack ? "mx-auto" : "", "")}>{title}</span> : null}
+        {title ? (
+          <span className={cls(canGoBack ? "mx-auto" : "", "")}>{title}</span>
+        ) : null}
         {notice ? (
           <Link href="/blog">
             <a className="absolute right-4 rounded-md border-2 bg-orange-500 p-1 text-sm text-white hover:bg-orange-600">
@@ -93,8 +113,72 @@ export default function Layout({
             </a>
           </Link>
         ) : null}
+        {openModal ? (
+          <div className="">
+            <div>
+              <IoEllipsisVerticalSharp
+                onClick={handleIconClick}
+                className="cursor-pointer"
+              />
+            </div>
+            <div className="">
+              {!showConfirm ? (
+                <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
+                  <div className="flex cursor-pointer flex-col items-center justify-center">
+                    <div
+                      className="mb-2"
+                      onClick={() => {
+                        router.push(`/myItem/${router.query.id}/edit`);
+                      }}
+                    >
+                      게시글 수정
+                    </div>
+                    <div onClick={handleDeleteClick}>삭제</div>
+                  </div>
+                </Modal>
+              ) : (
+                <Modal
+                  isOpen={isModalOpen}
+                  onClose={handleCloseModal}
+                  // style={{
+                  //   top: "50%",
+                  //   left: "50%",
+                  //   bottom: "auto",
+                  //   right: "auto",
+                  // }}
+                >
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="mb-2"> 삭제하시겠습니까?</div>
+                    <div className="flex">
+                      <button
+                        className="mr-2 w-[70px] flex-1 rounded-md bg-gray-400"
+                        onClick={handleCloseModal}
+                      >
+                        취소
+                      </button>
+                      <button
+                        className="w-[70px] flex-1 rounded-md bg-orange-500"
+                        onClick={() => {
+                          console.log("삭제를 클릭했습니다.");
+                        }}
+                      >
+                        확인
+                      </button>
+                    </div>
+                  </div>
+                </Modal>
+              )}
+            </div>
+          </div>
+        ) : null}
       </div>
-      <div className={cls("z-0 pt-12", hasTabBar ? "pb-24" : "", isProfile ? "pb-5 sm:pb-10" : "")}>
+      <div
+        className={cls(
+          "z-0 pt-12",
+          hasTabBar ? "pb-24" : "",
+          isProfile ? "pb-5 sm:pb-10" : ""
+        )}
+      >
         {children}
       </div>
       {hasTabBar ? (
