@@ -10,6 +10,7 @@ import { Suspense, useState } from "react";
 import PaginationButton from "@components/PaginationButton";
 import client from "@libs/client/client";
 import { ReserveResponse } from "./api/apiTypes";
+import { Status } from "types/types";
 export interface ProductWithCount extends Product {
   favs: Fav[];
   _count: {
@@ -44,30 +45,38 @@ const Home: NextPage = () => {
     setPage((prev) => prev + 1);
   };
 
-  console.log("reserveData: ", reserveData);
+  console.log("===data: ", data);
   return (
     <Layout seoTitle="Home" title="홈" hasTabBar notice>
       <div className="flex flex-col space-y-5 divide-y px-4">
-        {data?.products?.map((product) => (
-          <Item
-            id={product.id}
-            key={product.id}
-            title={product.name}
-            price={product.price}
-            hearts={product._count?.favs}
-            photo={product.image}
-            isLike={product.favs
-              .map((uid) => {
-                if (uid.userId === user?.id) return true;
-              })
-              .includes(true)}
-            // isReserved={product.reservation
-            //   .map((uid) => {
-            //     if (uid.userId === user?.id) return true;
-            //   })
-            //   .includes(true)}
-          />
-        ))}
+        {data?.products?.map((product) => {
+          const reserved = product?.isReserved;
+          const sold = product?.isSold;
+          // const selling = !reserved && !sold;
+          let status = Status.Selling;
+          if (reserved) {
+            status = Status.Reserved;
+          } else if (sold) {
+            status = Status.Sold;
+          }
+
+          return (
+            <Item
+              id={product.id}
+              key={product.id}
+              title={product.name}
+              price={product.price}
+              hearts={product._count?.favs}
+              photo={product.image}
+              isLike={product.favs
+                .map((uid) => {
+                  if (uid.userId === user?.id) return true;
+                })
+                .includes(true)}
+              status={status}
+            />
+          );
+        })}
       </div>
       {data ? (
         <div className="group relative w-full">

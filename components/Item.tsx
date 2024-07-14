@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { cls } from "@libs/utils";
 import ImgComponent from "@components/ImgComponent";
+import { Status } from "types/types";
 
 interface ItemProps {
   title: string;
@@ -12,7 +13,7 @@ interface ItemProps {
   photo?: string;
   kind?: string;
   date?: Date;
-  // isReserved: boolean;
+  status?: Status;
 }
 
 const Item = ({
@@ -24,6 +25,7 @@ const Item = ({
   isLike,
   photo,
   date,
+  status,
 }: ItemProps) => {
   return (
     <Link href={`/products/${id}`}>
@@ -41,7 +43,13 @@ const Item = ({
             <span className="mt-1 font-medium text-gray-900">￦{price}</span>
           </div>
         </div>
-        <div>예약됨</div>
+        <div>
+          {status === Status.Reserved
+            ? "예약중"
+            : status === Status.Sold
+            ? "거래완료"
+            : "판매중"}
+        </div>
         {/* <div>{isReserved && <span className="mt-1 text-xs text-red-500">예약됨</span>}</div> */}
         <div className="flex items-end justify-end space-x-2">
           <div

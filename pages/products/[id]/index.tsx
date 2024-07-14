@@ -4,7 +4,7 @@ import Layout from "@components/Layout";
 import useSWR, { mutate, useSWRConfig } from "swr";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { Product, Reservation, Review, User } from "@prisma/client";
+import { ChatRoom, Product, Reservation, Review, User } from "@prisma/client";
 import useMutation from "@libs/client/useMutation";
 import { cls } from "@libs/utils";
 import useUser from "@libs/client/useUser";
@@ -69,6 +69,10 @@ const ItemDetail: NextPage = () => {
   // const { data: dataChatRoom } = useSWR(
   //   `/api/chat?productId=${router.query.id}`
   // ); // SWR을 사용하여 채팅방 목록을 불러옵니다, 제품 ID에 따라 필터링
+
+  const { data: chatRoomData, error } = useSWR(
+    `/api/chat?productId=${router.query.id}`
+  );
 
   const [toggleFav] = useMutation(`/api/products/${router.query.id}/fav`);
   const [
@@ -248,8 +252,27 @@ const ItemDetail: NextPage = () => {
     fetchChatRooms();
   }, [router.query.id]);
 
-  const onClick = () => {
+  const reserved = data?.product?.isReserved;
+  const sold = data?.product?.isSold;
+  const selling = !reserved && !sold;
+
+  const reservationUserName = reservationData?.reserve?.user?.name;
+
+  const queryId = Array.isArray(router.query.id)
+    ? router.query.id[0]
+    : router.query.id;
+  const productId = queryId ? parseInt(queryId, 10) : null;
+
+  const chatRoom = chatRoomData?.chatRoomListRelatedProduct?.filter(
+    (chatRoom: ChatRoom) =>
+      chatRoom.productId === productId &&
+      chatRoom.sellerId === user?.id &&
+      chatRoom.buyerId === reservationData?.reserve?.user?.id
+  );
+
+  const onChatRoom = () => {
     console.log("Clicked");
+    router.push(`/chats/${chatRoom[0].id}`);
   };
 
   return (
@@ -270,7 +293,7 @@ const ItemDetail: NextPage = () => {
             clsProps="object-scale-down"
             imgName={data?.product?.name}
           />
-          <div className="flex cursor-pointer items-center space-x-3 border-b border-t py-3">
+          <div className="flex items-center py-3 space-x-3 border-t border-b cursor-pointer">
             {data?.product?.user?.avatar ? (
               <ImgComponent
                 imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.product?.user?.avatar}/public`}
@@ -314,48 +337,27 @@ const ItemDetail: NextPage = () => {
           </div>
           <div className="mt-5">
             <div className="flex flex-col gap-2">
-              <div className="flex flex-row items-center gap-3">
-                {/* <div className="text-base">예약중:</div> */}
-                <div className="text-base">
-                  {data?.product?.isReserved
-                    ? "예약중: "
-                    : data?.product?.isSold
-                    ? "거래완료: "
-                    : "판매중"}
+              {selling ? (
+                <div className="text-base">판매중</div>
+              ) : reserved && isProvider ? (
+                <div className="flex flex-row items-center gap-3">
+                  <div className="text-base">
+                    {`${reservationUserName}가 예약중임`}
+                  </div>
+                  <button
+                    className="p-2 text-sm rounded-full bg-slate-200"
+                    onClick={onChatRoom}
+                  >
+                    예약자와의 채팅방으로 이동
+                  </button>
                 </div>
-                <div className="text-base">말론</div>
-                <button
-                  className="rounded-full bg-slate-200 p-2 text-sm"
-                  onClick={onClick}
-                >
-                  채팅방으로 이동
-                </button>
-                {/* <div className="text-base">
-                  {data?.product?.isReserved
-                    ? "예약중: "
-                    : data?.product?.isSold
-                    ? "거래완료: "
-                    : "판매중"}
-                </div>
-                <div className="text-base">
-                  {data?.product?.isReserved
-                    ? reservationData?.reserve?.user?.name
-                    : data?.product?.isSold
-                    ? "거래완료: "
-                    : "판매중"}
-                </div>
-                <div className="text-base">
-                  {data?.product?.isReserved ? (
-                    <button className="text-sm bg-slate-200">
-                      채팅방으로 가기
-                    </button>
-                  ) : data?.product?.isSold ? (
-                    "거래완료: "
-                  ) : (
-                    "판매중"
-                  )}
-                </div> */}
-              </div>
+              ) : reserved && reservationData?.reserve?.userId === user?.id ? (
+                <div className="text-base">내가 예약중임</div>
+              ) : reserved && reservationData?.reserve?.userId !== user?.id ? (
+                <div className="text-base">다른 사람이 예약중임</div>
+              ) : sold ? (
+                <div className="text-base">거래완료</div>
+              ) : null}
             </div>
             {/* {isProvider ? (
               <Dropdown onValueChange={handleDropdownChange} />
@@ -363,7 +365,7 @@ const ItemDetail: NextPage = () => {
             <h1 className="mt-4 text-3xl font-bold text-gray-900">
               {data ? data?.product?.name : "Now Loading..."}
             </h1>
-            <span className="mt-3 block text-3xl text-gray-900">
+            <span className="block mt-3 text-3xl text-gray-900">
               ￦{data ? data?.product?.price : "Now Loading..."}
             </span>
             {/* <div className="flex items-center justify-between space-x-2">
@@ -420,7 +422,7 @@ const ItemDetail: NextPage = () => {
               </button>
             </div> */}
             <div className="my-3">
-              <div className="border-t py-3 text-xl font-bold">
+              <div className="py-3 text-xl font-bold border-t">
                 {/*@ts-ignore*/}
                 {data?.product?.productReviews?.length > 0
                   ? "Review"
@@ -431,7 +433,7 @@ const ItemDetail: NextPage = () => {
                 data?.product?.productReviews.map((review) => (
                   <div
                     key={review.id}
-                    className="flex flex-row justify-items-start space-x-12"
+                    className="flex flex-row space-x-12 justify-items-start"
                   >
                     <div className="flex flex-col items-center justify-center space-y-1">
                       {review.createdBy?.avatar ? (
@@ -443,13 +445,13 @@ const ItemDetail: NextPage = () => {
                           imgName={review.createdBy?.name}
                         />
                       ) : (
-                        <div className="h-12 w-12 rounded-full bg-slate-500" />
+                        <div className="w-12 h-12 rounded-full bg-slate-500" />
                       )}
                       <span className="font-medium text-gray-900">
                         {review?.createdBy.name}
                       </span>
                     </div>
-                    <div className="flex flex-row items-center justify-evenly space-x-20">
+                    <div className="flex flex-row items-center space-x-20 justify-evenly">
                       <div className="flex flex-col items-start">
                         <div className="flex items-center">
                           {[1, 2, 3, 4, 5].map((star) => (
@@ -523,7 +525,7 @@ const ItemDetail: NextPage = () => {
                   {data?.isLike ? (
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="h-6 w-6"
+                      className="w-6 h-6"
                       viewBox="0 0 20 20"
                       fill="currentColor"
                     >
@@ -535,7 +537,7 @@ const ItemDetail: NextPage = () => {
                     </svg>
                   ) : (
                     <svg
-                      className="h-6 w-6 "
+                      className="w-6 h-6 "
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
