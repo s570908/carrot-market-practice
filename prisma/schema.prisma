@@ -26,8 +26,8 @@ model User {
   posts            Post[]
   answers          Answer[]
   wonderings       Wondering[]
-  writtenReviews   Review[]      @relation("writtenReviews")
-  receivedReviews  Review[]      @relation("receivedReviews")
+  writtenReviews   Review[]      @relation("writtenReviews") // 유저가 구매자일때는 리뷰를 쓴다.
+  receivedReviews  Review[]      @relation("receivedReviews") // 유저가 판매자일때 리뷰를 받는다.
   records          Record[]
   streams          Stream[]
   messages         Message[]

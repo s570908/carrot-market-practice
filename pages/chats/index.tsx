@@ -30,7 +30,7 @@ import Layout from "@components/Layout";
 import useUser from "@libs/client/useUser";
 import useSWR from "swr";
 import ImgComponent from "@components/ImgComponent";
-import { ChatRoom, SellerChat, User } from "@prisma/client";
+import { ChatRoom, Reservation, SellerChat, User } from "@prisma/client";
 import { useEffect, useState } from "react";
 import gravatar from "gravatar";
 import { useRouter } from "next/router";
@@ -42,11 +42,22 @@ interface ChatRoomWithUser extends ChatRoom {
   buyer: User;
   seller: User;
   recentMsg: SellerChat;
+  reservation?: Reservation;
 }
 
 interface ChatRoomResponse {
   ok: boolean;
   chatRoomList: ChatRoomWithUser[];
+}
+
+interface ReservationWithUser extends Reservation {
+  user: User;
+}
+
+interface ReservationResponse {
+  ok: boolean;
+  isReserved: boolean;
+  reserve: ReservationWithUser;
 }
 
 const Chats: NextPage = () => {
@@ -60,6 +71,31 @@ const Chats: NextPage = () => {
   //   refreshInterval: 1000,
   // }); // SWR을 사용하여 채팅방 목록을 불러옵니다, 제품 ID에 따라 필터링
   const { data, error } = useSWR(url);
+
+  const chatRooms = productId
+    ? data?.chatRoomListRelatedProduct
+    : data?.chatRoomList;
+
+  async function fetchAndAddReservationData(chatRoomList: ChatRoom[]) {
+    try {
+      const reservationPromises = chatRoomList.map((chatRoom: ChatRoom) =>
+        axios.get(`/api/products/${chatRoom.productId}/reservation`)
+      );
+
+      const responses = await Promise.all(reservationPromises);
+
+      const updatedChatRoomList = chatRoomList.map((chatRoom, index) => ({
+        ...chatRoom,
+        reservation: responses[index].data,
+      }));
+
+      return updatedChatRoomList;
+    } catch (error) {
+      console.error("예약 데이터를 가져오는 중 오류 발생:", error);
+      throw error;
+    }
+  }
+
   const [recentMessageShown, setRecentMessageShown] = useState("");
 
   // console.log("Chats---data:", JSON.stringify(data, null, 2));
@@ -78,9 +114,6 @@ const Chats: NextPage = () => {
   //   }
   // }, [data]);
 
-  const chatRooms = productId
-    ? data?.chatRoomListRelatedProduct
-    : data?.chatRoomList;
   // console.log("chats---login user: ", JSON.stringify(user, null, 2));
 
   const handleClick = () => {
@@ -90,17 +123,17 @@ const Chats: NextPage = () => {
 
   return (
     <Layout
-      seoTitle="채팅"
-      title="채팅"
+      seoTitle="채팅목록"
+      title="채팅목록"
       hasTabBar={!productId}
       canGoBack={!!productId}
       backUrl="back"
     >
       <div className="divide-y-[1px]">
         {productId ? (
-          <div className="w-full max-w-xl p-4 bg-red-200 border-b border-gray-200">
+          <div className="w-full max-w-xl border-b border-gray-200 bg-red-200 p-4">
             <div
-              className="flex items-center cursor-pointer"
+              className="flex cursor-pointer items-center"
               onClick={handleClick}
             >
               <div className="flex items-center space-x-4">
@@ -114,7 +147,6 @@ const Chats: NextPage = () => {
                 <div className="flex flex-col space-y-1">
                   <div className="flex flex-row items-center space-x-2">
                     <div className="text-gray-900">
-                      
                       {data?.chatRoomListRelatedProduct[0]?.product?.isReserved
                         ? "예약중"
                         : data?.chatRoomListRelatedProduct[0]?.product?.isSold
@@ -137,87 +169,164 @@ const Chats: NextPage = () => {
           </div>
         ) : null}
         {chatRooms?.map((chatRoom: any) => {
+          // 로그인 유저가 채팅방에서 구매자인지 여부
+          const isBuyer = chatRoom?.buyerId === user?.id;
           return (
             <Link href={`/chats/${chatRoom.id}`} key={chatRoom.id}>
-              <a className="flex items-center px-4 py-3 space-x-3 cursor-pointer">
-                {chatRoom.buyerId === user?.id ? (
-                  chatRoom.seller.avatar ? (
-                    <ImgComponent
-                      imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${chatRoom.seller.avatar}/public`}
-                      width={48}
-                      height={48}
-                      clsProps="rounded-full"
-                      imgName={chatRoom.seller.name}
-                    />
-                  ) : (
-                    <ImgComponent
-                      imgAdd={`https:${gravatar.url(
-                        chatRoom.seller.email
-                          ? chatRoom.seller.email
-                          : "anonymous@email.com",
-                        {
-                          s: "48px",
-                          d: "retro",
-                        }
-                      )}`}
-                      width={48}
-                      height={48}
-                      clsProps="rounded-full"
-                      imgName={"UserAvatar"}
-                    />
-                  )
-                ) : chatRoom.buyer.avatar ? (
+              <a className="flex cursor-pointer items-center space-x-3 px-4 py-3">
+                <div className="">
                   <ImgComponent
-                    imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${chatRoom.buyer.avatar}/public`}
-                    width={48}
-                    height={48}
-                    clsProps="rounded-full"
-                    imgName={chatRoom.buyer.name}
+                    imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${chatRoom?.product?.image}/public`}
+                    width={72}
+                    height={72}
+                    // clsProps="rounded-full"
+                    imgName={chatRoom?.product?.name}
                   />
-                ) : (
-                  <ImgComponent
-                    imgAdd={`https:${gravatar.url(
-                      chatRoom.buyer.email
-                        ? chatRoom.buyer.email
-                        : "anonymous@email.com",
-                      {
-                        s: "48px",
-                        d: "retro",
-                      }
-                    )}`}
-                    width={48}
-                    height={48}
-                    clsProps="rounded-full"
-                    imgName={"UserAvatar"}
-                  />
-                )}
-                <div className="relative w-10/12 space-y-1">
-                  <p className="text-gray-700">
-                    {chatRoom.buyerId === user?.id
-                      ? chatRoom.seller.name
-                      : chatRoom.buyer.name}
-                  </p>
-                  <div className="flex flex-row items-center justify-between">
-                    <div className="flex flex-row items-center space-x-2">
-                      <div className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
-                        {chatRoom.recentMsg?.userId === chatRoom.seller.id
-                          ? chatRoom.seller.name
-                          : chatRoom.buyer.name}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {chatRoom.recentMsg?.chatMsg}
-                        {/* 최신 메시지가 보여지는 곳입니다. */}
-                      </div>
+                </div>
+                <div className="flex w-full flex-col space-y-1">
+                  <div className="flex flex-row space-x-2">
+                    <div className="text-md">{chatRoom?.product?.name}</div>
+                    <div className="text-md">{`${chatRoom?.product?.price}원`}</div>
+                    <div className="text-md">
+                      {chatRoom?.product?.isReserved
+                        ? "예약중"
+                        : chatRoom?.product?.isSold
+                        ? "거래완료"
+                        : "판매중"}
                     </div>
-                    {data.unreadCountsPerRoom[chatRoom.id] !== 0 ? (
-                      <div className="flex items-center justify-center w-5 h-5 bg-red-500 rounded-full">
-                        <div className="text-sm text-white">
-                          {data.unreadCountsPerRoom[chatRoom.id]}
-                        </div>
-                      </div>
-                    ) : null}
                   </div>
-                  {/* <div className="flex flex-row items-center space-x-2">
+                  <div className="flex w-full flex-row items-center space-x-2">
+                    {isBuyer ? (
+                      chatRoom?.seller?.avatar ? (
+                        <ImgComponent
+                          imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${chatRoom.seller.avatar}/public`}
+                          width={48}
+                          height={48}
+                          clsProps="rounded-full"
+                          imgName={chatRoom.seller.name}
+                        />
+                      ) : (
+                        <ImgComponent
+                          imgAdd={`https:${gravatar.url(
+                            chatRoom.seller.email
+                              ? chatRoom.seller.email
+                              : "anonymous@email.com",
+                            {
+                              s: "48px",
+                              d: "retro",
+                            }
+                          )}`}
+                          width={48}
+                          height={48}
+                          clsProps="rounded-full"
+                          imgName={"UserAvatar"}
+                        />
+                      )
+                    ) : chatRoom.buyer.avatar ? (
+                      <ImgComponent
+                        imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${chatRoom.buyer.avatar}/public`}
+                        width={48}
+                        height={48}
+                        clsProps="rounded-full"
+                        imgName={chatRoom.buyer.name}
+                      />
+                    ) : (
+                      <ImgComponent
+                        imgAdd={`https:${gravatar.url(
+                          chatRoom.buyer.email
+                            ? chatRoom.buyer.email
+                            : "anonymous@email.com",
+                          {
+                            s: "48px",
+                            d: "retro",
+                          }
+                        )}`}
+                        width={48}
+                        height={48}
+                        clsProps="rounded-full"
+                        imgName={"UserAvatar"}
+                      />
+                    )}
+                    <div className="relative w-10/12 space-y-1">
+                      <div className="flex flex-row space-x-2">
+                        {/* {isBuyer ? (
+                          chatRoom?.seller?.avatar ? (
+                            <ImgComponent
+                              imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${chatRoom.seller.avatar}/public`}
+                              width={24}
+                              height={24}
+                              clsProps="rounded-full"
+                              imgName={chatRoom.seller.name}
+                            />
+                          ) : (
+                            <ImgComponent
+                              imgAdd={`https:${gravatar.url(
+                                chatRoom.seller.email
+                                  ? chatRoom.seller.email
+                                  : "anonymous@email.com",
+                                {
+                                  s: "48px",
+                                  d: "retro",
+                                }
+                              )}`}
+                              width={24}
+                              height={24}
+                              clsProps="rounded-full"
+                              imgName={"UserAvatar"}
+                            />
+                          )
+                        ) : chatRoom.buyer.avatar ? (
+                          <ImgComponent
+                            imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${chatRoom.buyer.avatar}/public`}
+                            width={24}
+                            height={24}
+                            clsProps="rounded-full"
+                            imgName={chatRoom.buyer.name}
+                          />
+                        ) : (
+                          <ImgComponent
+                            imgAdd={`https:${gravatar.url(
+                              chatRoom.buyer.email
+                                ? chatRoom.buyer.email
+                                : "anonymous@email.com",
+                              {
+                                s: "48px",
+                                d: "retro",
+                              }
+                            )}`}
+                            width={24}
+                            height={24}
+                            clsProps="rounded-full"
+                            imgName={"UserAvatar"}
+                          />
+                        )} */}
+                        <p className="text-gray-700">
+                          {chatRoom.buyerId === user?.id
+                            ? chatRoom.seller.name
+                            : chatRoom.buyer.name}
+                        </p>
+                      </div>
+                      <div className="flex flex-row items-center justify-between">
+                        <div className="flex flex-row items-center space-x-2">
+                          <div className="whitespace-nowrap rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
+                            {chatRoom.recentMsg?.userId === chatRoom.seller.id
+                              ? chatRoom.seller.name
+                              : chatRoom.buyer.name}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {chatRoom.recentMsg?.chatMsg}
+                            {/* 최신 메시지가 보여지는 곳입니다. */}
+                          </div>
+                        </div>
+                        {data.unreadCountsPerRoom[chatRoom.id] !== 0 ? (
+                          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500">
+                            <div className="text-sm text-white">
+                              {data.unreadCountsPerRoom[chatRoom.id]}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                      {/* <div className="flex flex-row items-center space-x-2">
                     <ImgComponent
                       width={48}
                       height={48}
@@ -232,7 +341,7 @@ const Chats: NextPage = () => {
                       <div className="">{chatRoom.seller.name}</div>
                     </div>
                   </div> */}
-                  {/* {chatRoom.recentMsg?.isNew &&
+                      {/* {chatRoom.recentMsg?.isNew &&
                   chatRoom.recentMsg.userId !== user?.id ? (
                     <span className="absolute right-0 text-orange-500 top-2">
                       <svg
@@ -245,6 +354,8 @@ const Chats: NextPage = () => {
                       </svg>
                     </span>
                   ) : null} */}
+                    </div>
+                  </div>
                 </div>
               </a>
             </Link>

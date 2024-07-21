@@ -35,9 +35,10 @@ const Review: NextPage = () => {
     mode: "onChange",
   });
   const [starScore, setStarScore] = useState(0);
-  const [writeReview, { loading: writeReviewLoading, data: writeReviewData }] = useMutation(
-    `/api/products/${router.query.id}/review?seller=${data?.product.userId}`
-  );
+  const [writeReview, { loading: writeReviewLoading, data: writeReviewData }] =
+    useMutation(
+      `/api/products/${router.query.id}/review?seller=${data?.product.userId}`
+    );
   const onValid = ({ review }: ReviewForm) => {
     if (writeReviewLoading) return;
     writeReview({ review, score: starScore });
@@ -75,7 +76,9 @@ const Review: NextPage = () => {
                 {data ? data?.product?.user?.name : "Now Loading..."}
               </p>
               <Link href={`/profile/${data?.product?.user?.id}`}>
-                <a className="text-xs font-medium text-gray-500">View profile &rarr;</a>
+                <a className="text-xs font-medium text-gray-500">
+                  View profile &rarr;
+                </a>
               </Link>
             </div>
           </div>

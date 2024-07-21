@@ -255,6 +255,11 @@ const ItemDetail: NextPage = () => {
   const reserved = data?.product?.isReserved;
   const sold = data?.product?.isSold;
   const selling = !reserved && !sold;
+  // 판매중이면 selling이 true이고, 판매중으로 표시된다.
+  // 예약중이면 reserved가 true이다.
+  //           로그인 유저가 예약자면 '내가 예약중'으로 표시한다.
+  //           로그인 유저가 판매자면 '예약자(XX)가 예약중'과 '예약자(XX)와의 채팅방으로 이동' 버튼을 표시한다.
+  //           로그인 유저가 일반 유저라면 '다른 사람이 예약중'이라고 표시한다.
 
   const reservationUserName = reservationData?.reserve?.user?.name;
 
@@ -293,7 +298,7 @@ const ItemDetail: NextPage = () => {
             clsProps="object-scale-down"
             imgName={data?.product?.name}
           />
-          <div className="flex items-center py-3 space-x-3 border-t border-b cursor-pointer">
+          <div className="flex cursor-pointer items-center space-x-3 border-b border-t py-3">
             {data?.product?.user?.avatar ? (
               <ImgComponent
                 imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.product?.user?.avatar}/public`}
@@ -345,7 +350,7 @@ const ItemDetail: NextPage = () => {
                     {`${reservationUserName}가 예약중임`}
                   </div>
                   <button
-                    className="p-2 text-sm rounded-full bg-slate-200"
+                    className="rounded-full bg-slate-200 p-2 text-sm"
                     onClick={onChatRoom}
                   >
                     예약자와의 채팅방으로 이동
@@ -365,7 +370,7 @@ const ItemDetail: NextPage = () => {
             <h1 className="mt-4 text-3xl font-bold text-gray-900">
               {data ? data?.product?.name : "Now Loading..."}
             </h1>
-            <span className="block mt-3 text-3xl text-gray-900">
+            <span className="mt-3 block text-3xl text-gray-900">
               ￦{data ? data?.product?.price : "Now Loading..."}
             </span>
             {/* <div className="flex items-center justify-between space-x-2">
@@ -422,7 +427,7 @@ const ItemDetail: NextPage = () => {
               </button>
             </div> */}
             <div className="my-3">
-              <div className="py-3 text-xl font-bold border-t">
+              <div className="border-t py-3 text-xl font-bold">
                 {/*@ts-ignore*/}
                 {data?.product?.productReviews?.length > 0
                   ? "Review"
@@ -433,7 +438,7 @@ const ItemDetail: NextPage = () => {
                 data?.product?.productReviews.map((review) => (
                   <div
                     key={review.id}
-                    className="flex flex-row space-x-12 justify-items-start"
+                    className="flex flex-row justify-items-start space-x-12"
                   >
                     <div className="flex flex-col items-center justify-center space-y-1">
                       {review.createdBy?.avatar ? (
@@ -445,13 +450,13 @@ const ItemDetail: NextPage = () => {
                           imgName={review.createdBy?.name}
                         />
                       ) : (
-                        <div className="w-12 h-12 rounded-full bg-slate-500" />
+                        <div className="h-12 w-12 rounded-full bg-slate-500" />
                       )}
                       <span className="font-medium text-gray-900">
                         {review?.createdBy.name}
                       </span>
                     </div>
-                    <div className="flex flex-row items-center space-x-20 justify-evenly">
+                    <div className="flex flex-row items-center justify-evenly space-x-20">
                       <div className="flex flex-col items-start">
                         <div className="flex items-center">
                           {[1, 2, 3, 4, 5].map((star) => (
@@ -525,7 +530,7 @@ const ItemDetail: NextPage = () => {
                   {data?.isLike ? (
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="w-6 h-6"
+                      className="h-6 w-6"
                       viewBox="0 0 20 20"
                       fill="currentColor"
                     >
@@ -537,7 +542,7 @@ const ItemDetail: NextPage = () => {
                     </svg>
                   ) : (
                     <svg
-                      className="w-6 h-6 "
+                      className="h-6 w-6 "
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"

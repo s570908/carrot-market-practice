@@ -10,6 +10,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
       session: { user },
       body: { review, score },
     } = req;
+    console.log("query: ", req.query)
+    console.log("body: ", req.body)
     if (!id || !seller) {
       return res.status(404).end({ error: "request query is not given." });
     }

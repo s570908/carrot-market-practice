@@ -44,7 +44,11 @@ const ImgComponent = ({
 }: ImgComponentProps) => {
   return (
     <div>
-      <div className={cls(isLayout ? `relative ${layoutHeight}` : "")}>
+      <div
+        className={cls(
+          isLayout ? `relative ${layoutHeight}` : "flex items-center"
+        )}
+      >
         {isLayout ? (
           <Image
             src={`${imgAdd}`}
