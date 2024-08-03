@@ -52,8 +52,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
           price: true,
           image: true,
           name: true,
-          isReserved: true,
-          isSold: true,
+          status: true,
         }
       },
     },

@@ -57,8 +57,6 @@ model Product {
   name           String
   price          Int
   description    String        @db.MediumText
-  isSold         Boolean       @default(false)
-  isReserved     Boolean       @default(false)
   favs           Fav[]
   sales          Sale[]
   purchases      Purchase[]
@@ -66,6 +64,13 @@ model Product {
   productReviews Review[]      @relation(name: "productReviews")
   chatRoom       ChatRoom[]    @relation(name: "product")
   Reservations   Reservation[]
+  status         Status        @default(Registered)
+}
+
+enum Status {
+  Registered
+  Reserved
+  Sold
 }
 
 model Fav {

@@ -4,7 +4,7 @@ import Layout from "@components/Layout";
 import useSWR, { mutate, useSWRConfig } from "swr";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { Product, Reservation, Review, User } from "@prisma/client";
+import { Product, Reservation, Review, Status, User } from "@prisma/client";
 import useMutation from "@libs/client/useMutation";
 import { cls } from "@libs/utils";
 import useUser from "@libs/client/useUser";
@@ -42,8 +42,10 @@ const ItemDetail: NextPage = () => {
   );
 
   const [toggleFav] = useMutation(`/api/products/${router.query.id}/fav`);
-  const [talkToSeller, { loading: talkToSellerLoading, data: talkToSellerData }] =
-    useMutation(`/api/chat`);
+  const [
+    talkToSeller,
+    { loading: talkToSellerLoading, data: talkToSellerData },
+  ] = useMutation(`/api/chat`);
   const [buyItem, { loading: buyItemLoading, data: buyItemData }] = useMutation(
     `/api/products/${router.query.id}?buyer=${data?.product.userId.toString()}`
   );
@@ -54,8 +56,10 @@ const ItemDetail: NextPage = () => {
   } = useSWR<ReserveResponse>(
     router.query.id ? `/api/products/${router.query.id}/reservation` : null
   );
-  const [reservedApi, { loading: reserveMutateLoadingApi, data: reserveMutateDataApi }] =
-    useMutation(`/api/products/${router.query.id}/reservation`);
+  const [
+    reservedApi,
+    { loading: reserveMutateLoadingApi, data: reserveMutateDataApi },
+  ] = useMutation(`/api/products/${router.query.id}/reservation`);
   const onFavClick = () => {
     if (!data) return;
     boundMutate((prev) => prev && { ...prev, isLike: !prev.isLike }, false);
@@ -85,33 +89,7 @@ const ItemDetail: NextPage = () => {
   const onReviewClick = () => {
     router.push(`/products/${data?.product.id}/review`);
   };
-  const handleDropdownChange = (selectedValue: string) => {
-    // Dropdown에서 선택값이 변경될 때 호출될 함수
-    // 예: 선택된 값으로 API 호출
-    if (reserveMutateLoadingApi) return;
-    if (selectedValue === '예약중') {
-      reserveMutateSWR(
-        (prev) =>
-          prev && {
-            ...prev,
-            isReserved: !prev.isReserved,
-          },
-        false
-      );
-      reservedApi({ variables: { selectedValue }});
-    } else if(selectedValue === '거래완료') {
-      if (reserveDataSWR?.isReserved === true) {
-        reservedApi({ variables: { selectedValue }});
-      } 
-      
-    } else {
-      // 판매중
-      console.log("reserveDataSWR?.isReserved: ", reserveDataSWR?.isReserved)
-      if (reserveDataSWR?.isReserved === true) {
-        reservedApi({ variables: { selectedValue }});
-      }
-    }
-  };
+
   useEffect(() => {
     if (talkToSellerData && talkToSellerData.ok) {
       talkToSellerData.chatRoom
@@ -121,7 +99,13 @@ const ItemDetail: NextPage = () => {
   }, [router, talkToSellerData]);
 
   return (
-    <Layout seoTitle="댕댕마켓" title="댕댕마켓" canGoBack backUrl={"back"} openModal>
+    <Layout
+      seoTitle="댕댕마켓"
+      title="댕댕마켓"
+      canGoBack
+      backUrl={"back"}
+      openModal
+    >
       <div className="px-4 py-4">
         <div className="mb-8">
           <ImgComponent
@@ -133,7 +117,7 @@ const ItemDetail: NextPage = () => {
             // imgName={data?.product?.name}
             imgName="장미꽃"
           />
-          <div className="flex items-center py-3 space-x-3 border-t border-b cursor-pointer">
+          <div className="flex cursor-pointer items-center space-x-3 border-b border-t py-3">
             {data?.product?.user?.avatar ? (
               <ImgComponent
                 imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.product?.user?.avatar}/public`}
@@ -145,10 +129,13 @@ const ItemDetail: NextPage = () => {
             ) : (
               // <div className="w-12 h-12 rounded-full bg-slate-300" />
               <ImgComponent
-                imgAdd={`https:${gravatar.url(user?.email ? user?.email : "anonymous@email.com", {
-                  s: "48px",
-                  d: "retro",
-                })}`}
+                imgAdd={`https:${gravatar.url(
+                  user?.email ? user?.email : "anonymous@email.com",
+                  {
+                    s: "48px",
+                    d: "retro",
+                  }
+                )}`}
                 width={48}
                 height={48}
                 clsProps="rounded-full"
@@ -166,7 +153,9 @@ const ItemDetail: NextPage = () => {
                     : `/profile/${data?.product?.user?.id}`
                 }
               >
-                <a className="text-xs font-medium text-gray-500">View profile &rarr;</a>
+                <a className="text-xs font-medium text-gray-500">
+                  View profile &rarr;
+                </a>
               </Link>
             </div>
           </div>
@@ -175,18 +164,23 @@ const ItemDetail: NextPage = () => {
             <h1 className="text-3xl font-bold text-gray-900">
               {data ? data?.product?.name : "Now Loading..."}
             </h1>
-            <span className="block mt-3 text-3xl text-gray-900">
+            <span className="mt-3 block text-3xl text-gray-900">
               ￦{data ? data?.product?.price : "Now Loading..."}
             </span>
             <div className="my-3">
-              <div className="py-3 text-xl font-bold border-t">
+              <div className="border-t py-3 text-xl font-bold">
                 {/*@ts-ignore*/}
-                {data?.product?.productReviews?.length > 0 ? "Review" : "Description"}
+                {data?.product?.productReviews?.length > 0
+                  ? "Review"
+                  : "Description"}
               </div>
               {/*@ts-ignore*/}
               {data?.product?.productReviews?.length > 0 ? (
                 data?.product?.productReviews.map((review) => (
-                  <div key={review.id} className="flex flex-row space-x-12 justify-items-start">
+                  <div
+                    key={review.id}
+                    className="flex flex-row justify-items-start space-x-12"
+                  >
                     <div className="flex flex-col items-center justify-center space-y-1">
                       {review.createdBy?.avatar ? (
                         <ImgComponent
@@ -197,11 +191,13 @@ const ItemDetail: NextPage = () => {
                           imgName={review.createdBy?.name}
                         />
                       ) : (
-                        <div className="w-12 h-12 rounded-full bg-slate-500" />
+                        <div className="h-12 w-12 rounded-full bg-slate-500" />
                       )}
-                      <span className="font-medium text-gray-900">{review?.createdBy.name}</span>
+                      <span className="font-medium text-gray-900">
+                        {review?.createdBy.name}
+                      </span>
                     </div>
-                    <div className="flex flex-row items-center space-x-20 justify-evenly">
+                    <div className="flex flex-row items-center justify-evenly space-x-20">
                       <div className="flex flex-col items-start">
                         <div className="flex items-center">
                           {[1, 2, 3, 4, 5].map((star) => (
@@ -209,7 +205,9 @@ const ItemDetail: NextPage = () => {
                               key={star}
                               className={cls(
                                 "h-5 w-5",
-                                review.score >= star ? "text-yellow-400" : "text-gray-300"
+                                review.score >= star
+                                  ? "text-yellow-400"
+                                  : "text-gray-300"
                               )}
                               xmlns="http://www.w3.org/2000/svg"
                               viewBox="0 0 20 20"
@@ -220,7 +218,9 @@ const ItemDetail: NextPage = () => {
                             </svg>
                           ))}
                         </div>
-                        <p className="my-2 text-lg text-gray-700">{review.review}</p>
+                        <p className="my-2 text-lg text-gray-700">
+                          {review.review}
+                        </p>
                       </div>
                       <span className="font-medium text-gray-900">
                         <RegDate regDate={review.createdAt} />
@@ -238,7 +238,7 @@ const ItemDetail: NextPage = () => {
               {/*@ts-ignore*/}
               {data?.product?.productReviews?.length > 0 ? (
                 <Button disabled large text="Good Carrot!" />
-              ) : data?.product.isSold ? (
+              ) : data?.product?.status === Status.Sold ? (
                 <Button onClick={onReviewClick} large text="Go to Review!" />
               ) : data?.product?.userId === user?.id ? (
                 <Button onClick={onItemClick} large text="My item" />
@@ -248,7 +248,7 @@ const ItemDetail: NextPage = () => {
                   <Button onClick={onBuyClick} large text="Buy It" />
                 </>
               )}
-              {data?.product.isSold ? null : (
+              {data?.product?.status === Status.Sold ? null : (
                 <button
                   onClick={onFavClick}
                   disabled={data?.product?.userId === user?.id}
@@ -262,7 +262,7 @@ const ItemDetail: NextPage = () => {
                   {data?.isLike ? (
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="w-6 h-6"
+                      className="h-6 w-6"
                       viewBox="0 0 20 20"
                       fill="currentColor"
                     >
@@ -274,7 +274,7 @@ const ItemDetail: NextPage = () => {
                     </svg>
                   ) : (
                     <svg
-                      className="w-6 h-6 "
+                      className="h-6 w-6 "
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
@@ -294,7 +294,7 @@ const ItemDetail: NextPage = () => {
             </div>
           </div>
         </div>
-        {data?.product.isSold ? null : (
+        {data?.product?.status === Status.Sold ? null : (
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Similar Items</h2>
             <div className="grid grid-cols-2 gap-4">
@@ -308,8 +308,12 @@ const ItemDetail: NextPage = () => {
                       clsProps="mt-6 mb-4 bg-slate-300"
                       imgName={product.name}
                     />
-                    <h3 className="-mb-1 text-base text-gray-700">{product.name}</h3>
-                    <span className="text-xs font-medium text-gray-900">￦{product.price}</span>
+                    <h3 className="-mb-1 text-base text-gray-700">
+                      {product.name}
+                    </h3>
+                    <span className="text-xs font-medium text-gray-900">
+                      ￦{product.price}
+                    </span>
                   </a>
                 </Link>
               ))}

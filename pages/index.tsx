@@ -4,13 +4,13 @@ import Item from "@components/Item";
 import Layout from "@components/Layout";
 import useUser from "@libs/client/useUser";
 import useSWR, { SWRConfig } from "swr";
-import { Fav, Product } from "@prisma/client";
+import { Fav, Product, Status } from "@prisma/client";
 import { useRouter } from "next/router";
 import { Suspense, useState } from "react";
 import PaginationButton from "@components/PaginationButton";
 import client from "@libs/client/client";
 import { ReserveResponse } from "./api/apiTypes";
-import { Status } from "types/types";
+
 export interface ProductWithCount extends Product {
   favs: Fav[];
   _count: {
@@ -50,10 +50,10 @@ const Home: NextPage = () => {
     <Layout seoTitle="Home" title="홈" hasTabBar notice>
       <div className="flex flex-col space-y-5 divide-y px-4">
         {data?.products?.map((product) => {
-          const reserved = product?.isReserved;
-          const sold = product?.isSold;
+          const reserved = product?.status === Status.Reserved ? true : false;
+          const sold = product?.status === Status.Sold ? true : false;
           // const selling = !reserved && !sold;
-          let status = Status.Selling;
+          let status: Status = Status.Registered;
           if (reserved) {
             status = Status.Reserved;
           } else if (sold) {

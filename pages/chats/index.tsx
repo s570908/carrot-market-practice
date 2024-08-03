@@ -30,7 +30,13 @@ import Layout from "@components/Layout";
 import useUser from "@libs/client/useUser";
 import useSWR from "swr";
 import ImgComponent from "@components/ImgComponent";
-import { ChatRoom, Reservation, SellerChat, User } from "@prisma/client";
+import {
+  ChatRoom,
+  Reservation,
+  SellerChat,
+  Status,
+  User,
+} from "@prisma/client";
 import { useEffect, useState } from "react";
 import gravatar from "gravatar";
 import { useRouter } from "next/router";
@@ -147,9 +153,11 @@ const Chats: NextPage = () => {
                 <div className="flex flex-col space-y-1">
                   <div className="flex flex-row items-center space-x-2">
                     <div className="text-gray-900">
-                      {data?.chatRoomListRelatedProduct[0]?.product?.isReserved
+                      {data?.chatRoomListRelatedProduct[0]?.product?.status ===
+                      Status.Reserved
                         ? "예약중"
-                        : data?.chatRoomListRelatedProduct[0]?.product?.isSold
+                        : data?.chatRoomListRelatedProduct[0]?.product
+                            ?.status === Status.Sold
                         ? "거래완료"
                         : "판매중"}
                     </div>
@@ -188,9 +196,9 @@ const Chats: NextPage = () => {
                     <div className="text-md">{chatRoom?.product?.name}</div>
                     <div className="text-md">{`${chatRoom?.product?.price}원`}</div>
                     <div className="text-md">
-                      {chatRoom?.product?.isReserved
+                      {chatRoom?.product?.status === Status.Reserved
                         ? "예약중"
-                        : chatRoom?.product?.isSold
+                        : chatRoom?.product?.status === Status.Sold
                         ? "거래완료"
                         : "판매중"}
                     </div>

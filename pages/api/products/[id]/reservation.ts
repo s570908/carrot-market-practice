@@ -2,6 +2,7 @@ import client from "@libs/client/client";
 import withHandler, { ResponseType } from "@libs/server/withHandler";
 import { NextApiRequest, NextApiResponse } from "next";
 import { withApiSession } from "@libs/server/withSession";
+import { Status } from "@prisma/client";
 
 async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) {
   const {
@@ -46,7 +47,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
           id: Number(id), // Ensure you are targeting the correct product
         },
         data: {
-          isReserved: false,
+          status: Status.Registered,
         },
       });
       res.json({ ok: true, isReserved: false });
@@ -81,7 +82,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
           id: Number(id),
         },
         data: {
-          isReserved: true,
+          status: Status.Reserved,
         },
       });
       res.json({ ok: true, isReserved: true });

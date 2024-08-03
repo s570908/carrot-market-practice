@@ -2,6 +2,7 @@ import withHandler from "@libs/server/withHandler";
 import { withApiSession } from "@libs/server/withSession";
 import { NextApiRequest, NextApiResponse } from "next";
 import client from "@libs/client/client";
+import { Status } from "@prisma/client";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method === "POST") {
@@ -74,8 +75,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         id: +id,
       },
       data: {
-        isSold: true, // this product has been sold. isSell is absurd and isSold is correct but I will leave unchanged
-        isReserved: false,
+        status: Status.Sold // this product has been sold. isSell is absurd and isSold is correct but I will leave unchanged
       },
     });
 
@@ -84,8 +84,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         id: +id,
       },
       select: {
-        isSold: true,
-        isReserved: true,
+        status: true
       },
       // user: {
       //   select: {
@@ -108,8 +107,8 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       //   },
       // },
     });
-    console.log("product.isReserved: ", product?.isReserved);
-    console.log("product.isSold: ", product?.isSold);
+    console.log("product.status: ", product?.status);
+   
     res.json({ ok: true, purchaseProduct, saleProduct });
   }
   if (req.method === "GET") {

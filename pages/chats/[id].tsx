@@ -8,6 +8,7 @@ import {
   Product,
   Reservation,
   SellerChat,
+  Status,
   User,
 } from "@prisma/client";
 import { useForm } from "react-hook-form";
@@ -88,8 +89,11 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     { refreshInterval: 3000 }
   );
 
-  const reserved = data?.chatRoomOfSeller?.product?.isReserved;
-  const sold = data?.chatRoomOfSeller?.product?.isSold;
+  const reserved =
+    data?.chatRoomOfSeller?.product?.status === Status.Reserved ? true : false;
+  const sold =
+    data?.chatRoomOfSeller?.product?.status === Status.Sold ? true : false;
+  // selling은 Status.Registered와 동일하다.
   const selling = !reserved && !sold;
 
   const productStatus =
@@ -198,8 +202,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   const [options, setOptions] = useState(initialOptions);
 
   useEffect(() => {
-    // const reserved = data?.chatRoomOfSeller?.product?.isReserved;
-    // const sold = data?.chatRoomOfSeller?.product?.isSold;
     const getUpdatedOptions = (pStatus: string) => {
       if (pStatus === "판매중") {
         return initialOptions.map((option: any) => ({
@@ -224,37 +226,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     setOptions(getUpdatedOptions(productStatus));
   }, [productStatus, initialOptions]);
 
-  // useEffect(() => {
-  //   let statusIsSold;
-  //   let statusIsReserved;
-  //   statusIsSold = data?.chatRoomOfSeller.product.isSold;
-  //   statusIsReserved = data?.chatRoomOfSeller.product.isReserved;
-  //   // 선택된 값이 유효하고 빈 값이 아닐 때만 API 요청을 보냅니다.
-
-  //   if (statusIsSold === false && statusIsReserved === false) {
-  //     setSelectedValue("판매중");
-  //   }
-  //   if (statusIsSold === true) {
-  //     setSelectedValue("거래완료");
-  //   }
-  //   if (statusIsReserved === true) {
-  //     setSelectedValue("예약중");
-  //   }
-  //   if (statusIsSold === true && statusIsReserved === true) {
-  //     console.error(
-  //       "isSold and isReserved should not be true at the same time."
-  //     );
-  //   }
-  // }, [
-  //   data?.chatRoomOfSeller?.product.isSold,
-  //   data?.chatRoomOfSeller?.product.isReserved,
-  // ]);
-
   // api server call is here
   useEffect(() => {
-    // const reserved = data?.chatRoomOfSeller?.product?.isReserved;
-    // const sold = data?.chatRoomOfSeller?.product?.isSold;
-    // const selling = !reserved && !sold;
     console.log("selectedValue: ", selectedValue);
     console.log("reserved: ", reserved);
     // console.log("sold: ", sold);
@@ -288,14 +261,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedValue, reserved, sold, data?.chatRoomOfSeller?.buyerId]);
 
-  // useEffect(() => {
-  //   setOptions(getUpdatedOptions(selectedValue));
-  // }, [selectedValue]);
-
-  // console.log("=====data: ", JSON.stringify(data, null, 2));
-  // console.log("isReserved: ", data?.chatRoomOfSeller?.product?.isReserved);
-  // console.log("isSold: ", data?.chatRoomOfSeller?.product?.isSold);
-  // console.log(data?.chatRoomOfSeller?.product?.isReserved)
   const chatUserId =
     data?.chatRoomOfSeller?.buyerId === user?.id
       ? data?.chatRoomOfSeller?.sellerId

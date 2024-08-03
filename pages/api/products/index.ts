@@ -2,6 +2,7 @@ import withHandler, { ResponseType } from "@libs/server/withHandler";
 import { withApiSession } from "@libs/server/withSession";
 import { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 import client from "@libs/client/client";
+import { Status } from "@prisma/client";
 
 const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse<ResponseType>) => {
   if (req.method === "GET") {
@@ -15,7 +16,10 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
     const limit = 10;
     const products = await client.product.findMany({
       where: {
-        isSold: false,
+        OR: [
+          { status: Status.Registered },
+          { status: Status.Reserved },
+        ],
       },
       include: {
         _count: {
@@ -40,7 +44,10 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
     });
     const nextProducts = await client.product.findMany({
       where: {
-        isSold: false,
+        OR: [
+          { status: Status.Registered },
+          { status: Status.Reserved },
+        ],
       },
       include: {
         _count: {

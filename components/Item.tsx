@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cls } from "@libs/utils";
 import ImgComponent from "@components/ImgComponent";
-import { Status } from "types/types";
+import { Status } from "@prisma/client";
 
 interface ItemProps {
   title: string;
