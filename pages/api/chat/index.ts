@@ -80,6 +80,8 @@ async function handler(
               chatMsg: true,
               isNew: true,
               userId: true,
+              createdAt: true,
+              updatedAt: true
             },
           },
           buyer: {
@@ -164,6 +166,8 @@ async function handler(
               chatMsg: true,
               isNew: true,
               userId: true,
+              createdAt: true,
+              updatedAt: true
             },
           },
           buyer: {

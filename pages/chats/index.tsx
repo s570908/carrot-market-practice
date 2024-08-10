@@ -43,6 +43,7 @@ import { useRouter } from "next/router";
 import axios from "axios";
 import { fetchChatRooms } from "@libs/server/fetchChatRooms";
 import Dropdown from "@components/Dropdown";
+import RadioButtonGroup from "@components/RadioGroupButton";
 
 interface ChatRoomWithUser extends ChatRoom {
   buyer: User;
@@ -127,6 +128,46 @@ const Chats: NextPage = () => {
     router.push(`/products/${productId}`);
   };
 
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  };
+
+  const chatRoomsInKoreanTime = chatRooms?.map((chatRoom: any) => {
+    const updatedAt = chatRoom.recentMsg?.updatedAt
+      ? new Intl.DateTimeFormat("ko-KR", options).format(
+          new Date(chatRoom.recentMsg.updatedAt)
+        )
+      : "";
+
+    return {
+      ...chatRoom,
+      recentMsg: {
+        ...chatRoom.recentMsg,
+        updatedAt,
+      },
+    };
+  });
+
+  const [selectedOption, setSelectedOption] = useState<string>("전체"); // Default selection
+
+  const buttonOptions = [
+    { value: "판매중", label: "판매중" },
+    { value: "거래완료", label: "거래완료" },
+    { value: "예약중", label: "예약중" },
+    { value: "전체", label: "전체" },
+  ];
+
+  const handleOptionChange = (value: string) => {
+    console.log("Selected value:", value); // Handle the selected value
+    setSelectedOption(value); // Update the selected value in state
+  };
+
   return (
     <Layout
       seoTitle="채팅목록"
@@ -134,12 +175,20 @@ const Chats: NextPage = () => {
       hasTabBar={!productId}
       canGoBack={!!productId}
       backUrl="back"
+      chatRoom
     >
+      <div className="right-[200px] absolute top-[8.5px] z-30">
+        <RadioButtonGroup
+          options={buttonOptions}
+          selectedOption={selectedOption}
+          onChange={handleOptionChange}
+        />
+      </div>
       <div className="divide-y-[1px]">
         {productId ? (
-          <div className="w-full max-w-xl border-b border-gray-200 bg-red-200 p-4">
+          <div className="w-full max-w-xl p-4 bg-red-200 border-b border-gray-200">
             <div
-              className="flex cursor-pointer items-center"
+              className="flex items-center cursor-pointer"
               onClick={handleClick}
             >
               <div className="flex items-center space-x-4">
@@ -176,12 +225,12 @@ const Chats: NextPage = () => {
             </div>
           </div>
         ) : null}
-        {chatRooms?.map((chatRoom: any) => {
+        {chatRoomsInKoreanTime?.map((chatRoom: any) => {
           // 로그인 유저가 채팅방에서 구매자인지 여부
           const isBuyer = chatRoom?.buyerId === user?.id;
           return (
             <Link href={`/chats/${chatRoom.id}`} key={chatRoom.id}>
-              <a className="flex cursor-pointer items-center space-x-3 px-4 py-3">
+              <a className="flex items-center px-4 py-3 space-x-3 cursor-pointer">
                 <div className="">
                   <ImgComponent
                     imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${chatRoom?.product?.image}/public`}
@@ -191,20 +240,20 @@ const Chats: NextPage = () => {
                     imgName={chatRoom?.product?.name}
                   />
                 </div>
-                <div className="flex w-full flex-col space-y-1">
+                <div className="flex flex-col w-full space-y-1">
                   <div className="flex flex-row space-x-2">
                     <div className="text-md">{chatRoom?.product?.name}</div>
                     <div className="text-md">{`${chatRoom?.product?.price}원`}</div>
-                    <div className="text-md">
+                    {/* <div className="text-md">
                       {chatRoom?.product?.status === Status.Reserved
                         ? "예약중"
                         : chatRoom?.product?.status === Status.Sold
                         ? "거래완료"
                         : "판매중"}
-                    </div>
+                    </div> */}
                   </div>
-                  <div className="flex w-full flex-row items-center space-x-2">
-                    {isBuyer ? (
+                  <div className="flex flex-row items-center w-full space-x-2">
+                    {/* {isBuyer ? (
                       chatRoom?.seller?.avatar ? (
                         <ImgComponent
                           imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${chatRoom.seller.avatar}/public`}
@@ -254,7 +303,7 @@ const Chats: NextPage = () => {
                         clsProps="rounded-full"
                         imgName={"UserAvatar"}
                       />
-                    )}
+                    )} */}
                     <div className="relative w-10/12 space-y-1">
                       <div className="flex flex-row space-x-2">
                         {/* {isBuyer ? (
@@ -327,12 +376,15 @@ const Chats: NextPage = () => {
                           </div>
                         </div>
                         {data.unreadCountsPerRoom[chatRoom.id] !== 0 ? (
-                          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500">
+                          <div className="flex items-center justify-center w-5 h-5 bg-red-500 rounded-full">
                             <div className="text-sm text-white">
                               {data.unreadCountsPerRoom[chatRoom.id]}
                             </div>
                           </div>
                         ) : null}
+                      </div>
+                      <div className="text-sm text-gray-400">
+                        {chatRoom.recentMsg?.updatedAt}
                       </div>
                       {/* <div className="flex flex-row items-center space-x-2">
                     <ImgComponent
