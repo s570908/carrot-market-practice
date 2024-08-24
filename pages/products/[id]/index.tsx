@@ -331,18 +331,67 @@ const ItemDetail: NextPage = () => {
               />
             )}
             <div>
-              <p className="text-sm font-medium text-gray-700">
-                {data ? data?.product?.user?.name : "Now Loading..."}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium text-gray-700">
+                  {data ? data?.product?.user?.name : "Now Loading..."}
+                </p>
+                <div className="flex items-center">
+                  {Array.from({ length: 5 }, (_, index) => {
+                    const rating = 4.7; // 예시로 4.68을 사용
+                    const fillPercentage = Math.max(
+                      0,
+                      Math.min(100, (rating - index) * 100)
+                    );
+
+                    return (
+                      <div
+                        key={index}
+                        className="relative inline-block h-6 w-6"
+                      >
+                        {/* 회색 별 */}
+                        <svg
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                          className="h-full w-full text-gray-300"
+                        >
+                          <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                        </svg>
+
+                        {/* 노란색 별 */}
+                        <div
+                          className="absolute left-0 top-0 h-full overflow-hidden"
+                          style={{
+                            clipPath: `inset(0 ${100 - fillPercentage}% 0 0)`,
+                          }}
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                            className="h-full w-full text-yellow-400"
+                          >
+                            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                          </svg>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  (4.3)
+                </div>
+              </div>
               <Link
+                // href={
+                //   data?.product?.user?.id === user?.id
+                //     ? `/profile`
+                //     : `/profile/${data?.product?.user?.id}`
+                // }
                 href={
                   data?.product?.user?.id === user?.id
                     ? `/profile`
-                    : `/profile/${data?.product?.user?.id}`
+                    : `/reviewForSeller/${data?.product?.user?.id}`
                 }
               >
                 <a className="text-xs font-medium text-gray-500">
-                  View profile &rarr;
+                  Review &rarr;
                 </a>
               </Link>
             </div>

@@ -31,6 +31,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
               productReviews: {
                 select: {
                   score: true,
+                  review: true,
+                  updatedAt: true
                 },
               },
             },
