@@ -184,9 +184,9 @@ const Chats: NextPage = () => {
       </div>
       <div className="divide-y-[1px]">
         {productId ? (
-          <div className="w-full max-w-xl p-4 bg-red-200 border-b border-gray-200">
+          <div className="w-full max-w-xl border-b border-gray-200 bg-red-200 p-4">
             <div
-              className="flex items-center cursor-pointer"
+              className="flex cursor-pointer items-center"
               onClick={handleClick}
             >
               <div className="flex items-center space-x-4">
@@ -224,68 +224,75 @@ const Chats: NextPage = () => {
           </div>
         ) : null}
         {filteredChatRooms?.length === 0 ? (
-      <div className="flex items-center justify-center h-20">
-        채팅방이 없습니다
-      </div>
-    ) : (
-      filteredChatRooms?.map((chatRoom: any) => {
-        // 로그인 유저가 채팅방에서 구매자인지 여부
-        const isBuyer = chatRoom?.buyerId === user?.id;
-        return (
-          <Link href={`/chats/${chatRoom.id}`} key={chatRoom.id}>
-            <a className="flex items-center px-4 py-3 space-x-3 cursor-pointer">
-              <div className="">
-                <ImgComponent
-                  imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${chatRoom?.product?.image}/public`}
-                  width={72}
-                  height={72}
-                  imgName={chatRoom?.product?.name}
-                />
-              </div>
-              <div className="flex flex-col w-full space-y-1">
-                <div className="flex flex-row space-x-2">
-                  <div className="text-md">{chatRoom?.product?.name}</div>
-                  <div className="text-md">{`${chatRoom?.product?.price}원`}</div>
-                </div>
-                <div className="flex flex-row items-center w-full space-x-2">
-                  <div className="relative w-10/12 space-y-1">
-                    <div className="flex flex-row space-x-2">
-                      <p className="text-gray-700">
-                        {chatRoom.buyerId === user?.id
-                          ? `판매자: ${chatRoom.seller.name}`
-                          : `구매자: ${chatRoom.buyer.name}`}
-                      </p>
+          <div className="flex h-20 items-center justify-center">
+            채팅방이 없습니다
+          </div>
+        ) : (
+          filteredChatRooms
+            .sort((a: any, b: any) => {
+              const dateA = new Date(a.recentMsg?.updatedAt).getTime();
+              const dateB = new Date(b.recentMsg?.updatedAt).getTime();
+              return dateB - dateA;
+            })
+            .map((chatRoom: any) => {
+              // 로그인 유저가 채팅방에서 구매자인지 여부
+              const isBuyer = chatRoom?.buyerId === user?.id;
+              return (
+                <Link href={`/chats/${chatRoom.id}`} key={chatRoom.id}>
+                  <a className="flex cursor-pointer items-center space-x-3 px-4 py-3">
+                    <div className="">
+                      <ImgComponent
+                        imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${chatRoom?.product?.image}/public`}
+                        width={72}
+                        height={72}
+                        imgName={chatRoom?.product?.name}
+                      />
                     </div>
-                    <div className="flex flex-row items-center justify-between">
-                      <div className="flex flex-row items-center space-x-2">
-                        <div className="whitespace-nowrap rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
-                          {chatRoom.recentMsg?.userId === chatRoom.seller.id
-                            ? chatRoom.seller.name
-                            : chatRoom.buyer.name}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {chatRoom.recentMsg?.chatMsg}
-                        </div>
+                    <div className="flex w-full flex-col space-y-1">
+                      <div className="flex flex-row space-x-2">
+                        <div className="text-md">{chatRoom?.product?.name}</div>
+                        <div className="text-md">{`${chatRoom?.product?.price}원`}</div>
                       </div>
-                      {data.unreadCountsPerRoom[chatRoom.id] !== 0 ? (
-                        <div className="flex items-center justify-center w-5 h-5 bg-red-500 rounded-full">
-                          <div className="text-sm text-white">
-                            {data.unreadCountsPerRoom[chatRoom.id]}
+                      <div className="flex w-full flex-row items-center space-x-2">
+                        <div className="relative w-10/12 space-y-1">
+                          <div className="flex flex-row space-x-2">
+                            <p className="text-gray-700">
+                              {chatRoom.buyerId === user?.id
+                                ? `판매자: ${chatRoom.seller.name}`
+                                : `구매자: ${chatRoom.buyer.name}`}
+                            </p>
+                          </div>
+                          <div className="flex flex-row items-center justify-between">
+                            <div className="flex flex-row items-center space-x-2">
+                              <div className="whitespace-nowrap rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
+                                {chatRoom.recentMsg?.userId ===
+                                chatRoom.seller.id
+                                  ? chatRoom.seller.name
+                                  : chatRoom.buyer.name}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {chatRoom.recentMsg?.chatMsg}
+                              </div>
+                            </div>
+                            {data.unreadCountsPerRoom[chatRoom.id] !== 0 ? (
+                              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500">
+                                <div className="text-sm text-white">
+                                  {data.unreadCountsPerRoom[chatRoom.id]}
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+                          <div className="text-sm text-gray-400">
+                            최신 메세지 시간: {chatRoom.recentMsg?.updatedAt}
                           </div>
                         </div>
-                      ) : null}
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-400">
-                      최신 메세지 시간: {chatRoom.recentMsg?.updatedAt}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </a>
-          </Link>
-        );
-      })
-    )}
+                  </a>
+                </Link>
+              );
+            })
+        )}
       </div>
     </Layout>
   );

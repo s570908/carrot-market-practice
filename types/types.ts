@@ -3,3 +3,9 @@
 //     Sold = 'sold',
 //     Selling = 'selling'
 //   }
+
+export enum FilterType {
+    CreatedBy = 'CreatedBy',
+    CreatedFor = 'CreatedFor',
+    All = "All"
+}

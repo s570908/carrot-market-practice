@@ -138,17 +138,18 @@ model Wondering {
 }
 
 model Review {
-  id           Int      @id @default(autoincrement())
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  review       String   @db.MediumText
-  score        Int      @default(1)
-  createdBy    User     @relation(name: "writtenReviews", fields: [createdById], references: [id], onDelete: Cascade)
+  id           Int        @id @default(autoincrement())
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  review       String     @db.MediumText
+  reviewType   ReviewType @default(SellerReview)
+  score        Int        @default(1)
+  createdBy    User       @relation(name: "writtenReviews", fields: [createdById], references: [id], onDelete: Cascade)
   createdById  Int
-  createdFor   User     @relation(name: "receivedReviews", fields: [createdForId], references: [id], onDelete: Cascade)
+  createdFor   User       @relation(name: "receivedReviews", fields: [createdForId], references: [id], onDelete: Cascade)
   createdForId Int
-  productFor   Product  @relation(name: "productReviews", fields: [productForId], references: [id], onDelete: Cascade)
-  productForId Int      @default(1)
+  productFor   Product    @relation(name: "productReviews", fields: [productForId], references: [id], onDelete: Cascade)
+  productForId Int        @default(1)
 }
 
 // model SellerChat {
@@ -266,6 +267,11 @@ enum Kind {
   Purchase
   Sale
   Fav
+}
+
+enum ReviewType {
+  SellerReview
+  BuyerReview
 }
 
 model TimezoneTest {

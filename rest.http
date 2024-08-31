@@ -1,5 +1,15 @@
 ### Global Scope
 
+### @index=48
+# @title = /api/users/:id/reviewNew
+@cookie48=carrotsession=Fe26.2*1*caec73846f82fc1000acf69874d861250dac5633cf320ac6c1f132840975f51f*yo_K-sNho6FGnPMPwe-9Hg*yM_2g2QNCOIcA0RBPLdz6Eddxd4vrdtKwoYNe5rXh-A*1726386303597*c60e716d686249cefeef4823cafbcf484c9c22255fb0b5c2902ce31e5bac53a7*hZ-SHj1AuYe2nH8bb6WjHHYiq1PXhMPlI2KssobRmhA~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
+# @prompt userId48 Your userID
+GET http://localhost:3000/api/users/{{userId48}}/reviewNew
+Cookie: {{cookie48}}
+Content-Type: application/json
+
+{"filterType": "createdBy"}
+
 ### @index=47
 # @title = /api/products/:id
 @cookie47=carrotsession=Fe26.2*1*aa94a242d07ed5e50d05223e590c470dea0aabc98be64b9240b41fd32c93ea05*1eI0rQodaQgCDZphaJLGjQ*miv0ne_9iTi8x_hnso0WujaYus_u8-B8Dqv_wwyE-D4*1719119550711*a575562d6c2a33703ebcc4cdd86e0af344f08d485669198c4036029bf6b12287*zE7DD5sfEHslgXIly_kJQL3N09JEOHl1dRZpiAaXjqI~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax

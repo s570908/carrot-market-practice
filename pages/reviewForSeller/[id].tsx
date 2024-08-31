@@ -71,13 +71,13 @@ const ReviewForSellerDetail: NextPage = () => {
   return (
     <Layout
       seoTitle={`${data?.other.name}의 Review`}
-      title={`${data?.other.name}의 Review`}
+      title={`${data?.other.name}의 받은 후기(Received Reviews)`}
       canGoBack
       backUrl="back"
       isProfile={true}
     >
-      <div className="space-y-4 px-4 py-4">
-        <div className="mt-4 flex items-center space-x-3 border-b pb-4">
+      <div className="px-4 py-4 space-y-4">
+        <div className="flex items-center pb-4 mt-4 space-x-3 border-b">
           {data?.other?.avatar ? (
             <ImgComponent
               width={48}
@@ -102,18 +102,18 @@ const ReviewForSellerDetail: NextPage = () => {
             />
           )}
           <div className="flex flex-col">
+          <div className="text-xs">판매자</div>
             <span className="font-medium text-gray-900">
               {data?.other?.name || "판매자 이름"}
             </span>
           </div>
         </div>
-        <div className="pt-3 text-lg font-bold">Received Reviews</div>
+        {/* <div className="pt-3 text-lg font-bold">
+          받은 후기(Received Reviews)
+        </div> */}
         {salesWithReview?.map((sale, idx) => (
           <Link key={idx} href={`/products/${sale?.product?.id}`}>
-            <a
-              className="mb-2 flex cursor-pointer flex-col border-b
-             pb-2"
-            >
+            <a className="flex flex-col pb-2 mb-2 border-b cursor-pointer">
               <div className="flex items-center space-x-4">
                 <ImgComponent
                   width={60}
@@ -123,27 +123,35 @@ const ReviewForSellerDetail: NextPage = () => {
                 />
                 <div className="pt-2">
                   <h3 className="text-sm font-medium text-gray-900">
-                    {sale?.product?.name}
+                    {`${sale?.product?.name}`}
                   </h3>
-                  <span className="mt-1 flex items-center font-medium text-gray-900">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <svg
-                        key={star}
-                        className={cls(
-                          "h-5 w-5",
-                          sale?.product?.productReviews[0]?.score >= star
-                            ? "text-yellow-400"
-                            : "text-gray-300"
-                        )}
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        aria-hidden="true"
-                      >
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
-                    ))}
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    {/* 여기에 flex와 space-x-2를 추가하여 요소들 사이에 적당한 간격을 줍니다. */}
+                    <span className="flex items-center font-medium text-gray-900">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <svg
+                          key={star}
+                          className={cls(
+                            "h-5 w-5",
+                            sale?.product?.productReviews[0]?.score >= star
+                              ? "text-yellow-400"
+                              : "text-gray-300"
+                          )}
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          aria-hidden="true"
+                        >
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                        </svg>
+                      ))}
+                    </span>
+                    <span className="font-normal">
+                      {sale?.product?.productReviews[0]?.score
+                        ? `(${sale.product.productReviews[0].score})`
+                        : ""}
+                    </span>
+                  </div>
                 </div>
               </div>
               <div className="mt-2 text-sm text-gray-600">

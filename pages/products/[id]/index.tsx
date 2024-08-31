@@ -391,7 +391,7 @@ const ItemDetail: NextPage = () => {
                 }
               >
                 <a className="text-xs font-medium text-gray-500">
-                  Review &rarr;
+                  판매자에 대한 후기 보기&rarr;
                 </a>
               </Link>
             </div>

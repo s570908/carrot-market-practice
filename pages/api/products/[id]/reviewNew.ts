@@ -6,19 +6,20 @@ import { withApiSession } from "@libs/server/withSession";
 async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) {
   if (req.method === "POST") {
     const {
-      query: { id, seller },
+      query: { id, createdForId },
       session: { user },
       body: { review, score, reviewType },
     } = req;
     console.log("query: ", req.query)
     console.log("body: ", req.body)
-    if (!id || !seller) {
+    if (!id || !createdForId) {
       return res.status(404).end({ error: "request query is not given." });
     }
     const writtenReview = await client.review.create({
       data: {
         review,
         score,
+        reviewType,
         createdBy: {
           connect: {
             id: user?.id,
@@ -26,7 +27,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
         },
         createdFor: {
           connect: {
-            id: +seller,
+            id: +createdForId,
           },
         },
         productFor: {
