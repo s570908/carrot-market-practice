@@ -99,6 +99,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   const productStatus =
     (reserved && "예약중") || (sold && "거래완료") || "판매중";
 
+  const isProvider = data?.chatRoomOfSeller?.sellerId === user?.id;
+  const isConsumer = data?.chatRoomOfSeller?.buyerId === user?.id;
+
   const { data: reservationData, mutate: reservationMutate } =
     useSWR<ReservationResponse>(
       router.query.id && data?.chatRoomOfSeller?.productId
@@ -129,8 +132,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       });
     }
   };
-
-  //console.log("Entry.isIntersecting: ", entry?.isIntersecting);
 
   const { register, handleSubmit, reset } = useForm<ChatFormResponse>();
   //// api server를 통해서 chatRoom에 chat data를 보내기
@@ -286,25 +287,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       ];
     }
   }
-  console.log("A, user?.id !== sellerUserId: ", user?.id !== sellerUserId);
-  console.log("B, sold: ", sold);
-  console.log(
-    "C, reserved && chatUserId !== reservationUserId: ",
-    reserved && chatUserId !== reservationUserId
-  );
-  console.log("C1, reserved: ", reserved);
-  console.log(
-    "C2, chatUserId !== reservationUserId: ",
-    chatUserId !== reservationUserId
-  );
-  console.log(
-    "D = !(A || B || C): ",
-    !(
-      user?.id !== sellerUserId ||
-      sold ||
-      (reserved && chatUserId !== reservationUserId)
-    )
-  );
+
   return (
     <Layout
       seoTitle={`${
@@ -386,12 +369,19 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               송금요청
             </div>
             <div
-              className="text-md cursor-pointer rounded-md border border-black p-1"
+              className={`text-md cursor-pointer rounded-md border p-1 ${
+                reserved || selling
+                  ? "cursor-not-allowed border-gray-400 opacity-50"
+                  : "border-black hover:bg-gray-100"
+              }`}
               onClick={() => {
-                console.log("후기 보내기가 클릭 되었습니다.");
+                sold &&
+                  router.push(
+                    `/products/${data?.chatRoomOfSeller?.productId}/review`
+                  );
               }}
             >
-              후기 보내기
+              {`${isProvider ? "판매" : "구매"} 후기 보내기`}
             </div>
             <div
               className="text-md cursor-pointer rounded-md border border-black p-1"

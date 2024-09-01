@@ -229,7 +229,7 @@ const Chats: NextPage = () => {
           </div>
         ) : (
           filteredChatRooms
-            .sort((a: any, b: any) => {
+            ?.sort((a: any, b: any) => {
               const dateA = new Date(a.recentMsg?.updatedAt).getTime();
               const dateB = new Date(b.recentMsg?.updatedAt).getTime();
               return dateB - dateA;
