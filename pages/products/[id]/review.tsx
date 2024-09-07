@@ -8,12 +8,17 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import useUser from "@libs/client/useUser";
 import useSWR from "swr";
-import { Product, User } from "@prisma/client";
+import { Product, User, ReviewType } from "@prisma/client";
 import ImgComponent from "@components/ImgComponent";
 import Link from "next/link";
 
 interface ProductWithUser extends Product {
   user: User;
+}
+
+interface UserResponse extends User {
+  ok: boolean;
+  other: User;
 }
 
 interface ItemDetailResponse {
@@ -31,17 +36,27 @@ const Review: NextPage = () => {
   const { data, mutate: boundMutate } = useSWR<ItemDetailResponse>(
     router.query.id ? `/api/products/${router.query.id}` : null
   );
+  const { otherId } = router.query;
+  const { data: dataOther } = useSWR<UserResponse>(
+    `/api/users/${otherId}/simpleProfile`
+  );
+  const isSeller = data?.product.userId === user?.id;
+  const isBuyer = data?.product.userId !== user?.id;
+  console.log("isSeller: -----------", data?.product.userId, otherId, isSeller);
   const { register, handleSubmit, watch } = useForm<ReviewForm>({
     mode: "onChange",
   });
   const [starScore, setStarScore] = useState(0);
   const [writeReview, { loading: writeReviewLoading, data: writeReviewData }] =
-    useMutation(
-      `/api/products/${router.query.id}/review?seller=${data?.product.userId}`
-    );
+    useMutation(`/api/products/${router.query.id}/reviewNew`);
   const onValid = ({ review }: ReviewForm) => {
     if (writeReviewLoading) return;
-    writeReview({ review, score: starScore });
+    writeReview({
+      review,
+      score: starScore,
+      reviewType: isSeller ? ReviewType.SellerReview : ReviewType.BuyerReview,
+      createdForId: otherId,
+    });
   };
   useEffect(() => {
     if (writeReviewData?.ok) {
@@ -49,7 +64,12 @@ const Review: NextPage = () => {
     }
   }, [writeReviewData, router]);
   return (
-    <Layout seoTitle="리뷰" canGoBack title="리뷰 쓰기" backUrl="back">
+    <Layout
+      seoTitle="리뷰"
+      canGoBack
+      title={isSeller ? "판매자가 후기 쓰기" : "구매자가 후기 쓰기"}
+      backUrl="back"
+    >
       <div className="px-4 py-2">
         <div className="mb-8">
           <ImgComponent
@@ -60,20 +80,20 @@ const Review: NextPage = () => {
             imgName={data?.product?.name}
           />
           <div className="flex cursor-pointer items-center space-x-3 border-b border-t py-3">
-            {data?.product?.user?.avatar ? (
+            {dataOther?.other?.avatar ? (
               <ImgComponent
                 imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.product?.user?.avatar}/public`}
                 width={48}
                 height={48}
                 clsProps="rounded-full"
-                imgName={data?.product?.user?.name}
+                imgName={dataOther?.other?.name}
               />
             ) : (
               <div className="h-12 w-12 rounded-full bg-slate-300" />
             )}
             <div>
               <p className="text-sm font-medium text-gray-700">
-                {data ? data?.product?.user?.name : "Now Loading..."}
+                {dataOther ? dataOther?.other?.name : "Now Loading..."}
               </p>
               <Link href={`/profile/${data?.product?.user?.id}`}>
                 <a className="text-xs font-medium text-gray-500">

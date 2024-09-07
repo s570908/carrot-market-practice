@@ -1,5 +1,31 @@
 ### Global Scope
 
+### @index=50
+# @title = /api/users/:id/reviewNew
+@cookie50=carrotsession=Fe26.2*1*dffc78197b39868ca1db5581befa324443b460c3ae6e08d67c69d6879ce5d1de*dkIe0tylw_-UwJKULZdasA*2hJUtgeNt-iiPeZCgHCp-oRg8hdQZEpbSfZBSs4g59w*1726977090272*ee1329e4303700ea6b47263f8c583b9d5b53d1bff5cf56e56c48a83b175886e6*TOuNfIfkxl7jHl0TVLQ84Yes_NUL9BS_ze114dtG7gs~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
+@userId50=3
+GET http://localhost:3000/api/users/{{userId50}}/simpleProfile
+Cookie: {{cookie50}}
+Content-Type: application/json
+
+### @index=49
+# @title = /api/product/[id]/reviewNew
+@cookie49=carrotsession=Fe26.2*1*dffc78197b39868ca1db5581befa324443b460c3ae6e08d67c69d6879ce5d1de*dkIe0tylw_-UwJKULZdasA*2hJUtgeNt-iiPeZCgHCp-oRg8hdQZEpbSfZBSs4g59w*1726977090272*ee1329e4303700ea6b47263f8c583b9d5b53d1bff5cf56e56c48a83b175886e6*TOuNfIfkxl7jHl0TVLQ84Yes_NUL9BS_ze114dtG7gs~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
+@review49=일본 '사커 다이제스트'는 6일 축구 이적 전문 사이트 '트랜스퍼마르크트' 자료를 인용, 33년 만에 나폴리의 세리에 A 우승에 기여한 한국 대표팀 수비수 김민재의 평가가 치솟고 있다고 전하며 아시아축구연맹(AFC) 소속 국가 선수 몸값 톱 10을 정리해 관심을 모았다.
+@score49=4
+@createdForId49=6
+@productId49=7
+POST http://localhost:3000/api/products/{{productId49}}/reviewNew
+Cookie: {{cookie49}}
+Content-Type: application/json
+
+{
+  "review": "{{review49}}",
+  "score": "{{score49}}",
+  "createdForId": "{{createdForId49}}",
+  "reviewType": "SellerReview"
+}
+
 ### @index=48
 # @title = /api/users/:id/reviewNew
 @cookie48=carrotsession=Fe26.2*1*caec73846f82fc1000acf69874d861250dac5633cf320ac6c1f132840975f51f*yo_K-sNho6FGnPMPwe-9Hg*yM_2g2QNCOIcA0RBPLdz6Eddxd4vrdtKwoYNe5rXh-A*1726386303597*c60e716d686249cefeef4823cafbcf484c9c22255fb0b5c2902ce31e5bac53a7*hZ-SHj1AuYe2nH8bb6WjHHYiq1PXhMPlI2KssobRmhA~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax

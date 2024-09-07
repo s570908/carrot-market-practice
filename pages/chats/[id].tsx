@@ -288,27 +288,29 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     }
   }
 
+  const otherId =
+    data?.chatRoomOfSeller?.buyerId === user?.id
+      ? data?.chatRoomOfSeller?.seller?.id
+      : data?.chatRoomOfSeller?.buyer?.id;
+
+  const otherName =
+    data?.chatRoomOfSeller?.buyerId === user?.id
+      ? data?.chatRoomOfSeller?.seller?.name
+      : data?.chatRoomOfSeller?.buyer?.name;
+
   return (
     <Layout
-      seoTitle={`${
-        data?.chatRoomOfSeller?.buyerId === user?.id
-          ? data?.chatRoomOfSeller?.seller.name
-          : data?.chatRoomOfSeller?.buyer.name
-      } || 채팅`}
-      title={`${
-        data?.chatRoomOfSeller?.buyerId === user?.id
-          ? data?.chatRoomOfSeller?.seller.name
-          : data?.chatRoomOfSeller?.buyer.name
-      }`}
+      seoTitle={`${otherName} || 채팅`}
+      title={`${otherName}`}
       canGoBack
       // backUrl={"/chats"}
       // backUrl={data?.chatRoomOfSeller?.buyerId === user?.id ? "/chats" : "back"}
       backUrl={"back"}
     >
       <div className="relative h-full px-4 pb-12">
-        <div className="w-full max-w-xl border-b border-gray-200 bg-red-200 p-4">
+        <div className="w-full max-w-xl p-4 bg-red-200 border-b border-gray-200">
           <div
-            className="flex cursor-pointer items-center"
+            className="flex items-center cursor-pointer"
             onClick={() => {
               router.push(`/products/${data?.chatRoomOfSeller?.productId}`);
             }}
@@ -351,9 +353,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               </div>
             </div>
           </div>
-          <div className="mt-2 flex flex-row justify-between">
+          <div className="flex flex-row justify-between mt-2">
             <div
-              className="text-md cursor-pointer rounded-md border border-black p-1"
+              className="p-1 border border-black rounded-md cursor-pointer text-md"
               onClick={() => {
                 console.log("약속잡기가 클릭 되었습니다.");
               }}
@@ -361,30 +363,30 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               약속잡기
             </div>
             <div
-              className="text-md cursor-pointer rounded-md border border-black p-1"
+              className="p-1 border border-black rounded-md cursor-pointer text-md"
               onClick={() => {
                 console.log("송금요청이 클릭 되었습니다.");
               }}
             >
               송금요청
             </div>
-            <div
+            <button
               className={`text-md cursor-pointer rounded-md border p-1 ${
                 reserved || selling
                   ? "cursor-not-allowed border-gray-400 opacity-50"
                   : "border-black hover:bg-gray-100"
               }`}
               onClick={() => {
-                sold &&
-                  router.push(
-                    `/products/${data?.chatRoomOfSeller?.productId}/review`
-                  );
+                router.push(
+                  `/products/${data?.chatRoomOfSeller?.productId}/review?otherId=${otherId}`
+                );
               }}
+              disabled={!sold}
             >
               {`${isProvider ? "판매" : "구매"} 후기 보내기`}
-            </div>
+            </button>
             <div
-              className="text-md cursor-pointer rounded-md border border-black p-1"
+              className="p-1 border border-black rounded-md cursor-pointer text-md"
               onClick={() => {
                 console.log("장소공유가 클릭 되었습니다.");
               }}
@@ -392,7 +394,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               장소공유
             </div>
             <div
-              className="text-md cursor-pointer rounded-md border border-black p-1"
+              className="p-1 border border-black rounded-md cursor-pointer text-md"
               onClick={() => {
                 console.log("기타가 클릭 되었습니다.");
               }}
@@ -450,9 +452,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
           </form> */}
           <form
             onSubmit={handleSubmit(onValid)}
-            className="mt-10 w-full border-t px-1 py-1"
+            className="w-full px-1 py-1 mt-10 border-t"
           >
-            <div className="relative w-full rounded-md bg-white px-2 py-2 outline-none">
+            <div className="relative w-full px-2 py-2 bg-white rounded-md outline-none">
               <input
                 {...register("chatMsg", { required: true, maxLength: 80 })}
                 maxLength={80}

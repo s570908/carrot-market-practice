@@ -4,11 +4,12 @@ import client from "@libs/client/client";
 import { withApiSession } from "@libs/server/withSession";
 
 async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) {
+  console.log("---------------Post /api/product/[id]/reviewNew is called" )
   if (req.method === "POST") {
     const {
-      query: { id, createdForId },
+      query: { id },
       session: { user },
-      body: { review, score, reviewType },
+      body: { createdForId, review, score, reviewType },
     } = req;
     console.log("query: ", req.query)
     console.log("body: ", req.body)
@@ -18,7 +19,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
     const writtenReview = await client.review.create({
       data: {
         review,
-        score,
+        score: +score,
         reviewType,
         createdBy: {
           connect: {
