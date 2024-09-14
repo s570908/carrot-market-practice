@@ -43,15 +43,15 @@ const Item = ({
             <span className="mt-1 font-medium text-gray-900">￦{price}</span>
           </div>
         </div>
-        <div>
-          {status === Status.Reserved
-            ? "예약중"
-            : status === Status.Sold
-            ? "거래완료"
-            : "판매중"}
-        </div>
         {/* <div>{isReserved && <span className="mt-1 text-xs text-red-500">예약됨</span>}</div> */}
-        <div className="flex items-end justify-end space-x-2">
+        <div className="flex flex-col items-start justify-end space-x-2">
+          <div>
+            {status === Status.Reserved
+              ? "예약중"
+              : status === Status.Sold
+              ? "거래완료"
+              : "판매중"}
+          </div>
           <div
             className={cls(
               isLike ? "text-red-600" : "text-gray-600",

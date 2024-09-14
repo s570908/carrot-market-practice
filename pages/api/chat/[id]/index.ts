@@ -38,6 +38,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
           id: true,
           name: true,
           avatar: true,
+          writtenReviews: true
         },
       },
       seller: {
@@ -45,6 +46,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
           id: true,
           name: true,
           avatar: true,
+          writtenReviews: true
         },
       },
       product: {

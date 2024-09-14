@@ -1,5 +1,19 @@
 ### Global Scope
 
+### @index=51
+# @title = /api/users/:id/reviewNew
+@cookie51=carrotsession=Fe26.2*1*c4eee98cea7bcba97a9e97e416f2dc19617680e4dd58a958acd2672fcb8a579a*fTWUG6VLGlKEASouXeDdnA*QJMcisZIc5wH8DAQABnKH3IMb0KNCdOs9nzYHwAmIJQ*1727581743707*a088c080605287ae07125befd1b28adb06c350df9d258ff203d64afa47391799*BDhZoKQhXNytBXepFeQOhaQ04jCKNNOYSDbSAVvED0c~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
+@productId51=1
+@createdForId51=1
+GET http://localhost:3000/api/products/{{productId51}}/checkReviewWritable
+Cookie: {{cookie51}}
+Content-Type: application/json
+
+{
+  "createdForId": "{{createdForId51}}",
+  "reviewType": "BuyerReview"
+}
+
 ### @index=50
 # @title = /api/users/:id/reviewNew
 @cookie50=carrotsession=Fe26.2*1*dffc78197b39868ca1db5581befa324443b460c3ae6e08d67c69d6879ce5d1de*dkIe0tylw_-UwJKULZdasA*2hJUtgeNt-iiPeZCgHCp-oRg8hdQZEpbSfZBSs4g59w*1726977090272*ee1329e4303700ea6b47263f8c583b9d5b53d1bff5cf56e56c48a83b175886e6*TOuNfIfkxl7jHl0TVLQ84Yes_NUL9BS_ze114dtG7gs~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
