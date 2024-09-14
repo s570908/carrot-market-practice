@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import withHandler, { ResponseType } from "@libs/server/withHandler";
 import client from "@libs/client/client";
 import { withApiSession } from "@libs/server/withSession";
+import { ReviewType } from "@prisma/client";
 
 async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) {
   console.log("---------------GET /api/product/[id]/checkReviewWirtable is called");
@@ -13,11 +14,21 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
     console.log("query: ", req.query);
 
     if (!id || !createdForId || !reviewType) {
-      return res.status(404).end({ error: "request query is not given." });
+      return res.status(404).end({ error: "Required query parameters are missing." });
     }
 
     console.log("createdForId------------: ", createdForId);
     console.log("user.id------------: ", user?.id);
+
+    // Convert the query string into the ReviewType enum
+    let enumReviewType: ReviewType;
+    if (reviewType === "BuyerReview") {
+      enumReviewType = ReviewType.BuyerReview;
+    } else if (reviewType === "SellerReview") {
+      enumReviewType = ReviewType.SellerReview;
+    } else {
+      return res.status(404).end({ ok: false, error: "Invalid review type." });
+    }
 
     if (+createdForId === user?.id) {
       return res
@@ -53,7 +64,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
     const existingReviews = await client.review.findMany({
       where: {
         productForId: +id,
-        OR: [{ reviewType: "BuyerReview" }, { reviewType: "SellerReview" }],
+        OR: [{ reviewType: ReviewType.BuyerReview }, { reviewType: ReviewType.SellerReview }],
       },
     });
 
