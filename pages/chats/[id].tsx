@@ -7,9 +7,10 @@ import {
   ChatRoom,
   Product,
   Reservation,
+  Review,
   SellerChat,
   Status,
-  User,
+  User as PrismaUser,
 } from "@prisma/client";
 import { useForm } from "react-hook-form";
 import useMutation from "@libs/client/useMutation";
@@ -29,6 +30,10 @@ type Option = {
   active: boolean;
 };
 
+export type User = PrismaUser & {
+  writtenReviews: Review[];
+};
+
 interface ChatWithUser extends SellerChat {
   user: User;
 }
@@ -41,6 +46,12 @@ interface ReservationResponse {
   ok: boolean;
   isReserved: boolean;
   reserve: ReservationWithUser;
+}
+
+interface ReviewWritableResponse {
+  ok: boolean;
+  error?: string;
+  message?: string;
 }
 
 interface SellerChatResponse {
@@ -89,6 +100,16 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     { refreshInterval: 3000 }
   );
 
+  const otherId =
+    data?.chatRoomOfSeller?.buyerId === user?.id
+      ? data?.chatRoomOfSeller?.seller?.id
+      : data?.chatRoomOfSeller?.buyer?.id;
+
+  const otherName =
+    data?.chatRoomOfSeller?.buyerId === user?.id
+      ? data?.chatRoomOfSeller?.seller?.name
+      : data?.chatRoomOfSeller?.buyer?.name;
+
   const reserved =
     data?.chatRoomOfSeller?.product?.status === Status.Reserved ? true : false;
   const sold =
@@ -109,9 +130,50 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         : null
     );
   console.log("reservationData: ", reservationData);
+
+  const customFetcher = (url: any, body: any) => {
+    console.log("url----------: ", url);
+    console.log("body----------: ", body);
+    return (url: RequestInfo | URL) =>
+      fetch(
+        url
+        // {
+        // method: "GET", // Using POST method
+        // headers: {
+        //   "Content-Type": "application/json",
+        // },
+        // body: JSON.stringify(body), // Sending the request body
+        // }
+      ).then((response) => response.json());
+  };
+
+  const url =
+    router.query.id && data?.chatRoomOfSeller?.productId
+      ? `/api/products/${data?.chatRoomOfSeller?.productId}/checkReviewWritable`
+      : null;
+
+  const body = {
+    createdForId: otherId,
+    reviewType: "BuyerReview",
+  };
+
+  const { data: reviewWritableData } = useSWR<ReviewWritableResponse>(
+    url,
+    customFetcher(url, body)
+  );
+
+  // console.log("reviewWritableData================: ", reviewWritableData);
+
+  const productId = data?.chatRoomOfSeller?.productId;
+  const writtenReviews = data?.chatRoomOfSeller?.buyer?.writtenReviews;
+
+  const reviewExists =
+    writtenReviews?.find(
+      (review: Review) => review.productForId === productId
+    ) !== undefined;
+
   console.log(
-    "data?.chatRoomOfSeller?.buyerId: ",
-    data?.chatRoomOfSeller?.buyerId
+    reviewExists ? "후기가 존재합니다." : "후기가 존재하지 않습니다."
   );
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -287,16 +349,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       ];
     }
   }
-
-  const otherId =
-    data?.chatRoomOfSeller?.buyerId === user?.id
-      ? data?.chatRoomOfSeller?.seller?.id
-      : data?.chatRoomOfSeller?.buyer?.id;
-
-  const otherName =
-    data?.chatRoomOfSeller?.buyerId === user?.id
-      ? data?.chatRoomOfSeller?.seller?.name
-      : data?.chatRoomOfSeller?.buyer?.name;
 
   return (
     <Layout
