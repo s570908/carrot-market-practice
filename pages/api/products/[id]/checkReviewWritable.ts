@@ -8,7 +8,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
   console.log("---------------GET /api/product/[id]/checkReviewWirtable is called");
   if (req.method === "GET") {
     const {
-      query: { id, createdForId, reviewType }, // Extract these from the query string
+      query: { id, createdForId, reviewType },
       session: { user },
     } = req;
     console.log("query: ", req.query);
