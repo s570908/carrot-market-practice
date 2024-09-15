@@ -12,12 +12,11 @@ async function handler(
   );
   if (req.method === "GET") {
     const {
-      query: { id },
+      query: { id, createdForId, reviewType },
       session: { user },
-      body: { createdForId, reviewType },
     } = req;
     console.log("query: ", req.query);
-    console.log("body: ", req.body);
+  
     if (!id || !createdForId || !reviewType) {
       return res.status(404).end({ error: "request query is not given." });
     }

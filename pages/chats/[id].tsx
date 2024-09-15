@@ -131,38 +131,29 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     );
   console.log("reservationData: ", reservationData);
 
-  const customFetcher = (url: any, body: any) => {
-    console.log("url----------: ", url);
-    console.log("body----------: ", body);
-    return (url: RequestInfo | URL) =>
-      fetch(
-        url
-        // {
-        // method: "GET", // Using POST method
-        // headers: {
-        //   "Content-Type": "application/json",
-        // },
-        // body: JSON.stringify(body), // Sending the request body
-        // }
-      ).then((response) => response.json());
-  };
+  // const getFetcherWithParams = (url: any, { otherId, reviewType }) => {
+  //   const query = `?createdForId=${otherId}&reviewType=${reviewType}`;
+  //   return fetch(url + query, {
+  //     method: "GET",
+  //   }).then((res) => res.json());
+  // };
+
+  const reviewType = isProvider ? "SellerReview" : "BuyerReview";
 
   const url =
     router.query.id && data?.chatRoomOfSeller?.productId
-      ? `/api/products/${data?.chatRoomOfSeller?.productId}/checkReviewWritable`
+      ? `/api/products/${data?.chatRoomOfSeller?.productId}/checkReviewWritable?createdForId=${otherId}&reviewType=${reviewType}`
       : null;
 
   const body = {
     createdForId: otherId,
-    reviewType: "BuyerReview",
+    reviewType: reviewType,
   };
 
-  const { data: reviewWritableData } = useSWR<ReviewWritableResponse>(
-    url,
-    customFetcher(url, body)
-  );
+  const { data: reviewWritableData, error } =
+    useSWR<ReviewWritableResponse>(url);
 
-  // console.log("reviewWritableData================: ", reviewWritableData);
+  console.log("reviewWritableData================: ", reviewWritableData);
 
   const productId = data?.chatRoomOfSeller?.productId;
   const writtenReviews = data?.chatRoomOfSeller?.buyer?.writtenReviews;
@@ -171,10 +162,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     writtenReviews?.find(
       (review: Review) => review.productForId === productId
     ) !== undefined;
-
-  console.log(
-    reviewExists ? "후기가 존재합니다." : "후기가 존재하지 않습니다."
-  );
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const entry = useIntersectionObserver(scrollRef, {
@@ -360,9 +347,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       backUrl={"back"}
     >
       <div className="relative h-full px-4 pb-12">
-        <div className="w-full max-w-xl p-4 bg-red-200 border-b border-gray-200">
+        <div className="w-full max-w-xl border-b border-gray-200 bg-red-200 p-4">
           <div
-            className="flex items-center cursor-pointer"
+            className="flex cursor-pointer items-center"
             onClick={() => {
               router.push(`/products/${data?.chatRoomOfSeller?.productId}`);
             }}
@@ -405,9 +392,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               </div>
             </div>
           </div>
-          <div className="flex flex-row justify-between mt-2">
+          <div className="mt-2 flex flex-row justify-between">
             <div
-              className="p-1 border border-black rounded-md cursor-pointer text-md"
+              className="text-md cursor-pointer rounded-md border border-black p-1"
               onClick={() => {
                 console.log("약속잡기가 클릭 되었습니다.");
               }}
@@ -415,7 +402,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               약속잡기
             </div>
             <div
-              className="p-1 border border-black rounded-md cursor-pointer text-md"
+              className="text-md cursor-pointer rounded-md border border-black p-1"
               onClick={() => {
                 console.log("송금요청이 클릭 되었습니다.");
               }}
@@ -424,7 +411,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
             </div>
             <button
               className={`text-md cursor-pointer rounded-md border p-1 ${
-                reserved || selling
+                reserved || selling || reviewWritableData?.ok === false
                   ? "cursor-not-allowed border-gray-400 opacity-50"
                   : "border-black hover:bg-gray-100"
               }`}
@@ -433,12 +420,12 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                   `/products/${data?.chatRoomOfSeller?.productId}/review?otherId=${otherId}`
                 );
               }}
-              disabled={!sold}
+              disabled={!sold || reviewWritableData?.ok === false}
             >
               {`${isProvider ? "판매" : "구매"} 후기 보내기`}
             </button>
             <div
-              className="p-1 border border-black rounded-md cursor-pointer text-md"
+              className="text-md cursor-pointer rounded-md border border-black p-1"
               onClick={() => {
                 console.log("장소공유가 클릭 되었습니다.");
               }}
@@ -446,7 +433,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               장소공유
             </div>
             <div
-              className="p-1 border border-black rounded-md cursor-pointer text-md"
+              className="text-md cursor-pointer rounded-md border border-black p-1"
               onClick={() => {
                 console.log("기타가 클릭 되었습니다.");
               }}
@@ -504,9 +491,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
           </form> */}
           <form
             onSubmit={handleSubmit(onValid)}
-            className="w-full px-1 py-1 mt-10 border-t"
+            className="mt-10 w-full border-t px-1 py-1"
           >
-            <div className="relative w-full px-2 py-2 bg-white rounded-md outline-none">
+            <div className="relative w-full rounded-md bg-white px-2 py-2 outline-none">
               <input
                 {...register("chatMsg", { required: true, maxLength: 80 })}
                 maxLength={80}
