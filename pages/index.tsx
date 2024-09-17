@@ -45,7 +45,7 @@ const Home: NextPage = () => {
     setPage((prev) => prev + 1);
   };
 
-  console.log("===data: ", data);
+  //console.log("===data: ", data);
   return (
     <Layout seoTitle="Home" title="홈" hasTabBar notice>
       <div className="flex flex-col space-y-5 divide-y px-4">
