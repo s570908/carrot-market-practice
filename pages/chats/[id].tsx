@@ -23,6 +23,8 @@ import Loading from "@components/Loading";
 import ImgComponent from "@components/ImgComponent";
 import { getChatRoomData } from "@libs/server/chatUtils";
 import Dropdown from "@components/Dropdown";
+//mport { useSocket } from "@libs/client/useSocket";
+import io, { Socket } from "socket.io-client";
 
 type Option = {
   value: string;
@@ -83,6 +85,7 @@ interface ChatDetailProps {
 
 const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   // console.log("chatRoomData: ", chatRoomData);
+
   const [newMessageSubmitted, setNewMessageSubmitted] = useState(false);
   const { user } = useUser();
   const router = useRouter();
@@ -97,7 +100,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   // );
   const { data, mutate } = useSWR<SellerChatResponse>(
     router.query.id ? `/api/chat/${router.query.id}` : null,
-    { refreshInterval: 3000 }
+    { refreshInterval: 300000 }
   );
 
   const otherId =
@@ -125,7 +128,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       ? `/api/products/${data?.chatRoomOfSeller?.productId}/reservation`
       : null
   );
-  console.log("reservationData: ", reservationData);
+  //console.log("reservationData: ", reservationData);
 
   // const getFetcherWithParams = (url: any, { otherId, reviewType }) => {
   //   const query = `?createdForId=${otherId}&reviewType=${reviewType}`;
@@ -143,7 +146,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   const { data: reviewWritableData, error } = useSWR<ReviewWritableResponse>(url);
 
-  console.log("reviewWritableData================: ", reviewWritableData);
+  //console.log("reviewWritableData================: ", reviewWritableData);
 
   const productId = data?.chatRoomOfSeller?.productId;
   const writtenReviews = data?.chatRoomOfSeller?.buyer?.writtenReviews;
@@ -229,6 +232,72 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     []
   );
 
+  //const { socket, isConnected } = useSocket();
+  // console.log("socket: ", socket);
+  // console.log("isConnected : ", isConnected);
+  const [connected, setConnected] = useState<boolean>(false);
+
+  useEffect((): any => {
+    // connect to socket server
+    // @ts-ignore
+    const socket = io.connect(process.env.BASE_URL, {
+      path: "/api/socket",
+    });
+
+    // log socket connection
+    socket.on("connect", () => {
+      console.log("SOCKET CONNECTED!", socket.id);
+      setConnected(true);
+    });
+
+    // update chat on new message dispatched
+    socket.on("message", (message: any) => {
+      console.log("message received: ", message);
+      //setChat((chat) => [...chat, message]);
+    });
+
+    // socket disconnet onUnmount if exists
+    if (socket) return () => socket.disconnect();
+  }, []);
+
+  // 소켓 연결
+  // useEffect(() => {
+  //   let socket: Socket;
+  //   const socketInitializer = async () => {
+  //     await fetch("/api/socket/io");
+  //     socket = io();
+
+  //     socket.on("connect", () => {
+  //       console.log("connected", socket);
+  //       setConnected(true);
+  //     });
+
+  //     // 연결이 끊겼을 때
+  //     socket.on("disconnect", () => {
+  //       console.log("Socket disconnected");
+  //       setConnected(false);
+  //     });
+
+  //     socket.on("error", (error: any) => {
+  //       console.log(error);
+  //     });
+
+  //     socket.on("message", (message) => {
+  //       //chat.push(message);
+  //       console.log("New message recieved: ", message);
+  //       //setChat([...chat]);
+  //     });
+  //   };
+  //   socketInitializer();
+
+  //   // 브라우저가 꺼지면 소켓 연결 종료
+  //   return () => {
+  //     if (socket) {
+  //       socket.disconnect();
+  //     }
+  //   };
+  // }, []);
+
   // 드롭다운에서 선택 변경 시 호출되는 함수
   const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedValue(event.target.value);
@@ -263,28 +332,28 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   // api server call is here
   useEffect(() => {
-    console.log("selectedValue: ", selectedValue);
-    console.log("reserved: ", reserved);
+    //console.log("selectedValue: ", selectedValue);
+    //console.log("reserved: ", reserved);
     // console.log("sold: ", sold);
     if (selling) {
       // 로그인 유저가 파는 사람이고 구매자가 예약 하겠다고 하면 예약중으로 변경한다.
       if (selectedValue === "예약중") {
-        console.log("api to do: 예약중");
+        //console.log("api to do: 예약중");
         toggleReservation({ buyerId: data?.chatRoomOfSeller?.buyerId });
       }
       // 로그인 유저가 파는 사람이고 구매자가 예약중이면 구매자의 예약을 제거하고 구매자에게 판매 완료한다.
       if (selectedValue === "거래완료") {
-        console.log("api to do: 거래완료");
+        //console.log("api to do: 거래완료");
         sellComplete({ buyerId: data?.chatRoomOfSeller?.buyerId });
       }
     } else if (reserved) {
       if (selectedValue === "판매중") {
         // 로그인 유저가 파는 사람이고 구매자가 예약중인 상태에서 구매자의 예약을 취소한다.
-        console.log("api to do: 예약중에서 판매중으로 바뀌도록 한다.");
+        //console.log("api to do: 예약중에서 판매중으로 바뀌도록 한다.");
         toggleReservation({ buyerId: data?.chatRoomOfSeller?.buyerId });
       } else if (selectedValue === "거래완료") {
         // 로그인 유저가 파는 사람이고 구매자가 예약중이면 구매자의 예약을 제거하고 구매자에게 판매 완료한다.
-        console.log("api to do: 거래완료");
+        //console.log("api to do: 거래완료");
         sellComplete({ buyerId: data?.chatRoomOfSeller?.buyerId });
       } else if (selectedValue === "거래완료") {
         // 거래 완료시 거래 완료 선택시 할일 없음
@@ -300,7 +369,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     data?.chatRoomOfSeller?.buyerId === user?.id
       ? data?.chatRoomOfSeller?.sellerId
       : data?.chatRoomOfSeller?.buyerId;
-  console.log("chatUser 채팅자: ", chatUserId);
+  //console.log("chatUser 채팅자: ", chatUserId);
 
   const sellerUserId = data?.chatRoomOfSeller?.sellerId;
 
@@ -332,9 +401,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       backUrl={"back"}
     >
       <div className="relative h-full px-4 pb-12">
-        <div className="w-full max-w-xl p-4 bg-red-200 border-b border-gray-200">
+        <div className="w-full max-w-xl border-b border-gray-200 bg-red-200 p-4">
           <div
-            className="flex items-center cursor-pointer"
+            className="flex cursor-pointer items-center"
             onClick={() => {
               router.push(`/products/${data?.chatRoomOfSeller?.productId}`);
             }}
@@ -367,9 +436,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               </div>
             </div>
           </div>
-          <div className="flex flex-row justify-between mt-2">
+          <div className="mt-2 flex flex-row justify-between">
             <div
-              className="p-1 border border-black rounded-md cursor-pointer text-md"
+              className="text-md cursor-pointer rounded-md border border-black p-1"
               onClick={() => {
                 console.log("약속잡기가 클릭 되었습니다.");
               }}
@@ -377,7 +446,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               약속잡기
             </div>
             <div
-              className="p-1 border border-black rounded-md cursor-pointer text-md"
+              className="text-md cursor-pointer rounded-md border border-black p-1"
               onClick={() => {
                 console.log("송금요청이 클릭 되었습니다.");
               }}
@@ -400,7 +469,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               {`${isProvider ? "판매" : "구매"} 후기 보내기`}
             </button>
             <div
-              className="p-1 border border-black rounded-md cursor-pointer text-md"
+              className="text-md cursor-pointer rounded-md border border-black p-1"
               onClick={() => {
                 console.log("장소공유가 클릭 되었습니다.");
               }}
@@ -408,7 +477,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               장소공유
             </div>
             <div
-              className="p-1 border border-black rounded-md cursor-pointer text-md"
+              className="text-md cursor-pointer rounded-md border border-black p-1"
               onClick={() => {
                 console.log("기타가 클릭 되었습니다.");
               }}
@@ -464,8 +533,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               </div>
             </div>
           </form> */}
-          <form onSubmit={handleSubmit(onValid)} className="w-full px-1 py-1 mt-10 border-t">
-            <div className="relative w-full px-2 py-2 bg-white rounded-md outline-none">
+          <form onSubmit={handleSubmit(onValid)} className="mt-10 w-full border-t px-1 py-1">
+            <div className="relative w-full rounded-md bg-white px-2 py-2 outline-none">
               <input
                 {...register("chatMsg", { required: true, maxLength: 80 })}
                 maxLength={80}

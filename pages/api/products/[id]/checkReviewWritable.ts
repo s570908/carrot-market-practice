@@ -5,20 +5,20 @@ import { withApiSession } from "@libs/server/withSession";
 import { ReviewType } from "@prisma/client";
 
 async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) {
-  console.log("---------------GET /api/product/[id]/checkReviewWirtable is called");
+  //console.log("---------------GET /api/product/[id]/checkReviewWirtable is called");
   if (req.method === "GET") {
     const {
       query: { id, createdForId, reviewType },
       session: { user },
     } = req;
-    console.log("query: ", req.query);
+    //console.log("query: ", req.query);
 
     if (!id || !createdForId || !reviewType) {
       return res.status(404).end({ error: "Required query parameters are missing." });
     }
 
-    console.log("createdForId------------: ", createdForId);
-    console.log("user.id------------: ", user?.id);
+    //console.log("createdForId------------: ", createdForId);
+    //console.log("user.id------------: ", user?.id);
 
     // Convert the query string into the ReviewType enum
     let enumReviewType: ReviewType;
@@ -42,7 +42,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
       select: { userId: true },
     });
 
-    console.log("product-----------------:", product);
+    //console.log("product-----------------:", product);
 
     if (!product) {
       return res.status(400).end({ ok: false, error: "product is not found." }); // 제품이 존재하지 않으면 false 반환
@@ -51,7 +51,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
     // 제품 소유자와 로그인한 사용자가 동일한지 검사
     const isOwner = user?.id === product.userId;
 
-    console.log("isOwner----------------: ", isOwner);
+    //console.log("isOwner----------------: ", isOwner);
     // 리뷰 타입 검사
     if ((isOwner && reviewType !== "SellerReview") || (!isOwner && reviewType !== "BuyerReview")) {
       return res.status(400).json({
@@ -68,7 +68,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
       },
     });
 
-    console.log("existingReviews---------------------: ", existingReviews);
+    //console.log("existingReviews---------------------: ", existingReviews);
 
     // 리뷰 제한 조건 검사
     if (existingReviews.length > 2) {

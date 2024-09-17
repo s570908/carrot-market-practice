@@ -2,8 +2,10 @@ import { NextApiRequest, NextApiResponse } from "next";
 import withHandler, { ResponseType } from "@libs/server/withHandler";
 import client from "@libs/client/client";
 import { withApiSession } from "@libs/server/withSession";
+import { NextApiResponseServerIo } from "types/types";
 
-async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) {
+async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
+  //async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
   const {
     query: { id },
     body,
@@ -29,7 +31,30 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
       isNew: true, // 이 chat message는 상대방이 읽지 않았으므로 true
     },
   });
-  
+
+  // if (res?.socket?.server?.io) {
+  //   console.log("test");
+  //   const room = `chatRoom-${id}`; // Define the room name
+  //   res.socket.server.io.emit("message", {
+  //     id: sellerChat.id,
+  //     chatMsg: sellerChat.chatMsg,
+  //     user: { id: user?.id },
+  //     createdAt: sellerChat.createdAt,
+  //   });
+  // } else {
+  //   console.error("Socket.IO server not initialized");
+  // }
+
+  const message = {
+    id: sellerChat.id,
+    chatMsg: sellerChat.chatMsg,
+    user: { id: user?.id },
+    createdAt: sellerChat.createdAt,
+  };
+
+  // dispatch to channel "message"
+  res?.socket?.server?.io?.emit("message", message);
+
   // recentMsg를 서버에 보내야 한다.
   const updatedChatRoom = await client.chatRoom.update({
     where: { id: +id },

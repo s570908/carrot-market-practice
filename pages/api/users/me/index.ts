@@ -4,9 +4,9 @@ import { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 import client from "@libs/client/client";
 
 const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse<ResponseType>) => {
-  console.log(`/api/users/me--req.cookies: ${JSON.stringify(req.cookies, null, 2)}`);
-  console.log("/api/users/me--req.session: ", req.session);
-  console.log("/api/users/me--req.method: ", req.method);
+  // console.log(`/api/users/me--req.cookies: ${JSON.stringify(req.cookies, null, 2)}`);
+  // console.log("/api/users/me--req.session: ", req.session);
+  // console.log("/api/users/me--req.method: ", req.method);
 
   if (req.method === "GET") {
     const profile = await client.user.findUnique({
@@ -22,7 +22,7 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
         },
       },
     });
-    console.log("api/users/me--profile: ", profile);
+    //console.log("api/users/me--profile: ", profile);
     res.status(200).json({ ok: true, profile });
   }
 
@@ -40,20 +40,20 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
       session: { user },
       body: { email, phone, name, avatarId },
     } = req;
-    console.log(
-      "api/users/me--user, email, name, phone, avatarId: ",
-      user,
-      email,
-      name,
-      phone,
-      avatarId
-    );
+    // console.log(
+    //   "api/users/me--user, email, name, phone, avatarId: ",
+    //   user,
+    //   email,
+    //   name,
+    //   phone,
+    //   avatarId
+    // );
     const currentUser = await client.user.findUnique({
       where: {
         id: user?.id,
       },
     });
-    console.log("api/users/me--currentUser: ", currentUser);
+    //console.log("api/users/me--currentUser: ", currentUser);
 
     if (email && email !== currentUser?.email) {
       console.log("email, currentUser?.email: ", email, currentUser?.email);

@@ -3,10 +3,7 @@ import withHandler, { ResponseType } from "@libs/server/withHandler";
 import client from "@libs/client/client";
 import { withApiSession } from "@libs/server/withSession";
 
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<ResponseType>
-) {
+async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) {
   if (req.method === "POST") {
     // consumer가 provider한테 product를 사고 싶을때 생성
     const {
@@ -57,8 +54,8 @@ async function handler(
       query: { productId }, // 쿼리에서 productId 추출
     } = req;
 
-    console.log("==========req.query: ", req.query);
-    console.log("==============user, productId: ", user, productId);
+    //console.log("==========req.query: ", req.query);
+    //console.log("==============user, productId: ", user, productId);
 
     if (productId) {
       const productIdValue = parseInt(productId as string, 10);
@@ -81,7 +78,7 @@ async function handler(
               isNew: true,
               userId: true,
               createdAt: true,
-              updatedAt: true
+              updatedAt: true,
             },
           },
           buyer: {
@@ -105,7 +102,7 @@ async function handler(
               name: true,
               image: true,
               price: true,
-             status: true,
+              status: true,
             },
           },
           sellerChat: {
@@ -167,7 +164,7 @@ async function handler(
               isNew: true,
               userId: true,
               createdAt: true,
-              updatedAt: true
+              updatedAt: true,
             },
           },
           buyer: {

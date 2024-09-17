@@ -24,7 +24,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         },
       },
     });
-    console.log("GET /api/reviews--reviews: ", reviews);
+    //console.log("GET /api/reviews--reviews: ", reviews);
     res.json({
       ok: true,
       reviews,

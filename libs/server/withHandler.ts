@@ -6,7 +6,7 @@ export interface ResponseType {
 }
 interface ConfigType {
   methods: MethodType[];
-  handler: NextApiHandler;
+  handler: NextApiHandler | any;
   isPrivate?: boolean;
 }
 type HandlerType = {
