@@ -248,55 +248,20 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     socket.on("connect", () => {
       console.log("SOCKET CONNECTED!", socket.id);
       setConnected(true);
+      // Join the specific chatroom
+      socket.emit("joinRoom", router.query.id);
     });
 
     // update chat on new message dispatched
     socket.on("message", (message: any) => {
       console.log("message received: ", message);
+      mutate();
       //setChat((chat) => [...chat, message]);
     });
 
     // socket disconnet onUnmount if exists
     if (socket) return () => socket.disconnect();
-  }, []);
-
-  // 소켓 연결
-  // useEffect(() => {
-  //   let socket: Socket;
-  //   const socketInitializer = async () => {
-  //     await fetch("/api/socket/io");
-  //     socket = io();
-
-  //     socket.on("connect", () => {
-  //       console.log("connected", socket);
-  //       setConnected(true);
-  //     });
-
-  //     // 연결이 끊겼을 때
-  //     socket.on("disconnect", () => {
-  //       console.log("Socket disconnected");
-  //       setConnected(false);
-  //     });
-
-  //     socket.on("error", (error: any) => {
-  //       console.log(error);
-  //     });
-
-  //     socket.on("message", (message) => {
-  //       //chat.push(message);
-  //       console.log("New message recieved: ", message);
-  //       //setChat([...chat]);
-  //     });
-  //   };
-  //   socketInitializer();
-
-  //   // 브라우저가 꺼지면 소켓 연결 종료
-  //   return () => {
-  //     if (socket) {
-  //       socket.disconnect();
-  //     }
-  //   };
-  // }, []);
+  }, [mutate, router.query.id]);
 
   // 드롭다운에서 선택 변경 시 호출되는 함수
   const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {

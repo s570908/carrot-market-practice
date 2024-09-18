@@ -53,8 +53,9 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
   };
 
   // dispatch to channel "message"
-  res?.socket?.server?.io?.emit("message", message);
-
+  res?.socket?.server?.io?.to(`${id}`).emit("message", message);
+  //console.log("chat server emits message to chatRoom: ", id);
+  //console.log("res?.socket?.server?.io: ", res?.socket?.server?.io);
   // recentMsg를 서버에 보내야 한다.
   const updatedChatRoom = await client.chatRoom.update({
     where: { id: +id },

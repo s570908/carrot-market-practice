@@ -134,7 +134,7 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
       ? `https://videodelivery.net/${data?.stream?.cloudflareId}/views`
       : null,
     {
-      refreshInterval: 10000,
+      refreshInterval: 1000000,
     }
   );
 
@@ -148,7 +148,7 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
       ? `https://videodelivery.net/${data?.stream?.cloudflareId}/lifecycle`
       : null,
     {
-      refreshInterval: 1000,
+      refreshInterval: 100000,
     }
   );
 
