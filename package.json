@@ -44,6 +44,8 @@
     "react-toastify": "^10.0.5",
     "remark-html": "^15.0.2",
     "remark-parse": "^10.0.1",
+    "socket.io": "^4.7.5",
+    "socket.io-client": "^4.7.5",
     "swr": "^2.1.3",
     "twilio": "^4.9.0",
     "unified": "^10.1.2"
