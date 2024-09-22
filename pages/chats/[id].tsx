@@ -25,6 +25,8 @@ import { getChatRoomData } from "@libs/server/chatUtils";
 import Dropdown from "@components/Dropdown";
 //mport { useSocket } from "@libs/client/useSocket";
 import io, { Socket } from "socket.io-client";
+import { useQuery, useQueryClient } from "react-query";
+import axios from "axios";
 
 type Option = {
   value: string;
@@ -89,6 +91,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   const [newMessageSubmitted, setNewMessageSubmitted] = useState(false);
   const { user } = useUser();
   const router = useRouter();
+  const queryClient = useQueryClient();
   //// router.query.id: chatRoom id
   //// chatRoom list 가져오기
   // const { buyerId, sellerId, productId } = router.query;
@@ -98,9 +101,29 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   //   sellerId,
   //   productId
   // );
-  const { data, mutate } = useSWR<SellerChatResponse>(
-    router.query.id ? `/api/chat/${router.query.id}` : null,
-    { refreshInterval: 300000 }
+  // const { data, mutate } = useSWR<SellerChatResponse>(
+  //   router.query.id ? `/api/chat/${router.query.id}` : null,
+  //   { refreshInterval: 300000 }
+  // );
+
+  // axios를 사용해 데이터를 가져오는 함수
+  const fetchChatData = async () => {
+    const response = await axios.get(`/api/chat/${router.query.id}`);
+    return response.data;
+  };
+
+  const {
+    data,
+    isLoading,
+    error: queryError,
+  } = useQuery(
+    ["chat", router.query.id], // 쿼리 키
+    // () => fetch(`/api/chat/${router.query.id}`).then((res) => res.json()), // 데이터 패칭 함수
+    fetchChatData,
+    {
+      enabled: !!router.query.id, // id가 있을 때만 쿼리를 실행
+      refetchInterval: 300000, // 5분마다 데이터 재패칭
+    }
   );
 
   const otherId =
@@ -113,21 +136,25 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       ? data?.chatRoomOfSeller?.seller?.name
       : data?.chatRoomOfSeller?.buyer?.name;
 
-  const reserved = data?.chatRoomOfSeller?.product?.status === Status.Reserved ? true : false;
-  const sold = data?.chatRoomOfSeller?.product?.status === Status.Sold ? true : false;
+  const reserved =
+    data?.chatRoomOfSeller?.product?.status === Status.Reserved ? true : false;
+  const sold =
+    data?.chatRoomOfSeller?.product?.status === Status.Sold ? true : false;
   // selling은 Status.Registered와 동일하다.
   const selling = !reserved && !sold;
 
-  const productStatus = (reserved && "예약중") || (sold && "거래완료") || "판매중";
+  const productStatus =
+    (reserved && "예약중") || (sold && "거래완료") || "판매중";
 
   const isProvider = data?.chatRoomOfSeller?.sellerId === user?.id;
   const isConsumer = data?.chatRoomOfSeller?.buyerId === user?.id;
 
-  const { data: reservationData, mutate: reservationMutate } = useSWR<ReservationResponse>(
-    router.query.id && data?.chatRoomOfSeller?.productId
-      ? `/api/products/${data?.chatRoomOfSeller?.productId}/reservation`
-      : null
-  );
+  const { data: reservationData, mutate: reservationMutate } =
+    useSWR<ReservationResponse>(
+      router.query.id && data?.chatRoomOfSeller?.productId
+        ? `/api/products/${data?.chatRoomOfSeller?.productId}/reservation`
+        : null
+    );
   //console.log("reservationData: ", reservationData);
 
   // const getFetcherWithParams = (url: any, { otherId, reviewType }) => {
@@ -144,7 +171,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       ? `/api/products/${data?.chatRoomOfSeller?.productId}/checkReviewWritable?createdForId=${otherId}&reviewType=${reviewType}`
       : null;
 
-  const { data: reviewWritableData, error } = useSWR<ReviewWritableResponse>(url);
+  const { data: reviewWritableData, error } =
+    useSWR<ReviewWritableResponse>(url);
 
   //console.log("reviewWritableData================: ", reviewWritableData);
 
@@ -152,7 +180,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   const writtenReviews = data?.chatRoomOfSeller?.buyer?.writtenReviews;
 
   const reviewExists =
-    writtenReviews?.find((review: Review) => review.productForId === productId) !== undefined;
+    writtenReviews?.find(
+      (review: Review) => review.productForId === productId
+    ) !== undefined;
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const entry = useIntersectionObserver(scrollRef, {
@@ -161,9 +191,11 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     threshold: 0, // visibleRef가 모두 보였을 때만 true,
     freezeOnceVisible: false, // 계속하여 감지하겠다.
   });
-  const scrollToBottom = (elementRef: MutableRefObject<HTMLDivElement | null>) => {
+  const scrollToBottom = (
+    elementRef: MutableRefObject<HTMLDivElement | null>
+  ) => {
     if (elementRef) {
-      elementRef.current!.scrollIntoView({
+      elementRef.current!?.scrollIntoView({
         behavior: "smooth",
         block: "end",
         inline: "nearest",
@@ -173,13 +205,14 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   const { register, handleSubmit, reset } = useForm<ChatFormResponse>();
   //// api server를 통해서 chatRoom에 chat data를 보내기
-  const [sendChat, { loading: sendChatDataLoading, data: sendChatData }] = useMutation(
-    `/api/chat/${router.query.id}/chats`
-  );
+  const [sendChat, { loading: sendChatDataLoading, data: sendChatData }] =
+    useMutation(`/api/chat/${router.query.id}/chats`);
   const [toggleReservation] = useMutation(
     `/api/products/${data?.chatRoomOfSeller?.productId}/reservation`
   );
-  const [sellComplete] = useMutation(`/api/products/${data?.chatRoomOfSeller?.productId}`);
+  const [sellComplete] = useMutation(
+    `/api/products/${data?.chatRoomOfSeller?.productId}`
+  );
   const onValid = (chatForm: ChatFormResponse) => {
     if (sendChatDataLoading) return;
     reset();
@@ -191,17 +224,27 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       userId: user?.id,
     };
 
-    mutate(
-      (prev) => {
-        if (prev) {
-          return {
-            ...prev,
-            sellerChat: [...prev.sellerChat, newMessage],
-          } as any;
-        }
-      },
-      false // cache만 업데이트한다. 즉 optimistic UI이다. 서버의 데이터를 업데이트하지 않는다. 이것이 true라면 서버의 데이터를 이 시점에서 업데이트를 한다.
-    );
+    // mutate(
+    //   (prev) => {
+    //     if (prev) {
+    //       return {
+    //         ...prev,
+    //         sellerChat: [...prev.sellerChat, newMessage],
+    //       } as any;
+    //     }
+    //   },
+    //   false // cache만 업데이트한다. 즉 optimistic UI이다. 서버의 데이터를 업데이트하지 않는다. 이것이 true라면 서버의 데이터를 이 시점에서 업데이트를 한다.
+    // );
+
+    queryClient.setQueryData(["chat", router.query.id], (prev: any) => {
+      if (prev) {
+        return {
+          ...prev,
+          sellerChat: [...prev.sellerChat, newMessage], // 기존 메시지에 새 메시지 추가
+        };
+      }
+      return prev;
+    });
 
     setNewMessageSubmitted(true);
 
@@ -255,13 +298,21 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     // update chat on new message dispatched
     socket.on("message", (message: any) => {
       console.log("message received: ", message);
-      mutate();
+      queryClient.setQueryData(["chat", router.query.id], (oldData: any) => {
+        if (!oldData) return;
+        // 기존 채팅 메시지에 새 메시지 추가
+        return {
+          ...oldData,
+          sellerChat: [...oldData.sellerChat, message],
+        };
+      });
+      // mutate();
       //setChat((chat) => [...chat, message]);
     });
 
     // socket disconnet onUnmount if exists
     if (socket) return () => socket.disconnect();
-  }, [mutate, router.query.id]);
+  }, [queryClient, router.query.id]);
 
   // 드롭다운에서 선택 변경 시 호출되는 함수
   const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -356,6 +407,10 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     }
   }
 
+  if (isLoading) return <div>Loading...</div>;
+  if (queryError instanceof Error)
+    return <div>Error: {queryError.message}</div>;
+
   return (
     <Layout
       seoTitle={`${otherName} || 채팅`}
@@ -366,9 +421,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       backUrl={"back"}
     >
       <div className="relative h-full px-4 pb-12">
-        <div className="w-full max-w-xl border-b border-gray-200 bg-red-200 p-4">
+        <div className="w-full max-w-xl p-4 bg-red-200 border-b border-gray-200">
           <div
-            className="flex cursor-pointer items-center"
+            className="flex items-center cursor-pointer"
             onClick={() => {
               router.push(`/products/${data?.chatRoomOfSeller?.productId}`);
             }}
@@ -383,7 +438,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               />
               <div className="flex flex-col space-y-1">
                 <div className="flex flex-row items-center space-x-2">
-                  <div className="text-gray-900">{data?.chatRoomOfSeller?.product?.name}</div>
+                  <div className="text-gray-900">
+                    {data?.chatRoomOfSeller?.product?.name}
+                  </div>
                   <div>{productStatus}</div>
                   <div className="">
                     {/*로그인 유저가 판매자이고, 아직 안 팔렸고, 구매요청자(채팅상대자)가 예약자가 아니면  */}
@@ -392,18 +449,26 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                       sold ||
                       (reserved && chatUserId !== reservationUserId)
                     ) && (
-                      <Dropdown options={options} value={selectedValue} onChange={handleChange} />
+                      <Dropdown
+                        options={options}
+                        value={selectedValue}
+                        onChange={handleChange}
+                      />
                     )}
                   </div>
                 </div>
-                <span className="text-gray-900">￦{data?.chatRoomOfSeller?.product?.price}</span>
-                <div className="text-gray-900">{data?.chatRoomOfSeller?.seller?.name}</div>
+                <span className="text-gray-900">
+                  ￦{data?.chatRoomOfSeller?.product?.price}
+                </span>
+                <div className="text-gray-900">
+                  {data?.chatRoomOfSeller?.seller?.name}
+                </div>
               </div>
             </div>
           </div>
-          <div className="mt-2 flex flex-row justify-between">
+          <div className="flex flex-row justify-between mt-2">
             <div
-              className="text-md cursor-pointer rounded-md border border-black p-1"
+              className="p-1 border border-black rounded-md cursor-pointer text-md"
               onClick={() => {
                 console.log("약속잡기가 클릭 되었습니다.");
               }}
@@ -411,7 +476,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               약속잡기
             </div>
             <div
-              className="text-md cursor-pointer rounded-md border border-black p-1"
+              className="p-1 border border-black rounded-md cursor-pointer text-md"
               onClick={() => {
                 console.log("송금요청이 클릭 되었습니다.");
               }}
@@ -434,7 +499,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               {`${isProvider ? "판매" : "구매"} 후기 보내기`}
             </button>
             <div
-              className="text-md cursor-pointer rounded-md border border-black p-1"
+              className="p-1 border border-black rounded-md cursor-pointer text-md"
               onClick={() => {
                 console.log("장소공유가 클릭 되었습니다.");
               }}
@@ -442,7 +507,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               장소공유
             </div>
             <div
-              className="text-md cursor-pointer rounded-md border border-black p-1"
+              className="p-1 border border-black rounded-md cursor-pointer text-md"
               onClick={() => {
                 console.log("기타가 클릭 되었습니다.");
               }}
@@ -455,7 +520,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
           className="flex h-[calc(95vh-300px)] flex-col space-y-2 overflow-y-auto py-5 transition-all"
           id="chatBox"
         >
-          {data?.sellerChat?.map((message) => {
+          {data?.sellerChat?.map((message: any) => {
             //console.log("message: ", JSON.stringify(message, null, 2));
             return (
               <Message
@@ -498,13 +563,18 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               </div>
             </div>
           </form> */}
-          <form onSubmit={handleSubmit(onValid)} className="mt-10 w-full border-t px-1 py-1">
-            <div className="relative w-full rounded-md bg-white px-2 py-2 outline-none">
+          <form
+            onSubmit={handleSubmit(onValid)}
+            className="w-full px-1 py-1 mt-10 border-t"
+          >
+            <div className="relative w-full px-2 py-2 bg-white rounded-md outline-none">
               <input
                 {...register("chatMsg", { required: true, maxLength: 80 })}
                 maxLength={80}
                 placeholder={
-                  user === undefined ? "로그인 후 이용가능합니다." : "메세지를 입력해주세요."
+                  user === undefined
+                    ? "로그인 후 이용가능합니다."
+                    : "메세지를 입력해주세요."
                 }
                 className="w-full text-[15px] outline-none placeholder:text-gray-300"
               />
