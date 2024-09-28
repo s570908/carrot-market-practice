@@ -116,6 +116,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     data,
     isLoading,
     error: queryError,
+    refetch, // 데이터를 수동으로 패칭할 수 있는 함수
   } = useQuery(
     ["chat", router.query.id], // 쿼리 키
     // () => fetch(`/api/chat/${router.query.id}`).then((res) => res.json()), // 데이터 패칭 함수
@@ -219,10 +220,12 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
     const newMessage = {
       id: Date.now(),
-      chatMsg: chatForm.chatMsg,
+      chatMsg: chatForm.chatMsg + "test",
       user: { ...user },
       userId: user?.id,
     };
+
+    console.log(newMessage);
 
     // mutate(
     //   (prev) => {
@@ -298,14 +301,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     // update chat on new message dispatched
     socket.on("message", (message: any) => {
       console.log("message received: ", message);
-      queryClient.setQueryData(["chat", router.query.id], (oldData: any) => {
-        if (!oldData) return;
-        // 기존 채팅 메시지에 새 메시지 추가
-        return {
-          ...oldData,
-          sellerChat: [...oldData.sellerChat, message],
-        };
-      });
+      console.log("to do: mutate()를 useQuery function으로 대체한다.");
+      refetch();
       // mutate();
       //setChat((chat) => [...chat, message]);
     });
@@ -421,9 +418,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       backUrl={"back"}
     >
       <div className="relative h-full px-4 pb-12">
-        <div className="w-full max-w-xl p-4 bg-red-200 border-b border-gray-200">
+        <div className="w-full max-w-xl border-b border-gray-200 bg-red-200 p-4">
           <div
-            className="flex items-center cursor-pointer"
+            className="flex cursor-pointer items-center"
             onClick={() => {
               router.push(`/products/${data?.chatRoomOfSeller?.productId}`);
             }}
@@ -466,9 +463,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               </div>
             </div>
           </div>
-          <div className="flex flex-row justify-between mt-2">
+          <div className="mt-2 flex flex-row justify-between">
             <div
-              className="p-1 border border-black rounded-md cursor-pointer text-md"
+              className="text-md cursor-pointer rounded-md border border-black p-1"
               onClick={() => {
                 console.log("약속잡기가 클릭 되었습니다.");
               }}
@@ -476,7 +473,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               약속잡기
             </div>
             <div
-              className="p-1 border border-black rounded-md cursor-pointer text-md"
+              className="text-md cursor-pointer rounded-md border border-black p-1"
               onClick={() => {
                 console.log("송금요청이 클릭 되었습니다.");
               }}
@@ -499,7 +496,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               {`${isProvider ? "판매" : "구매"} 후기 보내기`}
             </button>
             <div
-              className="p-1 border border-black rounded-md cursor-pointer text-md"
+              className="text-md cursor-pointer rounded-md border border-black p-1"
               onClick={() => {
                 console.log("장소공유가 클릭 되었습니다.");
               }}
@@ -507,7 +504,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               장소공유
             </div>
             <div
-              className="p-1 border border-black rounded-md cursor-pointer text-md"
+              className="text-md cursor-pointer rounded-md border border-black p-1"
               onClick={() => {
                 console.log("기타가 클릭 되었습니다.");
               }}
@@ -565,9 +562,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
           </form> */}
           <form
             onSubmit={handleSubmit(onValid)}
-            className="w-full px-1 py-1 mt-10 border-t"
+            className="mt-10 w-full border-t px-1 py-1"
           >
-            <div className="relative w-full px-2 py-2 bg-white rounded-md outline-none">
+            <div className="relative w-full rounded-md bg-white px-2 py-2 outline-none">
               <input
                 {...register("chatMsg", { required: true, maxLength: 80 })}
                 maxLength={80}
