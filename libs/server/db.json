@@ -1,69 +1,98 @@
 {
-  "books": [
+  "page": 1,
+  "perPage": 30,
+  "totalItems": 10,
+  "totalPages": 1,
+  "items": [
     {
-      "id": 1,
-      "title": "book1",
-      "description": "this is book1 600"
+      "collectionId": "eqgaoqejjj2kmtz",
+      "collectionName": "products",
+      "created": "2023-09-17 05:28:48.675Z",
+      "id": "xlyl4egfw2d4sc",
+      "name": "watch",
+      "price": 10,
+      "updated": "2023-09-17 05:28:48.675Z"
     },
     {
-      "id": 2,
-      "title": "book2",
-      "description": "this is book2"
+      "collectionId": "eqgaoqejjj2kmtz",
+      "collectionName": "products",
+      "created": "2023-09-17 05:28:57.057Z",
+      "id": "x2qiqewdn2z4ra3",
+      "name": "mouse",
+      "price": 5,
+      "updated": "2023-09-17 05:28:57.057Z"
     },
     {
-      "id": 3,
-      "title": "book3",
-      "description": "this is book3"
+      "collectionId": "eqgaoqejjj2kmtz",
+      "collectionName": "products",
+      "created": "2023-09-17 05:28:59.057Z",
+      "id": "asdfge4dfgwerw",
+      "name": "keyboard",
+      "price": 20,
+      "updated": "2023-09-17 05:29:01.057Z"
     },
     {
-      "id": 4,
-      "title": "book4",
-      "description": "this is book4"
+      "collectionId": "eqgaoqejjj2kmtz",
+      "collectionName": "products",
+      "created": "2023-09-17 05:30:00.057Z",
+      "id": "gqrrenadn7wqpo3",
+      "name": "laptop",
+      "price": 1000,
+      "updated": "2023-09-17 05:30:05.057Z"
     },
     {
-      "id": 5,
-      "title": "book5",
-      "description": "this is book5"
+      "collectionId": "eqgaoqejjj2kmtz",
+      "collectionName": "products",
+      "created": "2023-09-17 05:31:01.057Z",
+      "id": "zlkjhgffd3re23",
+      "name": "headphones",
+      "price": 50,
+      "updated": "2023-09-17 05:31:01.057Z"
     },
     {
-      "id": 6,
-      "title": "book6",
-      "description": "this is book6"
+      "collectionId": "eqgaoqejjj2kmtz",
+      "collectionName": "products",
+      "created": "2023-09-17 05:32:15.057Z",
+      "id": "iohgjkfgn2f4sd",
+      "name": "monitor",
+      "price": 300,
+      "updated": "2023-09-17 05:32:15.057Z"
     },
     {
-      "id": 7,
-      "title": "book7",
-      "description": "this is book7"
+      "collectionId": "eqgaoqejjj2kmtz",
+      "collectionName": "products",
+      "created": "2023-09-17 05:33:22.057Z",
+      "id": "bhytrfgehj7l8aa",
+      "name": "tablet",
+      "price": 200,
+      "updated": "2023-09-17 05:33:22.057Z"
     },
     {
-      "id": 8,
-      "title": "book8",
-      "description": "this is book8 1111"
+      "collectionId": "eqgaoqejjj2kmtz",
+      "collectionName": "products",
+      "created": "2023-09-17 05:34:05.057Z",
+      "id": "vbnfrtgyhh0b2ld",
+      "name": "smartphone",
+      "price": 800,
+      "updated": "2023-09-17 05:34:05.057Z"
     },
     {
-      "id": 9,
-      "title": "book9",
-      "description": "this is book9 updated at 1116"
+      "collectionId": "eqgaoqejjj2kmtz",
+      "collectionName": "products",
+      "created": "2023-09-17 05:35:44.057Z",
+      "id": "xwerafw345fdfg3",
+      "name": "smartwatch",
+      "price": 150,
+      "updated": "2023-09-17 05:35:44.057Z"
     },
     {
-      "id": 10,
-      "title": "book10",
-      "description": "this is book10 which is last statically generated"
-    },
-    {
-      "id": "11",
-      "title": "K-Fasion",
-      "description": "재미있는 영화다!"
-    },
-    {
-      "id": "12",
-      "title": "K-TT",
-      "description": "재미있는 영화다!"
-    },
-    {
-      "id": "13",
-      "title": "K-냉장고",
-      "description": "재미있는 영화다!"
+      "collectionId": "eqgaoqejjj2kmtz",
+      "collectionName": "products",
+      "created": "2023-09-17 05:36:27.057Z",
+      "id": "dfg4wwrftr456fdfg",
+      "name": "camera",
+      "price": 600,
+      "updated": "2023-09-17 05:36:27.057Z"
     }
   ]
 }
