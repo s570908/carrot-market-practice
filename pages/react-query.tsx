@@ -21,7 +21,8 @@ const fetchProducts = () => {
 const ReactQuery = () => {
   const { isLoading, isFetching, data, isError, error } =
     useQuery<ProductResponse>("get-product", fetchProducts, {
-      staleTime: 60000,
+      staleTime: 3000,
+      refetchOnMount: false,
     });
 
   console.log({ isLoading, isFetching });
