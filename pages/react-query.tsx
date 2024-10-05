@@ -19,10 +19,12 @@ const fetchProducts = () => {
 };
 
 const ReactQuery = () => {
-  const { isLoading, data, isError, error } = useQuery<ProductResponse>(
-    "get-product",
-    fetchProducts
-  );
+  const { isLoading, isFetching, data, isError, error } =
+    useQuery<ProductResponse>("get-product", fetchProducts, {
+      cacheTime: 5000,
+    });
+
+  console.log({ isLoading, isFetching });
 
   if (isLoading) return <>Loading...</>;
   if (isError) {
