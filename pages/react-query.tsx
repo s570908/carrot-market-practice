@@ -19,7 +19,7 @@ const fetchProducts = () => {
 };
 
 const ReactQuery = () => {
-  const onSuccess = (data: ProductResponse) => {
+  const onSuccess = (data: any) => {
     console.log("데이터 가져오기 후 사이드 이펙트 수행", data);
   };
 
@@ -27,13 +27,25 @@ const ReactQuery = () => {
     console.log("오류 발생 후 사이드 이펙트 수행", error);
   };
 
-  const { isLoading, isFetching, data, isError, error, refetch } =
-    useQuery<ProductResponse>("get-product", fetchProducts, {
-      onSuccess,
-      onError,
-    });
+  const { isLoading, isFetching, data, isError, error } = useQuery(
+    "get-product",
+    fetchProducts,
+    {
+      onSuccess: onSuccess,
+      onError: onError,
+      select: (data: ProductResponse): any => {
+        const productName = data?.data?.items
+          ?.filter((p: Product) => p.price <= 9)
+          .map((p: Product) => p?.name);
+        return productName;
+      },
+    }
+  );
 
-  console.log({ isLoading, isFetching });
+  console.log({
+    isLoading,
+    isFetching,
+  });
 
   if (isLoading) return <>Loading...</>;
   if (isError) {
@@ -45,18 +57,16 @@ const ReactQuery = () => {
     <>
       <TestHeader />
       <div className="text-4xl">ReactQuery</div>
-      <button
-        onClick={() => refetch}
-        className="rounded-md border bg-slate-100 px-4 py-2"
-      >
-        fetch data
-      </button>
       <ul className="list-disc p-4">
-        {data &&
+        {/* {data &&
           data.data?.items?.map((product: Product) => (
             <li key={product.id}>
               {product.name} / {product.price}
             </li>
+          ))} */}
+        {data &&
+          data.map((productName: string) => (
+            <li key={productName}>{productName}</li>
           ))}
       </ul>
     </>
