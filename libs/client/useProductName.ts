@@ -24,11 +24,11 @@ export const useProductName = (
   return useQuery("get-product", fetchProducts, {
     onSuccess: onSuccess,
     onError: onError,
-    select: (data: ProductResponse): any => {
-      const productName = data?.data?.items
-        ?.filter((p: Product) => p.price <= 9)
-        .map((p: Product) => p?.name);
-      return productName;
-    },
+    // select: (data: ProductResponse): any => {
+    //   const productName = data?.data?.items
+    //     ?.filter((p: Product) => p.price <= 9)
+    //     .map((p: Product) => p?.name);
+    //   return productName;
+    // },
   });
 };
