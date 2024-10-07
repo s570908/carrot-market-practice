@@ -6,6 +6,7 @@ export const TestHeader = () => {
       <Link href="/react-query-tutorial">Home</Link>
       <Link href="/axios-query">Axios Query</Link>
       <Link href="/react-query">React Query</Link>
+      <Link href="/parallel-query">Parallel Query</Link>
     </nav>
   );
 };
