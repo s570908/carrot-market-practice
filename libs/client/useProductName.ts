@@ -34,8 +34,14 @@ export const useProductName = (
 export const useAddProduct = () => {
   const queryClient = useQueryClient();
   return useMutation(addProduct, {
-    onSuccess: () => {
-      queryClient.invalidateQueries("get-product");
+    onSuccess: (data) => {
+      //   queryClient.invalidateQueries("get-product");
+      queryClient.setQueryData("get-product", (oldProductData: any) => {
+        return {
+            ...oldProductData,
+            data: [...oldProductData?.data, data?.data],
+          }
+      });
     },
   });
 };
