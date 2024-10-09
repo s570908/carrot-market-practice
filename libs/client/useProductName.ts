@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useMutation, useQuery } from "react-query";
+import { useMutation, useQuery, useQueryClient } from "react-query";
 
 interface Product {
   id: string;
@@ -12,10 +12,8 @@ const fetchProducts = () => {
 };
 
 const addProduct = (product: Product) => {
-    return axios.post(
-      "http://localhost:4000/items", product
-    );
-  };
+  return axios.post("http://localhost:4000/items", product);
+};
 
 export const useProductName = (
   onSuccess: (data: any) => void,
@@ -34,5 +32,10 @@ export const useProductName = (
 };
 
 export const useAddProduct = () => {
-    return useMutation(addProduct)
-  }
+  const queryClient = useQueryClient();
+  return useMutation(addProduct, {
+    onSuccess: () => {
+      queryClient.invalidateQueries("get-product");
+    },
+  });
+};
