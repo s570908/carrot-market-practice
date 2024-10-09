@@ -1,6 +1,6 @@
-import { useQuery } from "react-query";
+import { useInfiniteQuery, useQuery } from "react-query";
 import axios from "axios";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 
 interface Product {
   userId: number;
@@ -9,19 +9,29 @@ interface Product {
   body: string;
 }
 
-const fetchProducts = (pageNum: number) => {
+const fetchProducts = (page: number) => {
   return axios.get(
-    `https://jsonplaceholder.typicode.com/posts?_limit=10&_page=${pageNum}`
+    `https://jsonplaceholder.typicode.com/posts?_limit=10&_page=${page}`
   );
 };
 
 const PaginatedQuery = () => {
-  const [pageNumber, setPageNumber] = useState(1);
-  const { data, isLoading, isFetching } = useQuery(
-    ["get-paginated", pageNumber],
-    () => fetchProducts(pageNumber),
+  const {
+    data,
+    isLoading,
+    isFetching,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery(
+    ["get-paginated"],
+    ({ pageParam = 1 }) => fetchProducts(pageParam),
     {
-      keepPreviousData: true,
+      getNextPageParam: (_lastPage, pages) => {
+        if (pages.length < 3) {
+          return pages.length + 1;
+        } else return undefined;
+      },
     }
   );
 
@@ -31,26 +41,25 @@ const PaginatedQuery = () => {
     <>
       <div className="text-4xl">ReactQuery</div>
 
-      <h2>current Page number : {pageNumber}</h2>
-      <ul className="list-disc p-4">
-        {data &&
-          data.data?.map((p: Product) => <div key={p?.id}>{p?.title}</div>)}
-      </ul>
+      {data &&
+        data.pages?.map((group, i) => (
+          <Fragment key={i}>
+            {group &&
+              group?.data?.map((p: Product) => (
+                <div key={p?.id}>{p?.title}</div>
+              ))}
+          </Fragment>
+        ))}
       <div className="space-x-4">
         <button
-          onClick={() => setPageNumber((page) => page - 1)}
-          disabled={pageNumber === 1}
+          className="border"
+          onClick={() => fetchNextPage()}
+          disabled={!hasNextPage}
         >
-          Prev
-        </button>
-        <button
-          onClick={() => setPageNumber((page) => page + 1)}
-          disabled={pageNumber === 3}
-        >
-          Next
+          Load More
         </button>
       </div>
-      <div>{isFetching && "Fetching..."}</div>
+      <div>{isFetching && !isFetchingNextPage ? "Fetching..." : null}</div>
     </>
   );
 };
