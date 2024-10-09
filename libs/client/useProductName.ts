@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useQuery } from "react-query";
+import { useMutation, useQuery } from "react-query";
 
 interface Product {
   id: string;
@@ -7,15 +7,15 @@ interface Product {
   price: number;
 }
 
-interface ProductResponse {
-  data: {
-    items: Product[];
-  };
-}
-
 const fetchProducts = () => {
-  return axios.get("http://jsonplaceholder.typicode.com/users");
+  return axios.get("http://localhost:4000/items");
 };
+
+const addProduct = (product: Product) => {
+    return axios.post(
+      "http://localhost:4000/items", product
+    );
+  };
 
 export const useProductName = (
   onSuccess: (data: any) => void,
@@ -32,3 +32,7 @@ export const useProductName = (
     // },
   });
 };
+
+export const useAddProduct = () => {
+    return useMutation(addProduct)
+  }
