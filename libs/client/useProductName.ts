@@ -14,7 +14,7 @@ interface ProductResponse {
 }
 
 const fetchProducts = () => {
-  return axios.get("http://localhost:4000/data");
+  return axios.get("http://jsonplaceholder.typicode.com/users");
 };
 
 export const useProductName = (

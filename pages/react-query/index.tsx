@@ -36,7 +36,7 @@ const ReactQuery = () => {
       <div className="text-4xl">ReactQuery</div>
       <ul className="list-disc p-4">
         {data &&
-          data.data?.items?.map((product: Product) => (
+          data.data?.map((product: Product) => (
             <li key={product.id}>
               <Link href={`/react-query/${product?.id}`}>
                 <a>{product?.name}</a>
