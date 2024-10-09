@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useQuery } from "react-query";
 import axios from "axios";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 
 interface Product {
   userId: number;
@@ -11,19 +11,12 @@ interface Product {
 
 const fetchProducts = (page: number) => {
   return axios.get(
-    `https://jsonplaceholder.typicode.com/posts?_limit=10&_page=${page}`
+    `https://jsonplaceholder.typicode.com/posts?_limit=20&_page=${page}`
   );
 };
 
 const PaginatedQuery = () => {
-  const {
-    data,
-    isLoading,
-    isFetching,
-    hasNextPage,
-    fetchNextPage,
-    isFetchingNextPage,
-  } = useInfiniteQuery(
+  const { data, isLoading, hasNextPage, fetchNextPage } = useInfiniteQuery(
     ["get-paginated"],
     ({ pageParam = 1 }) => fetchProducts(pageParam),
     {
@@ -35,8 +28,24 @@ const PaginatedQuery = () => {
     }
   );
 
-  if (isLoading) return <div>Loading...</div>;
+  useEffect(() => {
+    let fetching = false;
+    const handleScroll = async (e: any) => {
+      const { scrollHeight, scrollTop, clientHeight } =
+        e.target.scrollingElement;
+      if (!fetching && scrollHeight - scrollTop <= clientHeight * 1.2) {
+        fetching = true;
+        if (hasNextPage) await fetchNextPage();
+        fetching = false;
+      }
+    };
+    document.addEventListener("scroll", handleScroll);
+    return () => {
+      document.removeEventListener("scroll", handleScroll);
+    };
+  }, [fetchNextPage, hasNextPage]);
 
+  if (isLoading) return <div>Loading...</div>;
   return (
     <>
       <div className="text-4xl">ReactQuery</div>
@@ -50,16 +59,6 @@ const PaginatedQuery = () => {
               ))}
           </Fragment>
         ))}
-      <div className="space-x-4">
-        <button
-          className="border"
-          onClick={() => fetchNextPage()}
-          disabled={!hasNextPage}
-        >
-          Load More
-        </button>
-      </div>
-      <div>{isFetching && !isFetchingNextPage ? "Fetching..." : null}</div>
     </>
   );
 };
