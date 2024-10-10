@@ -13,7 +13,7 @@ import {
   User as PrismaUser,
 } from "@prisma/client";
 import { useForm } from "react-hook-form";
-import useMutation from "@libs/client/useMutation";
+// import useMutation from "@libs/client/useMutation";
 import Message from "@components/Message";
 import { MutableRefObject, useEffect, useRef, useState, useMemo } from "react";
 import { useIntersectionObserver } from "@libs/client/useIntersectionObserver";
@@ -25,7 +25,7 @@ import { getChatRoomData } from "@libs/server/chatUtils";
 import Dropdown from "@components/Dropdown";
 //mport { useSocket } from "@libs/client/useSocket";
 import io, { Socket } from "socket.io-client";
-import { useQuery, useQueryClient } from "react-query";
+import { useMutation, useQuery, useQueryClient } from "react-query";
 import axios from "axios";
 
 type Option = {
@@ -206,26 +206,70 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   const { register, handleSubmit, reset } = useForm<ChatFormResponse>();
   //// api server를 통해서 chatRoom에 chat data를 보내기
-  const [sendChat, { loading: sendChatDataLoading, data: sendChatData }] =
-    useMutation(`/api/chat/${router.query.id}/chats`);
-  const [toggleReservation] = useMutation(
-    `/api/products/${data?.chatRoomOfSeller?.productId}/reservation`
+  // const [sendChat, { loading: sendChatDataLoading, data: sendChatData }] =
+  //   useMutation(`/api/chat/${router.query.id}/chats`);
+  const {
+    mutate: sendChat,
+    isLoading: sendChatDataLoading,
+    data: sendChatData,
+  } = useMutation(
+    (chatForm: ChatFormResponse) =>
+      axios.post(`/api/chat/${router.query.id}/chats`, chatForm),
+    {
+      onMutate: async (chatForm: ChatFormResponse) => {
+        await queryClient.cancelQueries(["chat", router.query.id]);
+        const previousChatData = queryClient.getQueryData([
+          "chat",
+          router.query.id,
+        ]);
+        queryClient.setQueryData(["chat", router.query.id], (prev: any) => {
+          if (prev) {
+            const newMessage = {
+              id: Date.now(),
+              chatMsg: chatForm.chatMsg + "test",
+              user: { ...user },
+              userId: user?.id,
+            };
+            return {
+              ...prev,
+              sellerChat: [...prev.sellerChat, newMessage],
+            };
+          }
+          return prev;
+        });
+        return { previousChatData };
+      },
+      onError: (error, variables, context) => {
+        if (context?.previousChatData) {
+          queryClient.setQueryData(
+            ["chat", router.query.id],
+            context.previousChatData
+          ); // 이전 데이터로 롤백
+        }
+      },
+      onSettled: () => {
+        queryClient.invalidateQueries(["chat", router.query.id]); // 쿼리 무효화
+      },
+    }
   );
-  const [sellComplete] = useMutation(
-    `/api/products/${data?.chatRoomOfSeller?.productId}`
-  );
+  // const [toggleReservation] = useMutation(
+  //   `/api/products/${data?.chatRoomOfSeller?.productId}/reservation`
+  // );
+  // const [sellComplete] = useMutation(
+  //   `/api/products/${data?.chatRoomOfSeller?.productId}`
+  // );
   const onValid = (chatForm: ChatFormResponse) => {
     if (sendChatDataLoading) return;
     reset();
 
-    const newMessage = {
-      id: Date.now(),
-      chatMsg: chatForm.chatMsg + "test",
-      user: { ...user },
-      userId: user?.id,
-    };
+    // const newMessage = {
+    //   id: Date.now(),
+    //   chatMsg: chatForm.chatMsg + "test",
+    //   user: { ...user },
+    //   userId: user?.id,
+    // };
 
-    console.log(newMessage);
+    // console.log(newMessage);
 
     // mutate(
     //   (prev) => {
@@ -239,15 +283,15 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     //   false // cache만 업데이트한다. 즉 optimistic UI이다. 서버의 데이터를 업데이트하지 않는다. 이것이 true라면 서버의 데이터를 이 시점에서 업데이트를 한다.
     // );
 
-    queryClient.setQueryData(["chat", router.query.id], (prev: any) => {
-      if (prev) {
-        return {
-          ...prev,
-          sellerChat: [...prev.sellerChat, newMessage], // 기존 메시지에 새 메시지 추가
-        };
-      }
-      return prev;
-    });
+    // queryClient.setQueryData(["chat", router.query.id], (prev: any) => {
+    //   if (prev) {
+    //     return {
+    //       ...prev,
+    //       sellerChat: [...prev.sellerChat, newMessage], // 기존 메시지에 새 메시지 추가
+    //     };
+    //   }
+    //   return prev;
+    // });
 
     setNewMessageSubmitted(true);
 
@@ -309,7 +353,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
     // socket disconnet onUnmount if exists
     if (socket) return () => socket.disconnect();
-  }, [queryClient, router.query.id]);
+  }, [queryClient, refetch, router.query.id]);
 
   // 드롭다운에서 선택 변경 시 호출되는 함수
   const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -352,22 +396,22 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       // 로그인 유저가 파는 사람이고 구매자가 예약 하겠다고 하면 예약중으로 변경한다.
       if (selectedValue === "예약중") {
         //console.log("api to do: 예약중");
-        toggleReservation({ buyerId: data?.chatRoomOfSeller?.buyerId });
+        // toggleReservation({ buyerId: data?.chatRoomOfSeller?.buyerId });
       }
       // 로그인 유저가 파는 사람이고 구매자가 예약중이면 구매자의 예약을 제거하고 구매자에게 판매 완료한다.
       if (selectedValue === "거래완료") {
         //console.log("api to do: 거래완료");
-        sellComplete({ buyerId: data?.chatRoomOfSeller?.buyerId });
+        // sellComplete({ buyerId: data?.chatRoomOfSeller?.buyerId });
       }
     } else if (reserved) {
       if (selectedValue === "판매중") {
         // 로그인 유저가 파는 사람이고 구매자가 예약중인 상태에서 구매자의 예약을 취소한다.
         //console.log("api to do: 예약중에서 판매중으로 바뀌도록 한다.");
-        toggleReservation({ buyerId: data?.chatRoomOfSeller?.buyerId });
+        // toggleReservation({ buyerId: data?.chatRoomOfSeller?.buyerId });
       } else if (selectedValue === "거래완료") {
         // 로그인 유저가 파는 사람이고 구매자가 예약중이면 구매자의 예약을 제거하고 구매자에게 판매 완료한다.
         //console.log("api to do: 거래완료");
-        sellComplete({ buyerId: data?.chatRoomOfSeller?.buyerId });
+        // sellComplete({ buyerId: data?.chatRoomOfSeller?.buyerId });
       } else if (selectedValue === "거래완료") {
         // 거래 완료시 거래 완료 선택시 할일 없음
         console.log("할일 없음");
