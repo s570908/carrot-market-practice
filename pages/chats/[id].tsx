@@ -150,12 +150,28 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   const isProvider = data?.chatRoomOfSeller?.sellerId === user?.id;
   const isConsumer = data?.chatRoomOfSeller?.buyerId === user?.id;
 
-  const { data: reservationData, mutate: reservationMutate } =
-    useSWR<ReservationResponse>(
-      router.query.id && data?.chatRoomOfSeller?.productId
-        ? `/api/products/${data?.chatRoomOfSeller?.productId}/reservation`
-        : null
-    );
+  // const { data: reservationData, mutate: reservationMutate } =
+  //   useSWR<ReservationResponse>(
+  //     router.query.id && data?.chatRoomOfSeller?.productId
+  //       ? `/api/products/${data?.chatRoomOfSeller?.productId}/reservation`
+  //       : null
+  //   );
+
+  const fetchReservation = async (productId: string) => {
+    const { data } = await axios.get(`/api/products/${productId}/reservation`);
+    return data;
+  };
+
+  const productId = data?.chatRoomOfSeller?.productId;
+
+  const {
+    data: reservationData,
+    isLoading: isFetchingReservation,
+    isError,
+  } = useQuery(["reservation", productId], () => fetchReservation(productId), {
+    enabled: !!router.query.id && !!productId,
+  });
+
   //console.log("reservationData: ", reservationData);
 
   // const getFetcherWithParams = (url: any, { otherId, reviewType }) => {
@@ -167,17 +183,29 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   const reviewType = isProvider ? "SellerReview" : "BuyerReview";
 
+  const fetchReviewWritable = async (url: string) => {
+    const { data } = await axios.get(url);
+    return data;
+  };
+
   const url =
     router.query.id && data?.chatRoomOfSeller?.productId
       ? `/api/products/${data?.chatRoomOfSeller?.productId}/checkReviewWritable?createdForId=${otherId}&reviewType=${reviewType}`
       : null;
 
-  const { data: reviewWritableData, error } =
-    useSWR<ReviewWritableResponse>(url);
+  // const { data: reviewWritableData, error } =
+  //   useSWR<ReviewWritableResponse>(url);
+
+  const { data: reviewWritableData, error } = useQuery(
+    ["reviewWritable", url],
+    () => fetchReviewWritable(url!),
+    {
+      enabled: !!url, // url이 있을 때만 쿼리를 실행
+    }
+  );
 
   //console.log("reviewWritableData================: ", reviewWritableData);
 
-  const productId = data?.chatRoomOfSeller?.productId;
   const writtenReviews = data?.chatRoomOfSeller?.buyer?.writtenReviews;
 
   const reviewExists =
@@ -252,12 +280,63 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       },
     }
   );
+
   // const [toggleReservation] = useMutation(
   //   `/api/products/${data?.chatRoomOfSeller?.productId}/reservation`
   // );
+
+  const toggleReservation = async ({
+    productId,
+    buyerId,
+  }: {
+    productId: number;
+    buyerId: number;
+  }) => {
+    const { data } = await axios.post(
+      `/api/products/${productId}/reservation`,
+      { buyerId }
+    );
+    return data;
+  };
+
+  const { mutate: toggleReservationMutate } = useMutation(
+    (variables: { productId: number; buyerId: number }) =>
+      toggleReservation(variables),
+    {
+      onSuccess: () => {
+        // 쿼리 무효화하여 최신 데이터로 갱신
+        queryClient.invalidateQueries("reservation");
+      },
+    }
+  );
+
   // const [sellComplete] = useMutation(
   //   `/api/products/${data?.chatRoomOfSeller?.productId}`
   // );
+
+  const sellComplete = async ({
+    productId,
+    buyerId,
+  }: {
+    productId: number;
+    buyerId: number;
+  }) => {
+    const { data } = await axios.post(`/api/products/${productId}`, {
+      buyerId,
+    });
+    return data;
+  };
+
+  const { mutate: sellCompleteMutate } = useMutation(
+    (variables: { productId: number; buyerId: number }) =>
+      sellComplete(variables),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(["chat", router.query.id]); // 판매 완료 후 데이터 갱신
+      },
+    }
+  );
+
   const onValid = (chatForm: ChatFormResponse) => {
     if (sendChatDataLoading) return;
     reset();
@@ -396,29 +475,41 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       // 로그인 유저가 파는 사람이고 구매자가 예약 하겠다고 하면 예약중으로 변경한다.
       if (selectedValue === "예약중") {
         //console.log("api to do: 예약중");
-        // toggleReservation({ buyerId: data?.chatRoomOfSeller?.buyerId });
+        toggleReservationMutate({
+          productId: data?.chatRoomOfSeller?.productId,
+          buyerId: data?.chatRoomOfSeller?.buyerId,
+        });
       }
       // 로그인 유저가 파는 사람이고 구매자가 예약중이면 구매자의 예약을 제거하고 구매자에게 판매 완료한다.
       if (selectedValue === "거래완료") {
         //console.log("api to do: 거래완료");
-        // sellComplete({ buyerId: data?.chatRoomOfSeller?.buyerId });
+        sellCompleteMutate({
+          productId: data?.chatRoomOfSeller?.productId,
+          buyerId: data?.chatRoomOfSeller?.buyerId,
+        });
       }
     } else if (reserved) {
       if (selectedValue === "판매중") {
         // 로그인 유저가 파는 사람이고 구매자가 예약중인 상태에서 구매자의 예약을 취소한다.
         //console.log("api to do: 예약중에서 판매중으로 바뀌도록 한다.");
-        // toggleReservation({ buyerId: data?.chatRoomOfSeller?.buyerId });
+        toggleReservationMutate({
+          productId: data?.chatRoomOfSeller?.productId,
+          buyerId: data?.chatRoomOfSeller?.buyerId,
+        });
       } else if (selectedValue === "거래완료") {
         // 로그인 유저가 파는 사람이고 구매자가 예약중이면 구매자의 예약을 제거하고 구매자에게 판매 완료한다.
         //console.log("api to do: 거래완료");
-        // sellComplete({ buyerId: data?.chatRoomOfSeller?.buyerId });
+        sellCompleteMutate({
+          productId: data?.chatRoomOfSeller?.productId,
+          buyerId: data?.chatRoomOfSeller?.buyerId,
+        });
       } else if (selectedValue === "거래완료") {
         // 거래 완료시 거래 완료 선택시 할일 없음
         console.log("할일 없음");
       }
     }
     setSelectedValue("");
-    reservationMutate();
+    // reservationMutate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedValue, reserved, sold, data?.chatRoomOfSeller?.buyerId]);
 

@@ -86,11 +86,11 @@ const ItemDetail: NextPage = () => {
     talkToSeller,
     { loading: talkToSellerLoading, data: talkToSellerData },
   ] = useMutation(`/api/chat/`);
-  const [buyItem, { loading: buyItemLoading, data: buyItemData }] = useMutation(
-    `/api/products/${
-      router.query.id
-    }?seller=${data?.product?.userId.toString()}`
-  );
+  // const [buyItem, { loading: buyItemLoading, data: buyItemData }] = useMutation(
+  //   `/api/products/${
+  //     router.query.id
+  //   }?seller=${data?.product?.userId.toString()}`
+  // );
   const isProvider = data?.product?.userId === user?.id;
   const isConsumer = data?.product?.userId !== user?.id;
   const onFavClick = () => {
