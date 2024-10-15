@@ -12,7 +12,7 @@ import {
   Status,
   User,
 } from "@prisma/client";
-import useMutation from "@libs/client/useMutation";
+// import useMutation from "@libs/client/useMutation";
 import { cls } from "@libs/utils";
 import useUser from "@libs/client/useUser";
 import ImgComponent from "@components/ImgComponent";
@@ -26,6 +26,7 @@ import eventEmitter from "@libs/eventEmitter";
 import Dropdown from "@components/Dropdown";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { useMutation, useQuery, useQueryClient } from "react-query";
 
 interface ProductWithReview extends Review {
   createdBy: User;
@@ -63,29 +64,128 @@ const ItemDetail: NextPage = () => {
   const router = useRouter();
   const [notification, setNotification] = useState("");
   const [chatRoomCount, setChatRoomCount] = useState(0);
+  const queryClient = useQueryClient();
   // const { mutate: unboundMutate } = useSWRConfig();
-  const { data, mutate: boundMutate } = useSWR<ItemDetailResponse>(
-    router.query.id ? `/api/products/${router.query.id}` : null
+  // const { data, mutate: boundMutate } = useSWR<ItemDetailResponse>(
+  //   router.query.id ? `/api/products/${router.query.id}` : null
+  // );
+  const { data, refetch } = useQuery<ItemDetailResponse>(
+    ["product", router?.query?.id],
+    () =>
+      axios.get(`/api/products/${router?.query?.id}`).then((res) => res.data),
+    {
+      enabled: !!router?.query?.id,
+    }
   );
-  const { data: reservationData, mutate: reservationMutate } =
-    useSWR<ReservationResponse>(
-      router.query.id ? `/api/products/${router.query.id}/reservation` : null
+  // const { data: reservationData, mutate: reservationMutate } =
+  //   useSWR<ReservationResponse>(
+  //     router.query.id ? `/api/products/${router.query.id}/reservation` : null
+  //   );
+  const { data: reservationData, refetch: reservationMutate } =
+    useQuery<ReservationResponse>(
+      ["reservation", router?.query?.id], // 쿼리 키 (id에 따라 쿼리가 달라짐)
+      () =>
+        axios
+          .get(`/api/products/${router?.query?.id}/reservation`)
+          .then((res) => res.data),
+      {
+        enabled: !!router?.query?.id, // query.id가 있을 때만 쿼리가 활성화됨
+      }
     );
+
   console.log("reservationData: ", reservationData);
   // const url = router.query.id ? `/api/chat?productId=${router.query.id}` : "/api/chat";
   // const { data: dataChatRoom } = useSWR(
   //   `/api/chat?productId=${router.query.id}`
   // ); // SWR을 사용하여 채팅방 목록을 불러옵니다, 제품 ID에 따라 필터링
 
-  const { data: chatRoomData, error } = useSWR(
-    `/api/chat?productId=${router.query.id}`
+  // const { data: chatRoomData, error } = useSWR(
+  //   `/api/chat?productId=${router.query.id}`
+  // );
+  const { data: chatRoomData, error } = useQuery(
+    ["chatRoom", router?.query?.id], // 쿼리 키 (productId에 따라 달라짐)
+    () =>
+      axios
+        .get(`/api/chat?productId=${router?.query?.id}`)
+        .then((res) => res.data),
+    {
+      enabled: !!router?.query?.id, // query.id가 있을 때만 쿼리 실행
+    }
   );
 
-  const [toggleFav] = useMutation(`/api/products/${router.query.id}/fav`);
-  const [
-    talkToSeller,
-    { loading: talkToSellerLoading, data: talkToSellerData },
-  ] = useMutation(`/api/chat/`);
+  // const [toggleFav] = useMutation(`/api/products/${router.query.id}/fav`);
+  const toggleFavMutation = useMutation(
+    () => axios.post(`/api/products/${router.query.id}/fav`),
+    {
+      // mutation이 발생하기 전에 호출되어 optimistic UI 처리
+      onMutate: async () => {
+        // 현재 쿼리를 취소하여 새로운 데이터가 들어오기 전에 중복되지 않게 함
+        await queryClient.cancelQueries(["product", router.query.id]);
+
+        // 캐시에서 현재 데이터를 가져옴
+        const previousData = queryClient.getQueryData<ItemDetailResponse>([
+          "product",
+          router.query.id,
+        ]);
+
+        // optimistic하게 데이터를 업데이트
+        if (previousData) {
+          queryClient.setQueryData(["product", router.query.id], {
+            ...previousData,
+            isLike: !previousData.isLike,
+          });
+        }
+
+        // 만약 에러가 발생했을 경우를 대비해 이전 데이터를 반환
+        return { previousData };
+      },
+      // mutation 중 에러가 발생하면 optimistic 업데이트를 롤백
+      onError: (error, variables, context) => {
+        if (context?.previousData) {
+          queryClient.setQueryData(
+            ["product", router.query.id],
+            context.previousData
+          );
+        }
+      },
+      // 서버 요청이 완료되면 (성공 또는 실패) 데이터를 무효화하여 최신 상태로 업데이트
+      onSettled: () => {
+        queryClient.invalidateQueries(["product", router.query.id]);
+      },
+    }
+  );
+
+  const toggleFav = () => {
+    toggleFavMutation.mutate();
+  };
+
+  // const [
+  //   talkToSeller,
+  //   { loading: talkToSellerLoading, data: talkToSellerData },
+  // ] = useMutation(`/api/chat/`);
+  const {
+    mutate: talkToSeller,
+    isLoading: talkToSellerLoading,
+    data: talkToSellerData,
+  } = useMutation(
+    (chatData: { buyerId: number; sellerId: number; productId: number }) =>
+      axios.post(`/api/chat/`, chatData), // POST 요청
+    {
+      onSuccess: (data) => {
+        console.log("Chat initialized successfully", data);
+        // 성공 시 처리할 로직
+      },
+      onError: (error) => {
+        console.error("Error initializing chat", error);
+        // 에러 시 처리할 로직
+      },
+    }
+  );
+
+  const handleChat = (buyerId: number, sellerId: number, productId: number) => {
+    talkToSeller({ buyerId, sellerId, productId });
+  };
+
   // const [buyItem, { loading: buyItemLoading, data: buyItemData }] = useMutation(
   //   `/api/products/${
   //     router.query.id
@@ -95,9 +195,9 @@ const ItemDetail: NextPage = () => {
   const isConsumer = data?.product?.userId !== user?.id;
   const onFavClick = () => {
     if (!data) return;
-    boundMutate((prev) => prev && { ...prev, isLike: !prev.isLike }, false);
+    // boundMutate((prev) => prev && { ...prev, isLike: !prev.isLike }, false);
     // unboundMutate("/api/users/me", (prev: any) => ({ ok: !prev.ok }), false);
-    toggleFav({});
+    toggleFav();
   };
   const onChatRoomList = async () => {
     // 1. 해당 chatRoom을 찾는다.
@@ -135,6 +235,7 @@ const ItemDetail: NextPage = () => {
     if (talkToSellerLoading) return;
     //// login user가 buyer이고 product를 upload한 사람이 seller이다.
     // talkToSeller({ buyerId: user?.id, sellerId: data?.product.userId });
+    // handleChat(user?.id, data?.product?.userId);
     console.log(
       "buyerId, sellerId, productId: ",
       user?.id,
@@ -142,11 +243,12 @@ const ItemDetail: NextPage = () => {
       data?.product?.id
     );
     if (user?.id && data?.product?.userId && data?.product?.id) {
-      talkToSeller({
-        buyerId: user?.id,
-        sellerId: data?.product.userId,
-        productId: data?.product.id,
-      });
+      // talkToSeller({
+      //   buyerId: user?.id,
+      //   sellerId: data?.product.userId,
+      //   productId: data?.product.id,
+      // });
+      handleChat(user?.id, data?.product?.userId, data?.product?.id);
     }
   };
 
@@ -174,10 +276,10 @@ const ItemDetail: NextPage = () => {
     router.push(`/products/${data?.product.id}/review`);
   };
   useEffect(() => {
-    if (talkToSellerData && talkToSellerData.ok) {
-      talkToSellerData.chatRoom
+    if (talkToSellerData?.data && talkToSellerData?.data?.ok) {
+      talkToSellerData?.data?.chatRoom
         ? router.push({
-            pathname: `/chats/${talkToSellerData.chatRoom.id}`,
+            pathname: `/chats/${talkToSellerData?.data?.chatRoom?.id}`,
             // query: {
             //   buyerId: user?.id,
             //   sellerId: data?.product.userId,
@@ -185,7 +287,7 @@ const ItemDetail: NextPage = () => {
             // },
           })
         : router.push({
-            pathname: `/chats/${talkToSellerData.createChatRoom.id}`,
+            pathname: `/chats/${talkToSellerData?.data?.createChatRoom?.id}`,
             // query: { productId: data?.product.id },
           });
     }
@@ -305,7 +407,7 @@ const ItemDetail: NextPage = () => {
             clsProps="object-scale-down"
             imgName={data?.product?.name}
           />
-          <div className="flex cursor-pointer items-center space-x-3 border-b border-t py-3">
+          <div className="flex items-center py-3 space-x-3 border-t border-b cursor-pointer">
             {data?.product?.user?.avatar ? (
               <ImgComponent
                 imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.product?.user?.avatar}/public`}
@@ -346,20 +448,20 @@ const ItemDetail: NextPage = () => {
                     return (
                       <div
                         key={index}
-                        className="relative inline-block h-6 w-6"
+                        className="relative inline-block w-6 h-6"
                       >
                         {/* 회색 별 */}
                         <svg
                           viewBox="0 0 24 24"
                           fill="currentColor"
-                          className="h-full w-full text-gray-300"
+                          className="w-full h-full text-gray-300"
                         >
                           <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
                         </svg>
 
                         {/* 노란색 별 */}
                         <div
-                          className="absolute left-0 top-0 h-full overflow-hidden"
+                          className="absolute top-0 left-0 h-full overflow-hidden"
                           style={{
                             clipPath: `inset(0 ${100 - fillPercentage}% 0 0)`,
                           }}
@@ -367,7 +469,7 @@ const ItemDetail: NextPage = () => {
                           <svg
                             viewBox="0 0 24 24"
                             fill="currentColor"
-                            className="h-full w-full text-yellow-400"
+                            className="w-full h-full text-yellow-400"
                           >
                             <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
                           </svg>
@@ -406,7 +508,7 @@ const ItemDetail: NextPage = () => {
                     {`${reservationUserName}가 예약중임`}
                   </div>
                   <button
-                    className="rounded-full bg-slate-200 p-2 text-sm"
+                    className="p-2 text-sm rounded-full bg-slate-200"
                     onClick={onChatRoom}
                   >
                     예약자와의 채팅방으로 이동
@@ -426,11 +528,11 @@ const ItemDetail: NextPage = () => {
             <h1 className="mt-4 text-3xl font-bold text-gray-900">
               {data ? data?.product?.name : "Now Loading..."}
             </h1>
-            <span className="mt-3 block text-3xl text-gray-900">
+            <span className="block mt-3 text-3xl text-gray-900">
               ￦{data ? data?.product?.price : "Now Loading..."}
             </span>
             <div className="my-3">
-              <div className="border-t py-3 text-xl font-bold">
+              <div className="py-3 text-xl font-bold border-t">
                 {/*@ts-ignore*/}
                 {data?.product?.productReviews?.length > 0
                   ? "Review"
@@ -441,7 +543,7 @@ const ItemDetail: NextPage = () => {
                 data?.product?.productReviews.map((review) => (
                   <div
                     key={review.id}
-                    className="flex flex-row justify-items-start space-x-12"
+                    className="flex flex-row space-x-12 justify-items-start"
                   >
                     <div className="flex flex-col items-center justify-center space-y-1">
                       {review.createdBy?.avatar ? (
@@ -453,13 +555,13 @@ const ItemDetail: NextPage = () => {
                           imgName={review.createdBy?.name}
                         />
                       ) : (
-                        <div className="h-12 w-12 rounded-full bg-slate-500" />
+                        <div className="w-12 h-12 rounded-full bg-slate-500" />
                       )}
                       <span className="font-medium text-gray-900">
                         {review?.createdBy.name}
                       </span>
                     </div>
-                    <div className="flex flex-row items-center justify-evenly space-x-20">
+                    <div className="flex flex-row items-center space-x-20 justify-evenly">
                       <div className="flex flex-col items-start">
                         <div className="flex items-center">
                           {[1, 2, 3, 4, 5].map((star) => (
@@ -533,7 +635,7 @@ const ItemDetail: NextPage = () => {
                   {data?.isLike ? (
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="h-6 w-6"
+                      className="w-6 h-6"
                       viewBox="0 0 20 20"
                       fill="currentColor"
                     >
@@ -545,7 +647,7 @@ const ItemDetail: NextPage = () => {
                     </svg>
                   ) : (
                     <svg
-                      className="h-6 w-6 "
+                      className="w-6 h-6 "
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"

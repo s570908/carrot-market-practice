@@ -187,10 +187,10 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       // },
     });
 
-    // login user인 내가 좋아요를 눌렀는지를 체크하여 이것을 reponse로 내보낸다: isLiked
+    // login user인 내가 좋아요를 눌렀는지를 체크하여 이것을 reponse로 내보낸다: isLike
     // login user의 user.id, product는 product.id로 되어 있는 record를 fav 테이블에서 찾는다.
     // 있으면 내가 좋아요를 누른 것이다.
-    const isLiked = Boolean(
+    const isLike = Boolean(
       await client.fav.findFirst({
         where: {
           userId: user?.id,
@@ -204,12 +204,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
     //console.log("product: ", product);
     //console.log("relatedProducts: ", relatedProducts);
-    console.log("/api/products/[id] : id, isLiked ", id, isLiked);
+    console.log("/api/products/[id] : id, isLike ", id, isLike);
     res
       .status(200)
       .json({
         ok: true,
-        isLiked,
+        isLike,
         product: product,
         relatedProducts: relatedProducts,
       });
