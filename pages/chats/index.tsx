@@ -44,6 +44,7 @@ import axios from "axios";
 import { fetchChatRooms } from "@libs/server/fetchChatRooms";
 import Dropdown from "@components/Dropdown";
 import RadioButtonGroup from "@components/RadioGroupButton";
+import { useQuery } from "react-query";
 
 interface ChatRoomWithUser extends ChatRoom {
   buyer: User;
@@ -72,12 +73,24 @@ const Chats: NextPage = () => {
   const { productId } = router.query; // URL에서 productId 쿼리 파라미터를 추출
   // console.log("productId: ", productId);
   const { user } = useUser();
+  const fetchChats = async (url: string) => {
+    const response = await axios.get(url);
+    return response.data;
+  };
   // URL을 조건부로 설정
   const url = productId ? `/api/chat?productId=${productId}` : "/api/chat";
   // const { data } = useSWR("/api/chats", {
   //   refreshInterval: 1000,
   // }); // SWR을 사용하여 채팅방 목록을 불러옵니다, 제품 ID에 따라 필터링
-  const { data, error } = useSWR(url);
+  // const { data, error } = useSWR(url);
+  const { data, error, isLoading, isError } = useQuery(
+    ["chats", productId], // 쿼리 키: productId가 있으면 달라짐
+    () => fetchChats(url), // 데이터를 가져오는 함수
+    {
+      // refetchInterval: 1000, // 1초마다 데이터를 다시 가져오는 옵션
+      enabled: !!url, // URL이 유효할 때만 쿼리 실행
+    }
+  );
 
   const chatRooms = productId
     ? data?.chatRoomListRelatedProduct
