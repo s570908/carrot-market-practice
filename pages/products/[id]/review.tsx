@@ -3,7 +3,7 @@ import Button from "@components/Button";
 import Layout from "@components/Layout";
 import TextArea from "@components/TextArea";
 import { useForm } from "react-hook-form";
-import useMutation from "@libs/client/useMutation";
+// import useMutation from "@libs/client/useMutation";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import useUser from "@libs/client/useUser";
@@ -11,6 +11,8 @@ import useSWR from "swr";
 import { Product, User, ReviewType } from "@prisma/client";
 import ImgComponent from "@components/ImgComponent";
 import Link from "next/link";
+import { useMutation, useQuery } from "react-query";
+import axios from "axios";
 
 interface ProductWithUser extends Product {
   user: User;
@@ -30,15 +32,38 @@ interface ReviewForm {
   [key: string]: string;
 }
 
+interface ReviewData {
+  review: string;
+  score: number;
+  reviewType: ReviewType;
+  createdForId: any;
+}
+
 const Review: NextPage = () => {
   const { user } = useUser();
   const router = useRouter();
-  const { data, mutate: boundMutate } = useSWR<ItemDetailResponse>(
-    router.query.id ? `/api/products/${router.query.id}` : null
+  // const { data, mutate: boundMutate } = useSWR<ItemDetailResponse>(
+  //   router.query.id ? `/api/products/${router.query.id}` : null
+  // );
+  const { data, refetch: boundMutate } = useQuery<ItemDetailResponse>(
+    ["product", router?.query?.id], // 쿼리 키 (id에 따라 쿼리가 달라짐)
+    () =>
+      axios.get(`/api/products/${router?.query?.id}`).then((res) => res.data),
+    {
+      enabled: !!router?.query?.id, // query.id가 있을 때만 쿼리 실행
+    }
   );
   const { otherId } = router.query;
-  const { data: dataOther } = useSWR<UserResponse>(
-    `/api/users/${otherId}/simpleProfile`
+  // const { data: dataOther } = useSWR<UserResponse>(
+  //   `/api/users/${otherId}/simpleProfile`
+  // );
+  const { data: dataOther } = useQuery<UserResponse>(
+    ["user", otherId], // 쿼리 키 (otherId에 따라 변경)
+    () =>
+      axios.get(`/api/users/${otherId}/simpleProfile`).then((res) => res.data),
+    {
+      enabled: !!otherId, // otherId가 있을 때만 쿼리 실행
+    }
   );
   const isSeller = data?.product.userId === user?.id;
   const isBuyer = data?.product.userId !== user?.id;
@@ -47,22 +72,47 @@ const Review: NextPage = () => {
     mode: "onChange",
   });
   const [starScore, setStarScore] = useState(0);
-  const [writeReview, { loading: writeReviewLoading, data: writeReviewData }] =
-    useMutation(`/api/products/${router.query.id}/reviewNew`);
+  // const [writeReview, { loading: writeReviewLoading, data: writeReviewData }] =
+  //   useMutation(`/api/products/${router.query.id}/reviewNew`);
+  const {
+    mutate: writeReview,
+    isLoading: writeReviewLoading,
+    data: writeReviewData,
+  } = useMutation(
+    (reviewData: ReviewData) =>
+      axios.post(`/api/products/${router?.query?.id}/reviewNew`, reviewData), // POST 요청
+    {
+      onSuccess: (data) => {
+        console.log("Review submitted successfully", data);
+        // 성공 시 처리할 로직 추가
+      },
+      onError: (error) => {
+        console.error("Error submitting review", error);
+        // 에러 시 처리할 로직 추가
+      },
+    }
+  );
+
+  const handleSubmitReview = (reviewData: ReviewData) => {
+    writeReview(reviewData); // mutate() 함수 호출
+  };
+
   const onValid = ({ review }: ReviewForm) => {
     if (writeReviewLoading) return;
-    writeReview({
+    handleSubmitReview({
       review,
       score: starScore,
       reviewType: isSeller ? ReviewType.SellerReview : ReviewType.BuyerReview,
       createdForId: otherId,
     });
   };
+
   useEffect(() => {
-    if (writeReviewData?.ok) {
+    if (writeReviewData?.data?.ok) {
       router.back();
     }
   }, [writeReviewData, router]);
+
   return (
     <Layout
       seoTitle="리뷰"
@@ -79,7 +129,7 @@ const Review: NextPage = () => {
             clsProps="object-scale-down"
             imgName={data?.product?.name}
           />
-          <div className="flex cursor-pointer items-center space-x-3 border-b border-t py-3">
+          <div className="flex items-center py-3 space-x-3 border-t border-b cursor-pointer">
             {dataOther?.other?.avatar ? (
               <ImgComponent
                 imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.product?.user?.avatar}/public`}
@@ -89,7 +139,7 @@ const Review: NextPage = () => {
                 imgName={dataOther?.other?.name}
               />
             ) : (
-              <div className="h-12 w-12 rounded-full bg-slate-300" />
+              <div className="w-12 h-12 rounded-full bg-slate-300" />
             )}
             <div>
               <p className="text-sm font-medium text-gray-700">
@@ -102,18 +152,18 @@ const Review: NextPage = () => {
               </Link>
             </div>
           </div>
-          <div className="flex flex-col items-start space-x-3 border-b border-t py-3">
+          <div className="flex flex-col items-start py-3 space-x-3 border-t border-b">
             <h1 className="text-3xl font-bold text-gray-900">
               {data ? data?.product?.name : "Now Loading..."}
             </h1>
-            <span className="mt-3 block text-3xl text-gray-900">
+            <span className="block mt-3 text-3xl text-gray-900">
               ￦{data ? data?.product?.price : "Now Loading..."}
             </span>
           </div>
-          <form className="space-y-4 p-4" onSubmit={handleSubmit(onValid)}>
+          <form className="p-4 space-y-4" onSubmit={handleSubmit(onValid)}>
             <div className="flex flex-col items-start justify-start">
               <span className="text-sm font-bold">몇 점짜리 물건인고?</span>
-              <div className="my-2 flex flex-row-reverse items-center justify-around">
+              <div className="flex flex-row-reverse items-center justify-around my-2">
                 {[5, 4, 3, 2, 1].map((val, key) => (
                   <>
                     <input
@@ -123,16 +173,16 @@ const Review: NextPage = () => {
                       value={val}
                       checked={val === starScore}
                       id={`score${val}`}
-                      className="peer hidden"
+                      className="hidden peer"
                       name="score"
                     />
                     <label
                       htmlFor={`score${val}`}
                       onClick={(e) => setStarScore(val)}
-                      className="cursor-pointer text-gray-300 peer-checked:text-orange-400 peer-hover:text-orange-300"
+                      className="text-gray-300 cursor-pointer peer-checked:text-orange-400 peer-hover:text-orange-300"
                     >
                       <svg
-                        className="h-5 w-5"
+                        className="w-5 h-5"
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 20 20"
                         fill="currentColor"
