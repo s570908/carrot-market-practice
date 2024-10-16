@@ -10,6 +10,8 @@ import { Suspense, useState } from "react";
 import PaginationButton from "@components/PaginationButton";
 import client from "@libs/client/client";
 import { ReserveResponse } from "./api/apiTypes";
+import { useQuery } from "react-query";
+import axios from "axios";
 
 export interface ProductWithCount extends Product {
   favs: Fav[];
@@ -28,14 +30,27 @@ const Home: NextPage = () => {
   const { user, isLoading } = useUser();
   const router = useRouter();
   const [page, setPage] = useState(1);
-  const { data } = useSWR<ProductsResponse>(`/api/products?page=${page}`);
-  const {
-    data: reserveData,
-    isLoading: reserveLoading,
-    mutate: reserveMutate,
-  } = useSWR<ReserveResponse>(
-    router.query.id ? `/api/products/${router.query.id}/reservation` : null
+  // const { data } = useSWR<ProductsResponse>(`/api/products?page=${page}`);
+  // ProductsResponse 타입에 맞는 데이터 요청 함수
+  const fetchProducts = async (page: number) => {
+    const response = await axios.get(`/api/products?page=${page}`);
+    return response.data;
+  };
+
+  const { data } = useQuery<ProductsResponse>(
+    ["products", page], // 쿼리 키, 페이지 번호에 따라 쿼리가 다름
+    () => fetchProducts(page), // 데이터를 가져오는 함수
+    {
+      keepPreviousData: true, // 페이지 이동 시 이전 데이터 유지 (선택 사항)
+    }
   );
+  // const {
+  //   data: reserveData,
+  //   isLoading: reserveLoading,
+  //   mutate: reserveMutate,
+  // } = useSWR<ReserveResponse>(
+  //   router.query.id ? `/api/products/${router.query.id}/reservation` : null
+  // );
   const onPrevBtn = () => {
     router.push(`${router.pathname}?page=${page - 1}`);
     setPage((prev) => prev - 1);
