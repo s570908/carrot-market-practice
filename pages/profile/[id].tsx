@@ -8,9 +8,11 @@ import { Product, Review, User } from "@prisma/client";
 import { cls } from "@libs/utils";
 import Link from "next/link";
 import ImgComponent from "@components/ImgComponent";
-import useMutation from "@libs/client/useMutation";
+// import useMutation from "@libs/client/useMutation";
 import { useEffect } from "react";
 import gravatar from "gravatar";
+import { useMutation, useQuery } from "react-query";
+import axios from "axios";
 
 interface ProductScore extends Product {
   productReviews: Review[];
@@ -33,23 +35,72 @@ const Profile: NextPage = () => {
   const { user } = useUser();
   const router = useRouter();
 
-  const { data } = useSWR<ProfileResponse>(
-    router.query.id ? `/api/users/other/${router.query.id}` : null
-    // other 상대방
+  // const { data } = useSWR<ProfileResponse>(
+  //   router.query.id ? `/api/users/other/${router.query.id}` : null
+  //   // other 상대방
+  // );
+
+  // 데이터를 가져오는 함수 정의
+  const fetchProfile = async (
+    id: string | string[] | undefined
+  ): Promise<ProfileResponse> => {
+    const response = await axios.get(`/api/users/other/${id}`);
+    return response.data;
+  };
+
+  const { data, isLoading, error } = useQuery<ProfileResponse>(
+    ["profile", router?.query?.id], // 쿼리 키
+    () => fetchProfile(router?.query?.id), // 데이터를 가져오는 함수
+    {
+      enabled: !!router?.query?.id, // id가 있을 때만 쿼리 실행
+    }
   );
 
   console.log("Profile---data: ", JSON.stringify(data, null, 2));
 
-  const [talkToSeller, { loading: talkToSellerLoading, data: talkToSellerData }] =
-    useMutation(`/api/chat`);
+  // const [
+  //   talkToSeller,
+  //   { loading: talkToSellerLoading, data: talkToSellerData },
+  // ] = useMutation(`/api/chat`);
 
-  useEffect(() => {
-    if (talkToSellerData && talkToSellerData.ok) {
-      talkToSellerData.chatRoomList
-        ? router.push(`/chats/${talkToSellerData.chatRoomList.id}`)
-        : router.push(`/chats/${talkToSellerData.createChat.id}`);
+  // useMutation을 사용한 API 호출 설정
+  const {
+    mutate: talkToSeller,
+    isLoading: talkToSellerLoading,
+    data: talkToSellerData,
+  } = useMutation(
+    async (sellerData: { buyerId: number; sellerId: number }) => {
+      return axios.post(`/api/chat`, sellerData); // POST 요청
+    },
+    {
+      onSuccess: (data) => {
+        console.log("Chat started successfully", data);
+        // 성공 시 처리할 로직 추가
+      },
+      onError: (error) => {
+        console.error("Error starting chat:", error);
+        // 에러 처리 로직 추가
+      },
     }
-  }, [router, talkToSellerData]);
+  );
+
+  // 채팅 시작 함수 호출
+  const handleStartChat = () => {
+    const buyerId = user?.id; // 사용자 ID
+    const sellerId = +router.query.id!; // 판매자 ID를 쿼리에서 가져옴
+
+    if (buyerId && sellerId) {
+      talkToSeller({ buyerId, sellerId }); // 데이터를 전달하며 함수 호출
+    }
+  };
+
+  // useEffect(() => {
+  //   if (talkToSellerData && talkToSellerData?.data?.ok) {
+  //     talkToSellerData?.data?.chatRoomList
+  //       ? router.push(`/chats/${talkToSellerData?.data?.chatRoomList?.id}`)
+  //       : router.push(`/chats/${talkToSellerData?.data?.createChat?.id}`);
+  //   }
+  // }, [router, talkToSellerData]);
 
   if (!router.query.id) {
     console.log("Logical error: router.query.id should be given but not.");
@@ -59,7 +110,8 @@ const Profile: NextPage = () => {
   const onChatClick = () => {
     console.log("onChatClick clicked.");
     if (talkToSellerLoading) return;
-    talkToSeller({ buyerId: user?.id, sellerId: +router.query.id! });
+    // talkToSeller({ buyerId: user?.id, sellerId: +router.query.id! });
+    // handleStartChat();
   };
 
   return (
@@ -96,7 +148,9 @@ const Profile: NextPage = () => {
             />
           )}
           <div className="flex flex-col">
-            <span className="font-medium text-gray-900">{data?.other.name}</span>
+            <span className="font-medium text-gray-900">
+              {data?.other.name}
+            </span>
           </div>
         </div>
         <Button onClick={onChatClick} large text="Talk to seller" />
@@ -110,7 +164,9 @@ const Profile: NextPage = () => {
                 imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${item.product.image}/public`}
               />
               <div className="flex flex-col pt-2">
-                <h3 className="text-sm font-medium text-gray-900">{item.product.name}</h3>
+                <h3 className="text-sm font-medium text-gray-900">
+                  {item.product.name}
+                </h3>
 
                 <span className="mt-1 flex items-center font-medium text-gray-900">
                   {[1, 2, 3, 4, 5].map((star) => (
