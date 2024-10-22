@@ -11,6 +11,8 @@ import ImgComponent from "@components/ImgComponent";
 import useMutation from "@libs/client/useMutation";
 import { useEffect } from "react";
 import gravatar from "gravatar";
+import { useQuery } from "react-query";
+import axios from "axios";
 
 interface ProductScore extends Product {
   productReviews: Review[];
@@ -33,14 +35,31 @@ const ReviewForSellerDetail: NextPage = () => {
   const { user } = useUser();
   const router = useRouter();
 
-  const { data } = useSWR<ProfileResponse>(
-    router.query.id ? `/api/users/other/${router.query.id}` : null
-    // other 상대방
+  // const { data } = useSWR<ProfileResponse>(
+  //   router.query.id ? `/api/users/other/${router.query.id}` : null
+  //   // other 상대방
+  // );
+
+  const fetchProfile = async (id: string) => {
+    const { data } = await axios.get<ProfileResponse>(`/api/users/other/${id}`);
+    return data;
+  };
+
+  const {
+    data: profileData,
+    isLoading,
+    error,
+  } = useQuery<ProfileResponse>(
+    ["profile", router?.query?.id], // 쿼리 키, id가 변할 때마다 새로 요청
+    () => fetchProfile(router?.query?.id as string), // id가 있을 때만 요청
+    {
+      enabled: !!router?.query?.id, // id가 존재할 때만 쿼리 실행
+    }
   );
 
   // console.log("Profile---data: ", JSON.stringify(data, null, 2));
 
-  const salesWithReview = data?.other?.sales?.filter(
+  const salesWithReview = profileData?.other?.sales?.filter(
     (sale) => sale?.product?.productReviews?.length > 0
   );
 
@@ -70,26 +89,28 @@ const ReviewForSellerDetail: NextPage = () => {
 
   return (
     <Layout
-      seoTitle={`${data?.other.name}의 Review`}
-      title={`${data?.other.name}의 받은 후기(Received Reviews)`}
+      seoTitle={`${profileData?.other.name}의 Review`}
+      title={`${profileData?.other.name}의 받은 후기(Received Reviews)`}
       canGoBack
       backUrl="back"
       isProfile={true}
     >
       <div className="px-4 py-4 space-y-4">
         <div className="flex items-center pb-4 mt-4 space-x-3 border-b">
-          {data?.other?.avatar ? (
+          {profileData?.other?.avatar ? (
             <ImgComponent
               width={48}
               height={48}
               clsProps="rounded-full bg-gray-400"
-              imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.other.avatar}/public`}
-              imgName={data?.other.name}
+              imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${profileData?.other.avatar}/public`}
+              imgName={profileData?.other.name}
             />
           ) : (
             <ImgComponent
               imgAdd={`https:${gravatar.url(
-                data?.other?.email ? data?.other?.email : "anonymous@email.com",
+                profileData?.other?.email
+                  ? profileData?.other?.email
+                  : "anonymous@email.com",
                 {
                   s: "48px",
                   d: "retro",
@@ -102,9 +123,9 @@ const ReviewForSellerDetail: NextPage = () => {
             />
           )}
           <div className="flex flex-col">
-          <div className="text-xs">판매자</div>
+            <div className="text-xs">판매자</div>
             <span className="font-medium text-gray-900">
-              {data?.other?.name || "판매자 이름"}
+              {profileData?.other?.name || "판매자 이름"}
             </span>
           </div>
         </div>
