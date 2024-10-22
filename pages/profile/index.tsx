@@ -12,6 +12,7 @@ import { Suspense, useEffect, useState } from "react";
 import axios from "axios";
 import fetcher from "@libs/client/fetcher";
 import gravatar from "gravatar";
+import { useQuery } from "react-query";
 
 interface ReviewWithUser extends Review {
   createdBy: User;
@@ -22,10 +23,24 @@ interface ReviewsResponse {
 }
 
 const Reviews = () => {
-  const { data } = useSWR<ReviewsResponse>("/api/reviews");
+  // const { data } = useSWR<ReviewsResponse>("/api/reviews");
+  const fetchReviews = async () => {
+    const { data } = await axios.get<ReviewsResponse>("/api/reviews");
+    return data;
+  };
+
+  const {
+    data: reviewsData,
+    isLoading,
+    error,
+  } = useQuery<ReviewsResponse>(
+    "profile", // 쿼리 키
+    fetchReviews // 데이터를 가져오는 함수
+  );
+
   return (
     <>
-      {data?.reviews?.map((review) => (
+      {reviewsData?.reviews?.map((review) => (
         <Link key={review.id} href={`/products/${review.productForId}`}>
           <a className="mt-12 cursor-pointer">
             <div className="flex items-center space-x-4">
@@ -40,14 +55,18 @@ const Reviews = () => {
                 <div className="h-12 w-12 rounded-full bg-slate-500" />
               )}
               <div>
-                <h4 className="text-sm font-bold text-gray-800">{review.createdBy.name}</h4>
+                <h4 className="text-sm font-bold text-gray-800">
+                  {review.createdBy.name}
+                </h4>
                 <div className="flex items-center">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <svg
                       key={star}
                       className={cls(
                         "h-5 w-5",
-                        review.score >= star ? "text-yellow-400" : "text-gray-300"
+                        review.score >= star
+                          ? "text-yellow-400"
+                          : "text-gray-300"
                       )}
                       xmlns="http://www.w3.org/2000/svg"
                       viewBox="0 0 20 20"
@@ -92,10 +111,13 @@ const ProfileHeader = () => {
           />
         ) : (
           <ImgComponent
-            imgAdd={`https:${gravatar.url(user?.email ? user?.email : "anonymous@email.com", {
-              s: "48px",
-              d: "retro",
-            })}`}
+            imgAdd={`https:${gravatar.url(
+              user?.email ? user?.email : "anonymous@email.com",
+              {
+                s: "48px",
+                d: "retro",
+              }
+            )}`}
             width={48}
             height={48}
             clsProps="rounded-full"
@@ -138,7 +160,9 @@ const Profile: NextPage = () => {
                   ></path>
                 </svg>
               </div>
-              <span className="mt-2 text-sm font-medium text-gray-700">판매내역</span>
+              <span className="mt-2 text-sm font-medium text-gray-700">
+                판매내역
+              </span>
             </a>
           </Link>
           <Link href="/profile/purchases">
@@ -159,7 +183,9 @@ const Profile: NextPage = () => {
                   ></path>
                 </svg>
               </div>
-              <span className="mt-2 text-sm font-medium text-gray-700">구매내역</span>
+              <span className="mt-2 text-sm font-medium text-gray-700">
+                구매내역
+              </span>
             </a>
           </Link>
           <Link href="/profile/favs">
@@ -180,7 +206,9 @@ const Profile: NextPage = () => {
                   ></path>
                 </svg>
               </div>
-              <span className="mt-2 text-sm font-medium text-gray-700">관심목록</span>
+              <span className="mt-2 text-sm font-medium text-gray-700">
+                관심목록
+              </span>
             </a>
           </Link>
         </div>
