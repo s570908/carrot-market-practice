@@ -10,6 +10,8 @@ import { useRouter } from "next/router";
 import PaginationButton from "@components/PaginationButton";
 import Image from "next/image";
 import { cls } from "@libs/utils";
+import axios from "axios";
+import { QueryFunctionContext, useQuery } from "react-query";
 
 interface StreamsResponse {
   ok: boolean;
@@ -22,13 +24,33 @@ const Streams: NextPage = () => {
   const router = useRouter();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-  const { data } = useSWR<StreamsResponse>(`/api/streams?page=${page}&limit=${limit}`, {
-    refreshInterval: 1000,
-  });
+  // const { data } = useSWR<StreamsResponse>(`/api/streams?page=${page}&limit=${limit}`, {
+  //   refreshInterval: 1000,
+  // });
+
+  const fetchStreams = async ({ queryKey }: QueryFunctionContext<any>) => {
+    const [, page, limit] = queryKey; // queryKey에서 page와 limit 추출
+    const { data } = await axios.get<StreamsResponse>(
+      `/api/streams?page=${page}&limit=${limit}`
+    );
+    return data;
+  };
+
+  const {
+    data: streamsData,
+    isLoading,
+    error,
+  } = useQuery<StreamsResponse>(
+    ["streams", page, limit], // 쿼리 키, page와 limit에 따라 쿼리가 달라짐
+    fetchStreams, // 데이터를 가져오는 함수
+    {
+      // refetchInterval: 1000, // 1초마다 데이터 리프레시
+    }
+  );
 
   console.log(
     "strem/index.tsx---/api/streams?page=${page}&limit=${limit} data: ",
-    JSON.stringify(data, null, 2)
+    JSON.stringify(streamsData, null, 2)
   );
 
   const onPrevBtn = (page: number) => {
@@ -39,10 +61,11 @@ const Streams: NextPage = () => {
     router.push(`${router.pathname}?page=${page + 1}&limit=${limit}`);
     setPage((prev) => prev + 1);
   };
+
   return (
     <Layout seoTitle="라이브" title="라이브" hasTabBar notice>
       <div className="space-y-8 divide-y-2 px-4">
-        {data?.streams?.map((stream) => {
+        {streamsData?.streams?.map((stream: Stream) => {
           console.log("stream: ", JSON.stringify(stream, null, 2));
           return (
             <Link key={stream.id} href={`/stream/${stream.id}`}>
@@ -61,11 +84,16 @@ const Streams: NextPage = () => {
                   )}
                 </div>
                 <div className="flex flex-row items-center justify-evenly space-x-32">
-                  <h1 className="mt-2 text-2xl font-bold text-gray-900">{stream.name}</h1>
+                  <h1 className="mt-2 text-2xl font-bold text-gray-900">
+                    {stream.name}
+                  </h1>
                   <div>
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className={cls(stream.live ? "text-red-500" : "text-gray-500", "h-6 w-6")}
+                      className={cls(
+                        stream.live ? "text-red-500" : "text-gray-500",
+                        "h-6 w-6"
+                      )}
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -84,7 +112,12 @@ const Streams: NextPage = () => {
           );
         })}
       </div>
-      <PaginationButton onClick={onPrevBtn} direction="prev" page={page} isGroup={true}>
+      <PaginationButton
+        onClick={onPrevBtn}
+        direction="prev"
+        page={page}
+        isGroup={true}
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           className="h-6 w-6"
@@ -104,7 +137,7 @@ const Streams: NextPage = () => {
         onClick={onNextBtn}
         direction="next"
         page={page}
-        itemLength={data?.streams?.length}
+        itemLength={streamsData?.streams.length}
         isGroup={true}
       >
         <svg
