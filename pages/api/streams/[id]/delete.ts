@@ -11,7 +11,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse<ResponseType>) 
     } = req;
 
     if (!id) {
-      return res.status(404).end({ error: "request query is not given." });
+      return res.status(404).json({ ok: false, error: "request query is not given." });
     }
 
     const foundStream = await client.stream.findFirst({ where: { id: +id, userId: user?.id } });
@@ -28,4 +28,4 @@ const handler = async (req: NextApiRequest, res: NextApiResponse<ResponseType>) 
   }
 };
 
-export default withApiSession(withHandler({ methods: ["POST"], handler, isPrivate: false }));
+export default withApiSession(withHandler({ methods: ["POST", "DELETE"], handler, isPrivate: false }));
