@@ -30,16 +30,19 @@ const Home: NextPage = () => {
   const { user, isLoading } = useUser();
   const router = useRouter();
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10); // limit을 상태로 설정
   // const { data } = useSWR<ProductsResponse>(`/api/products?page=${page}`);
   // ProductsResponse 타입에 맞는 데이터 요청 함수
-  const fetchProducts = async (page: number) => {
-    const response = await axios.get(`/api/products?page=${page}`);
+  const fetchProducts = async (page: number, limit: number) => {
+    const response = await axios.get(
+      `/api/products?page=${page}&limit=${limit}`
+    );
     return response.data;
   };
 
   const { data } = useQuery<ProductsResponse>(
-    ["products", page], // 쿼리 키, 페이지 번호에 따라 쿼리가 다름
-    () => fetchProducts(page), // 데이터를 가져오는 함수
+    ["products", page, limit], // 쿼리 키, 페이지 번호에 따라 쿼리가 다름
+    () => fetchProducts(page, limit), // 데이터를 가져오는 함수
     {
       keepPreviousData: true, // 페이지 이동 시 이전 데이터 유지 (선택 사항)
     }
@@ -92,6 +95,20 @@ const Home: NextPage = () => {
             />
           );
         })}
+      </div>
+      {/* 사용자에게 limit을 조정할 수 있는 인터페이스 추가 */}
+      <div className="my-4">
+        <label htmlFor="limit" className="mr-2">
+          페이지 당 항목 수:
+        </label>
+        <input
+          id="limit"
+          type="number"
+          min="1"
+          value={limit === 0 ? "" : limit} // limit이 0일 때 빈 문자열로 설정
+          onChange={(e) => setLimit(Number(e.target.value) || 0)} // 빈 문자열 처리
+          className="rounded border px-2 py-1"
+        />
       </div>
       {data ? (
         <div className="group relative w-full">

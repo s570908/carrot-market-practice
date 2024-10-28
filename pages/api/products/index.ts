@@ -7,13 +7,15 @@ import { Status } from "@prisma/client";
 const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse<ResponseType>) => {
   if (req.method === "GET") {
     const {
-      query: { page },
+      query: { page, limit },
     } = req;
     // const page = req.query.page ? (req.query.page as String) : "";
+    const limitValue = limit ? parseInt(limit as string, 10) : 10; // 기본 limit 값 10
+
     if (!page) {
       return res.status(404).end({ error: "request query is not given." });
     }
-    const limit = 10;
+    // const limit = 10;
     const products = await client.product.findMany({
       where: {
         OR: [
@@ -38,8 +40,8 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
           },
         },
       },
-      take: limit,
-      skip: (+page - 1) * limit,
+      take: limitValue,
+      skip: (+page - 1) * limitValue,
       orderBy: { createdAt: "desc" },
     });
     const nextProducts = await client.product.findMany({
@@ -66,8 +68,8 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
           },
         },
       },
-      take: limit,
-      skip: (+page + 1 - 1) * limit,
+      take: limitValue,
+      skip: (+page + 1 - 1) * limitValue,
       orderBy: { createdAt: "desc" },
     });
     res.json({
