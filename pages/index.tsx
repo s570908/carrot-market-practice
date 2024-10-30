@@ -6,7 +6,7 @@ import useUser from "@libs/client/useUser";
 import useSWR, { SWRConfig } from "swr";
 import { Fav, Product, Status } from "@prisma/client";
 import { useRouter } from "next/router";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import PaginationButton from "@components/PaginationButton";
 import client from "@libs/client/client";
 import { ReserveResponse } from "./api/apiTypes";
@@ -35,6 +35,7 @@ const Home: NextPage = () => {
   const router = useRouter();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10); // limit을 상태로 설정
+  const observerElem = useRef(null);
   // const { data } = useSWR<ProductsResponse>(`/api/products?page=${page}`);
   // ProductsResponse 타입에 맞는 데이터 요청 함수
   const fetchProducts = async (page: number, limit: number) => {
@@ -74,22 +75,31 @@ const Home: NextPage = () => {
     }
   );
 
-  useEffect(() => {
-    let fetching = false;
-    const handleScroll = async (e: Event) => {
-      const { scrollHeight, scrollTop, clientHeight } =
-        (e.target as Document).scrollingElement || document.documentElement;
-      if (!fetching && scrollHeight - scrollTop <= clientHeight * 1.2) {
-        fetching = true;
-        if (hasNextPage) await fetchNextPage();
-        fetching = false;
+  const handleObserver = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      const [target] = entries;
+      if (target.isIntersecting && hasNextPage) {
+        fetchNextPage();
       }
+    },
+    [fetchNextPage, hasNextPage]
+  );
+
+  useEffect(() => {
+    const element = observerElem.current;
+    const options = {
+      root: null,
+      rootMargin: "0px",
+      threshold: 1.0,
     };
-    document.addEventListener("scroll", handleScroll);
+
+    const observer = new IntersectionObserver(handleObserver, options);
+    if (element) observer.observe(element);
+
     return () => {
-      document.removeEventListener("scroll", handleScroll);
+      if (element) observer.unobserve(element);
     };
-  }, [fetchNextPage, hasNextPage]);
+  }, [fetchNextPage, hasNextPage, handleObserver]);
 
   // const {
   //   data: reserveData,
@@ -110,7 +120,7 @@ const Home: NextPage = () => {
   //console.log("===data: ", data);
   return (
     <Layout seoTitle="Home" title="홈" hasTabBar notice>
-      <div className="flex flex-col space-y-5 divide-y px-4">
+      <div className="flex flex-col px-4 space-y-5 divide-y">
         {/* {data?.products?.map((product) => {
           const reserved = product?.status === Status.Reserved ? true : false;
           const sold = product?.status === Status.Sold ? true : false;
@@ -190,11 +200,14 @@ const Home: NextPage = () => {
           min="1"
           value={limit === 0 ? "" : limit} // limit이 0일 때 빈 문자열로 설정
           onChange={(e) => setLimit(Number(e.target.value) || 0)} // 빈 문자열 처리
-          className="rounded border px-2 py-1"
+          className="px-2 py-1 border rounded"
         />
       </div>
+      <div className="loader" ref={observerElem}>
+        {isFetchingNextPage && hasNextPage ? "Loading..." : "No product left"}
+      </div>
       {data ? (
-        <div className="group relative w-full">
+        <div className="relative w-full group">
           {/* <PaginationButton
             onClick={onPrevBtn}
             direction="prev"
@@ -242,7 +255,7 @@ const Home: NextPage = () => {
           </PaginationButton> */}
           <FloatingButton href="/products/upload" isGroup={true}>
             <svg
-              className="h-6 w-6"
+              className="w-6 h-6"
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"
