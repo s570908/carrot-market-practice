@@ -6,7 +6,7 @@ import useUser from "@libs/client/useUser";
 import useSWR, { SWRConfig } from "swr";
 import { Fav, Product, Status } from "@prisma/client";
 import { useRouter } from "next/router";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import PaginationButton from "@components/PaginationButton";
 import client from "@libs/client/client";
 import { ReserveResponse } from "./api/apiTypes";
@@ -73,6 +73,23 @@ const Home: NextPage = () => {
       keepPreviousData: true, // 이전 데이터 유지
     }
   );
+
+  useEffect(() => {
+    let fetching = false;
+    const handleScroll = async (e: Event) => {
+      const { scrollHeight, scrollTop, clientHeight } =
+        (e.target as Document).scrollingElement || document.documentElement;
+      if (!fetching && scrollHeight - scrollTop <= clientHeight * 1.2) {
+        fetching = true;
+        if (hasNextPage) await fetchNextPage();
+        fetching = false;
+      }
+    };
+    document.addEventListener("scroll", handleScroll);
+    return () => {
+      document.removeEventListener("scroll", handleScroll);
+    };
+  }, [fetchNextPage, hasNextPage]);
 
   // const {
   //   data: reserveData,
@@ -150,7 +167,7 @@ const Home: NextPage = () => {
             );
           })
         )}
-        <button
+        {/* <button
           onClick={() => fetchNextPage()}
           disabled={!hasNextPage || isFetchingNextPage}
         >
@@ -159,7 +176,7 @@ const Home: NextPage = () => {
             : hasNextPage
             ? "Load More"
             : "No more products"}
-        </button>
+        </button> */}
         {isLoading && <p>Loading...</p>}
       </div>
       {/* 사용자에게 limit을 조정할 수 있는 인터페이스 추가 */}
