@@ -23,10 +23,10 @@ import Loading from "@components/Loading";
 import ImgComponent from "@components/ImgComponent";
 import { getChatRoomData } from "@libs/server/chatUtils";
 import Dropdown from "@components/Dropdown";
-//mport { useSocket } from "@libs/client/useSocket";
 import io, { Socket } from "socket.io-client";
 import { useQuery, useQueryClient } from "react-query";
 import axios from "axios";
+import { useSocket } from "@libs/client/useSocket";
 
 type Option = {
   value: string;
@@ -92,6 +92,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   const { user } = useUser();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { socket, isConnected } = useSocket();
+
   //// router.query.id: chatRoom id
   //// chatRoom list 가져오기
   // const { buyerId, sellerId, productId } = router.query;
@@ -137,25 +139,21 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       ? data?.chatRoomOfSeller?.seller?.name
       : data?.chatRoomOfSeller?.buyer?.name;
 
-  const reserved =
-    data?.chatRoomOfSeller?.product?.status === Status.Reserved ? true : false;
-  const sold =
-    data?.chatRoomOfSeller?.product?.status === Status.Sold ? true : false;
+  const reserved = data?.chatRoomOfSeller?.product?.status === Status.Reserved ? true : false;
+  const sold = data?.chatRoomOfSeller?.product?.status === Status.Sold ? true : false;
   // selling은 Status.Registered와 동일하다.
   const selling = !reserved && !sold;
 
-  const productStatus =
-    (reserved && "예약중") || (sold && "거래완료") || "판매중";
+  const productStatus = (reserved && "예약중") || (sold && "거래완료") || "판매중";
 
   const isProvider = data?.chatRoomOfSeller?.sellerId === user?.id;
   const isConsumer = data?.chatRoomOfSeller?.buyerId === user?.id;
 
-  const { data: reservationData, mutate: reservationMutate } =
-    useSWR<ReservationResponse>(
-      router.query.id && data?.chatRoomOfSeller?.productId
-        ? `/api/products/${data?.chatRoomOfSeller?.productId}/reservation`
-        : null
-    );
+  const { data: reservationData, mutate: reservationMutate } = useSWR<ReservationResponse>(
+    router.query.id && data?.chatRoomOfSeller?.productId
+      ? `/api/products/${data?.chatRoomOfSeller?.productId}/reservation`
+      : null
+  );
   //console.log("reservationData: ", reservationData);
 
   // const getFetcherWithParams = (url: any, { otherId, reviewType }) => {
@@ -172,8 +170,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       ? `/api/products/${data?.chatRoomOfSeller?.productId}/checkReviewWritable?createdForId=${otherId}&reviewType=${reviewType}`
       : null;
 
-  const { data: reviewWritableData, error } =
-    useSWR<ReviewWritableResponse>(url);
+  const { data: reviewWritableData, error } = useSWR<ReviewWritableResponse>(url);
 
   //console.log("reviewWritableData================: ", reviewWritableData);
 
@@ -181,9 +178,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   const writtenReviews = data?.chatRoomOfSeller?.buyer?.writtenReviews;
 
   const reviewExists =
-    writtenReviews?.find(
-      (review: Review) => review.productForId === productId
-    ) !== undefined;
+    writtenReviews?.find((review: Review) => review.productForId === productId) !== undefined;
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const entry = useIntersectionObserver(scrollRef, {
@@ -192,9 +187,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     threshold: 0, // visibleRef가 모두 보였을 때만 true,
     freezeOnceVisible: false, // 계속하여 감지하겠다.
   });
-  const scrollToBottom = (
-    elementRef: MutableRefObject<HTMLDivElement | null>
-  ) => {
+  const scrollToBottom = (elementRef: MutableRefObject<HTMLDivElement | null>) => {
     if (elementRef) {
       elementRef.current!?.scrollIntoView({
         behavior: "smooth",
@@ -206,14 +199,13 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   const { register, handleSubmit, reset } = useForm<ChatFormResponse>();
   //// api server를 통해서 chatRoom에 chat data를 보내기
-  const [sendChat, { loading: sendChatDataLoading, data: sendChatData }] =
-    useMutation(`/api/chat/${router.query.id}/chats`);
+  const [sendChat, { loading: sendChatDataLoading, data: sendChatData }] = useMutation(
+    `/api/chat/${router.query.id}/chats`
+  );
   const [toggleReservation] = useMutation(
     `/api/products/${data?.chatRoomOfSeller?.productId}/reservation`
   );
-  const [sellComplete] = useMutation(
-    `/api/products/${data?.chatRoomOfSeller?.productId}`
-  );
+  const [sellComplete] = useMutation(`/api/products/${data?.chatRoomOfSeller?.productId}`);
   const onValid = (chatForm: ChatFormResponse) => {
     if (sendChatDataLoading) return;
     reset();
@@ -278,38 +270,46 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     []
   );
 
-  //const { socket, isConnected } = useSocket();
-  // console.log("socket: ", socket);
-  // console.log("isConnected : ", isConnected);
   const [connected, setConnected] = useState<boolean>(false);
 
   useEffect((): any => {
     // connect to socket server
     // @ts-ignore
-    const socket = io.connect(process.env.BASE_URL, {
-      path: "/api/socket",
-    });
+    // const socket = io.connect(process.env.NEXT_PUBLIC_BASE_URL, {
+    //   path: "/api/socket",
+    // });
 
     // log socket connection
-    socket.on("connect", () => {
-      console.log("SOCKET CONNECTED!", socket.id);
-      setConnected(true);
-      // Join the specific chatroom
-      socket.emit("joinRoom", router.query.id);
-    });
+    if (isConnected) {
+      socket?.emit("joinRoom", router.query.id);
+      // update chat on new message dispatched
+      socket?.on("message", (message: any) => {
+        console.log("message received: ", message);
+        console.log("to do: mutate()를 useQuery function으로 대체한다.");
+        refetch();
+        // mutate();
+        //setChat((chat) => [...chat, message]);
+      });
+    }
+    // socket.on("connect", () => {
+    //   console.log("SOCKET CONNECTED!", socket.id);
+    //   setConnected(true);
+    //   // Join the specific chatroom
+    //   socket.emit("joinRoom", router.query.id);
 
-    // update chat on new message dispatched
-    socket.on("message", (message: any) => {
-      console.log("message received: ", message);
-      console.log("to do: mutate()를 useQuery function으로 대체한다.");
-      refetch();
-      // mutate();
-      //setChat((chat) => [...chat, message]);
-    });
+    //   // update chat on new message dispatched
+    //   socket.on("message", (message: any) => {
+    //     console.log("message received: ", message);
+    //     console.log("to do: mutate()를 useQuery function으로 대체한다.");
+    //     refetch();
+    //     // mutate();
+    //     //setChat((chat) => [...chat, message]);
+    //   });
 
-    // socket disconnet onUnmount if exists
-    if (socket) return () => socket.disconnect();
-  }, [queryClient, router.query.id]);
+    return () => {
+      socket?.off("message");
+    };
+  }, [isConnected, refetch, router.query.id, socket]);
 
   // 드롭다운에서 선택 변경 시 호출되는 함수
   const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -405,8 +405,21 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   }
 
   if (isLoading) return <div>Loading...</div>;
-  if (queryError instanceof Error)
-    return <div>Error: {queryError.message}</div>;
+  if (queryError instanceof Error) return <div>Error: {queryError.message}</div>;
+
+  const handleVideoCall = () => {
+    console.log(`${user?.name} 이 ${otherName} 에게 영상챗을 걸고 있습니다.`);
+    // Navigate to the VideoChat page with initiatorId and receiverId as query parameters
+    router.push({
+      pathname: "/videoChat",
+      query: {
+        initiatorId: user?.id,
+        initiatorName: user?.name,
+        receiverId: otherId,
+        receiverName: otherName,
+      },
+    });
+  };
 
   return (
     <Layout
@@ -435,9 +448,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               />
               <div className="flex flex-col space-y-1">
                 <div className="flex flex-row items-center space-x-2">
-                  <div className="text-gray-900">
-                    {data?.chatRoomOfSeller?.product?.name}
-                  </div>
+                  <div className="text-gray-900">{data?.chatRoomOfSeller?.product?.name}</div>
                   <div>{productStatus}</div>
                   <div className="">
                     {/*로그인 유저가 판매자이고, 아직 안 팔렸고, 구매요청자(채팅상대자)가 예약자가 아니면  */}
@@ -446,20 +457,12 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                       sold ||
                       (reserved && chatUserId !== reservationUserId)
                     ) && (
-                      <Dropdown
-                        options={options}
-                        value={selectedValue}
-                        onChange={handleChange}
-                      />
+                      <Dropdown options={options} value={selectedValue} onChange={handleChange} />
                     )}
                   </div>
                 </div>
-                <span className="text-gray-900">
-                  ￦{data?.chatRoomOfSeller?.product?.price}
-                </span>
-                <div className="text-gray-900">
-                  {data?.chatRoomOfSeller?.seller?.name}
-                </div>
+                <span className="text-gray-900">￦{data?.chatRoomOfSeller?.product?.price}</span>
+                <div className="text-gray-900">{data?.chatRoomOfSeller?.seller?.name}</div>
               </div>
             </div>
           </div>
@@ -505,11 +508,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
             </div>
             <div
               className="text-md cursor-pointer rounded-md border border-black p-1"
-              onClick={() => {
-                console.log("기타가 클릭 되었습니다.");
-              }}
+              onClick={handleVideoCall}
             >
-              기타
+              영상통화
             </div>
           </div>
         </div>
@@ -560,18 +561,13 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               </div>
             </div>
           </form> */}
-          <form
-            onSubmit={handleSubmit(onValid)}
-            className="mt-10 w-full border-t px-1 py-1"
-          >
+          <form onSubmit={handleSubmit(onValid)} className="mt-10 w-full border-t px-1 py-1">
             <div className="relative w-full rounded-md bg-white px-2 py-2 outline-none">
               <input
                 {...register("chatMsg", { required: true, maxLength: 80 })}
                 maxLength={80}
                 placeholder={
-                  user === undefined
-                    ? "로그인 후 이용가능합니다."
-                    : "메세지를 입력해주세요."
+                  user === undefined ? "로그인 후 이용가능합니다." : "메세지를 입력해주세요."
                 }
                 className="w-full text-[15px] outline-none placeholder:text-gray-300"
               />
