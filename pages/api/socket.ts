@@ -1,6 +1,6 @@
-import { Server as HttpServer } from "http";
+import { Server } from "socket.io";
 import { NextApiRequest, NextApiResponse } from "next";
-import { Server as SocketIOServer, Socket } from "socket.io";
+import { Server as HTTPServer } from "http";
 import { NextApiResponseServerIo } from "../../types/types";
 import onlineMap from "@libs/server/onlineMap";
 
@@ -12,69 +12,27 @@ export const config = {
 
 export default function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
   if (!res.socket.server.io) {
-    console.log("Initializing Socket.IO server...");
-
-    //const io = new SocketIOServer(res.socket.server.io);
-
-    const httpServer: HttpServer = res.socket.server as any;
-    const io = new SocketIOServer(httpServer, {
-      path: "/api/socket", // WebSocket 경로
-      //transports: ["websocket"], // WebSocket만 허용
-      // cors: {
-      //   origin: "http://localhost:3000", // 클라이언트 주소
-      //   methods: ["GET", "POST"],
-      // },
+    console.log("Initializing Socket.io server...");
+    const httpServer: HTTPServer = res.socket.server as any;
+    const io = new Server(httpServer, {
+      path: "/api/socket", // 클라이언트와 동일한 path 사용해야함
+      transports: ["websocket", "polling"], // 클라이언트와 동일한 transport 사용해야함
     });
 
-    // 클라이언트에서 전달된 workspace와 namespace
-    const namespace = req.query.namespace as string;
-    console.log("namespace: ", namespace);
-
-    //io.of(/^\/ws-.+/).on("connection", (socket: Socket) => {
-    //io.of(`ws-${namespace}`).on("connection", (socket: Socket) => {
-    io.on("connection", (socket: Socket) => {
-      const namespace = socket.nsp;
-      console.log(`User connected: ${socket.id}`);
-      console.log("connected to name space(여기서는 worksapce 라고도 말함): ", namespace.name);
-
-      if (!onlineMap[namespace.name]) {
-        onlineMap[namespace.name] = {};
-      }
-
-      // 사용자 연결 이벤트 처리
-      socket.on("login", (data: { id: number; channels: number[] }) => {
-        console.log("login to the worksapce: ", namespace.name);
-
-        // Workspace URL과 Socket ID를 키로 사용자 ID를 기록
-        onlineMap[namespace.name][socket.id] = data.id;
-
-        // Workspace URL에 속한 모든 사용자 ID 배열을 페이로드로 송부
-        namespace.emit("onlineList", Object.values(onlineMap[namespace.name]));
-
-        // 채널별 소켓 룸에 사용자 추가
-        data.channels.forEach((channel) => {
-          console.log("join", namespace.name, channel);
-          socket.join(`${namespace.name}-${channel}`);
-        });
+    // /ws-${workspace} 네임스페이스
+    const WSmarketnamespace = io.of(/^\/ws-.+/);
+    WSmarketnamespace.on("connection", (socket) => {
+      console.log(
+        `Client connected to workspace namespace: ${socket.nsp.name}. socket.id: ${socket.id}`
+      );
+      socket.on("message", (data) => {
+        console.log("Message from client:", data);
       });
-
-      // 테스트 이벤트
-      socket.on("test", (data: string) => {
-        console.log("test", data);
-      });
-
-      // 사용자 연결 해제 이벤트
-      socket.on("disconnect", () => {
-        console.log("disconnected", namespace.name);
-        delete onlineMap[namespace.name][socket.id];
-        namespace.emit("onlineList", Object.values(onlineMap[namespace.name]));
-      });
-
-      // 초기 연결 시 클라이언트에 이벤트 전송
-      socket.emit("hello", namespace.name);
     });
 
-    res.socket.server.io = io; // `io` 인스턴스를 서버에 저장
+    res.socket.server.io = io;
+  } else {
+    console.log("Socket.io server already initialized.");
   }
 
   res.end();
