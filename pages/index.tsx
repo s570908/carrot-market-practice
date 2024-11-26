@@ -12,6 +12,8 @@ import client from "@libs/client/client";
 import { ReserveResponse } from "./api/apiTypes";
 import { useInfiniteQuery, useQuery } from "react-query";
 import axios from "axios";
+//import { io, Socket } from "socket.io-client";
+import useSocket from "@libs/client/useSocket";
 
 export interface ProductWithCount extends Product {
   favs: Fav[];
@@ -30,20 +32,37 @@ interface ProductsResponse {
   nextProducts: ProductWithCount[];
 }
 
+interface ChatRoomListResponse {
+  ok: boolean;
+  sellerChatRoomList: number[];
+}
+
 const Home: NextPage = () => {
   const { user, isLoading } = useUser();
   const router = useRouter();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10); // limit을 상태로 설정
   const observerElem = useRef(null);
+  const [socket, disconnect] = useSocket("market");
+  //console.log("Home socket: ", socket);
   // const { data } = useSWR<ProductsResponse>(`/api/products?page=${page}`);
   // ProductsResponse 타입에 맞는 데이터 요청 함수
   const fetchProducts = async (page: number, limit: number) => {
-    const response = await axios.get(
-      `/api/products?page=${page}&limit=${limit}`
-    );
+    const response = await axios.get(`/api/products?page=${page}&limit=${limit}`);
     return response.data;
   };
+
+  // login user가 속한 chat room list 를 fetch한다.
+  // key: seller/buyer/all
+  const fetchChatRoomList = async (key: string) => {
+    // key: seller/buyer/all
+    const response = await axios.get(`/api/chatRoomList?key=${key}`);
+    return response.data;
+  };
+
+  const { data: channelData } = useQuery<ChatRoomListResponse>("chatRoomList", () =>
+    fetchChatRoomList("all")
+  );
 
   // const { data } = useQuery<ProductsResponse>(
   //   ["products", page, limit], // 쿼리 키, 페이지 번호에 따라 쿼리가 다름
@@ -101,6 +120,17 @@ const Home: NextPage = () => {
     };
   }, [fetchNextPage, hasNextPage, handleObserver]);
 
+  useEffect(() => {
+    const userData = user;
+    if (channelData?.ok && userData) {
+      console.info("로그인하자", socket);
+      socket?.emit("login", {
+        id: userData?.id,
+        channels: channelData.sellerChatRoomList.map((v) => v),
+      });
+    }
+  }, [channelData?.ok, channelData?.sellerChatRoomList, socket, user]);
+
   // const {
   //   data: reserveData,
   //   isLoading: reserveLoading,
@@ -120,7 +150,7 @@ const Home: NextPage = () => {
   //console.log("===data: ", data);
   return (
     <Layout seoTitle="Home" title="홈" hasTabBar notice>
-      <div className="flex flex-col px-4 space-y-5 divide-y">
+      <div className="flex flex-col space-y-5 divide-y px-4">
         {/* {data?.products?.map((product) => {
           const reserved = product?.status === Status.Reserved ? true : false;
           const sold = product?.status === Status.Sold ? true : false;
@@ -200,14 +230,14 @@ const Home: NextPage = () => {
           min="1"
           value={limit === 0 ? "" : limit} // limit이 0일 때 빈 문자열로 설정
           onChange={(e) => setLimit(Number(e.target.value) || 0)} // 빈 문자열 처리
-          className="px-2 py-1 border rounded"
+          className="rounded border px-2 py-1"
         />
       </div>
       <div className="loader" ref={observerElem}>
         {isFetchingNextPage && hasNextPage ? "Loading..." : "No product left"}
       </div>
       {data ? (
-        <div className="relative w-full group">
+        <div className="group relative w-full">
           {/* <PaginationButton
             onClick={onPrevBtn}
             direction="prev"
@@ -255,7 +285,7 @@ const Home: NextPage = () => {
           </PaginationButton> */}
           <FloatingButton href="/products/upload" isGroup={true}>
             <svg
-              className="w-6 h-6"
+              className="h-6 w-6"
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"
