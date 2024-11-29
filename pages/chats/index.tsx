@@ -30,13 +30,7 @@ import Layout from "@components/Layout";
 import useUser from "@libs/client/useUser";
 import useSWR from "swr";
 import ImgComponent from "@components/ImgComponent";
-import {
-  ChatRoom,
-  Reservation,
-  SellerChat,
-  Status,
-  User,
-} from "@prisma/client";
+import { ChatRoom, Reservation, SellerChat, Status, User } from "@prisma/client";
 import { useEffect, useState } from "react";
 import gravatar from "gravatar";
 import { useRouter } from "next/router";
@@ -45,6 +39,8 @@ import { fetchChatRooms } from "@libs/server/fetchChatRooms";
 import Dropdown from "@components/Dropdown";
 import RadioButtonGroup from "@components/RadioGroupButton";
 import { useQuery } from "react-query";
+import useSocket from "@libs/client/useSocket";
+import { cls } from "@libs/utils";
 
 interface ChatRoomWithUser extends ChatRoom {
   buyer: User;
@@ -77,6 +73,9 @@ const Chats: NextPage = () => {
     const response = await axios.get(url);
     return response.data;
   };
+  const [socket, disconnectSocket] = useSocket("market");
+  const [onlineUsers, setOnlineUsers] = useState<string[]>([]); // Array to store online users
+
   // URL을 조건부로 설정
   const url = productId ? `/api/chat?productId=${productId}` : "/api/chat";
   // const { data } = useSWR("/api/chats", {
@@ -92,9 +91,7 @@ const Chats: NextPage = () => {
     }
   );
 
-  const chatRooms = productId
-    ? data?.chatRoomListRelatedProduct
-    : data?.chatRoomList;
+  const chatRooms = productId ? data?.chatRoomListRelatedProduct : data?.chatRoomList;
 
   async function fetchAndAddReservationData(chatRoomList: ChatRoom[]) {
     try {
@@ -179,6 +176,25 @@ const Chats: NextPage = () => {
     return true; // filterOption이 설정되지 않은 경우도 모든 채팅방을 보여줍니다.
   });
 
+  useEffect(() => {
+    if (!socket) return;
+
+    // Listen for the 'onlineList' event from the server
+    const handleOnlineList = (users: string[]) => {
+      setOnlineUsers(users); // Update online users list
+    };
+
+    socket?.on("onlineList", handleOnlineList);
+
+    // Request online list on component mount
+    socket.emit("requestOnlineList");
+
+    // Cleanup the event listener when the component is unmounted or socket changes
+    return () => {
+      socket?.off("onlineList", handleOnlineList);
+    };
+  }, [socket]); // Add 'socket' as a dependency to ensure it updates when the socket changes
+
   return (
     <Layout
       seoTitle="채팅목록"
@@ -186,7 +202,6 @@ const Chats: NextPage = () => {
       hasTabBar={!productId}
       canGoBack={!!productId}
       backUrl="back"
-      chatRoom
     >
       <div className="absolute right-[200px] top-[8.5px] z-30">
         <RadioButtonGroup
@@ -198,10 +213,7 @@ const Chats: NextPage = () => {
       <div className="divide-y-[1px]">
         {productId ? (
           <div className="w-full max-w-xl border-b border-gray-200 bg-red-200 p-4">
-            <div
-              className="flex cursor-pointer items-center"
-              onClick={handleClick}
-            >
+            <div className="flex cursor-pointer items-center" onClick={handleClick}>
               <div className="flex items-center space-x-4">
                 <ImgComponent
                   width={80}
@@ -213,11 +225,9 @@ const Chats: NextPage = () => {
                 <div className="flex flex-col space-y-1">
                   <div className="flex flex-row items-center space-x-2">
                     <div className="text-gray-900">
-                      {data?.chatRoomListRelatedProduct[0]?.product?.status ===
-                      Status.Reserved
+                      {data?.chatRoomListRelatedProduct[0]?.product?.status === Status.Reserved
                         ? "예약중"
-                        : data?.chatRoomListRelatedProduct[0]?.product
-                            ?.status === Status.Sold
+                        : data?.chatRoomListRelatedProduct[0]?.product?.status === Status.Sold
                         ? "거래완료"
                         : "판매중"}
                     </div>
@@ -237,9 +247,7 @@ const Chats: NextPage = () => {
           </div>
         ) : null}
         {filteredChatRooms?.length === 0 ? (
-          <div className="flex h-20 items-center justify-center">
-            채팅방이 없습니다
-          </div>
+          <div className="flex h-20 items-center justify-center">채팅방이 없습니다</div>
         ) : (
           filteredChatRooms
             ?.sort((a: any, b: any) => {
@@ -248,6 +256,10 @@ const Chats: NextPage = () => {
               return dateB - dateA;
             })
             .map((chatRoom: any) => {
+              // Calculate whether the user is online
+              const isUserOnline = onlineUsers.includes(
+                chatRoom.buyerId === user?.id ? chatRoom.seller.id : chatRoom.buyer.id
+              );
               // 로그인 유저가 채팅방에서 구매자인지 여부
               const isBuyer = chatRoom?.buyerId === user?.id;
               return (
@@ -268,7 +280,13 @@ const Chats: NextPage = () => {
                       </div>
                       <div className="flex w-full flex-row items-center space-x-2">
                         <div className="relative w-10/12 space-y-1">
-                          <div className="flex flex-row space-x-2">
+                          <div className="flex flex-row items-center space-x-2">
+                            {/* <div
+                              className={cls(
+                                "h-2.5 w-2.5 rounded-full",
+                                isUserOnline ? "bg-green-400" : "bg-gray-400"
+                              )}
+                            /> */}
                             <p className="text-gray-700">
                               {chatRoom.buyerId === user?.id
                                 ? `판매자: ${chatRoom.seller.name}`
@@ -278,8 +296,7 @@ const Chats: NextPage = () => {
                           <div className="flex flex-row items-center justify-between">
                             <div className="flex flex-row items-center space-x-2">
                               <div className="whitespace-nowrap rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
-                                {chatRoom.recentMsg?.userId ===
-                                chatRoom.seller.id
+                                {chatRoom.recentMsg?.userId === chatRoom.seller.id
                                   ? chatRoom.seller.name
                                   : chatRoom.buyer.name}
                               </div>
