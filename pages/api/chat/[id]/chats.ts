@@ -4,6 +4,8 @@ import client from "@libs/client/client";
 import { withApiSession } from "@libs/server/withSession";
 import { NextApiResponseServerIo } from "types/types";
 
+const worksapce = "market";
+
 async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
   //async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
   const {
@@ -52,10 +54,12 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
     createdAt: sellerChat.createdAt,
   };
 
+  const channel = `/ws-${worksapce}-${id}`;
+
   // dispatch to channel "message"
-  res?.socket?.server?.io?.to(`${id}`).emit("message", message);
-  //console.log("chat server emits message to chatRoom: ", id);
-  //console.log("res?.socket?.server?.io: ", res?.socket?.server?.io);
+  //******* Workspace를 사용하는 io일 경우에는 of(`ws-${worksapce}`) 이 부분이 매우 중요함. 반드시 사용해야함.
+  res?.socket?.server?.io?.of(`ws-${worksapce}`).to(channel).emit("message", message);
+
   // recentMsg를 서버에 보내야 한다.
   const updatedChatRoom = await client.chatRoom.update({
     where: { id: +id },

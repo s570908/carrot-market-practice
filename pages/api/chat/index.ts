@@ -213,10 +213,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
 
         unreadCountsPerRoom[chatRoom.id] = unreadCount;
       });
-      console.log(
-        "==================unreadCountsPerRoom: ",
-        JSON.stringify(unreadCountsPerRoom, null, 2)
-      );
+      // console.log(
+      //   "==================unreadCountsPerRoom: ",
+      //   JSON.stringify(unreadCountsPerRoom, null, 2)
+      // );
       res.json({
         ok: true,
         chatRoomList,

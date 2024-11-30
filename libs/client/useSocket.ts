@@ -20,7 +20,7 @@ const useSocket = (workspace: string = "market"): [Socket | undefined, () => voi
 
   const initializeSocketServer = async () => {
     try {
-      console.info("Initializing Socket.IO server...");
+      //console.info("Initializing Socket.IO server...");
       await fetch(`${backUrl}/api/socket`); // Ensure the server initializes
     } catch (error) {
       console.error("Failed to initialize Socket.IO server:", error);

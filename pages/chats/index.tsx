@@ -181,17 +181,25 @@ const Chats: NextPage = () => {
 
     // Listen for the 'onlineList' event from the server
     const handleOnlineList = (users: string[]) => {
+      console.log("onlineList event received. onlineList: ", users);
       setOnlineUsers(users); // Update online users list
+    };
+    const handleOnRoomList = (rooms: string[]) => {
+      console.log(`Rooms for socket ${socket.id}:`, rooms);
     };
 
     socket?.on("onlineList", handleOnlineList);
 
+    socket.on("roomList", handleOnRoomList);
+
     // Request online list on component mount
     socket.emit("requestOnlineList");
+    socket.emit("requestRoomList");
 
     // Cleanup the event listener when the component is unmounted or socket changes
     return () => {
-      socket?.off("onlineList", handleOnlineList);
+      socket.off("onlineList", handleOnlineList);
+      socket.off("roomList", handleOnRoomList);
     };
   }, [socket]); // Add 'socket' as a dependency to ensure it updates when the socket changes
 
@@ -281,12 +289,12 @@ const Chats: NextPage = () => {
                       <div className="flex w-full flex-row items-center space-x-2">
                         <div className="relative w-10/12 space-y-1">
                           <div className="flex flex-row items-center space-x-2">
-                            {/* <div
+                            <div
                               className={cls(
                                 "h-2.5 w-2.5 rounded-full",
                                 isUserOnline ? "bg-green-400" : "bg-gray-400"
                               )}
-                            /> */}
+                            />
                             <p className="text-gray-700">
                               {chatRoom.buyerId === user?.id
                                 ? `판매자: ${chatRoom.seller.name}`

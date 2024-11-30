@@ -388,8 +388,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   useEffect(() => {
     if (socket) {
       socket?.on("message", (message: any) => {
-        console.log("message received: ", message);
-        console.log("to do: mutate()를 useQuery function으로 대체한다.");
+        //console.log("message received: ", message);
+        //console.log("to do: mutate()를 useQuery function으로 대체한다.");
         refetch();
         // mutate();
         //setChat((chat) => [...chat, message]);

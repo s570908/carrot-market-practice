@@ -30,7 +30,7 @@ export default function Home() {
   useEffect((): any => {
     // connect to socket server
     // @ts-ignore
-    const socket = SocketIOClient.connect(process.env.BASE_URL, {
+    const socket = SocketIOClient.connect(process.env.NEXT_PUBLIC_BASE_URL, {
       path: "/api/socket",
     });
 
