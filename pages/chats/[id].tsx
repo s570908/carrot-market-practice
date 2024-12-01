@@ -362,11 +362,17 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   // }, [data?.ok, sendChatData, mutate]);
   // ref: https://velog.io/@lumpenop/TIL-nextron-React-%EC%B1%84%ED%8C%85%EC%B0%BD-%EA%B5%AC%ED%98%84-%EC%9E%85%EB%A0%A5-%EC%8B%9C-%EC%B1%84%ED%8C%85%EC%B0%BD-%EC%95%84%EB%9E%98%EB%A1%9C-%EC%8A%A4%ED%81%AC%EB%A1%A4-220724
 
+  // 새로운 메시지를 작성하고 submit하면 scroll to bottom이 되게 한다.
   const isScrollToBottom = newMessageSubmitted === true;
   useEffect(() => {
     scrollToBottom(scrollRef);
     setNewMessageSubmitted(false);
   }, [isScrollToBottom]);
+
+  // 이 page로 전환되는 즉시 scroll to bottom이 되게 한다.
+  useEffect(() => {
+    scrollToBottom(scrollRef);
+  }, []);
 
   const [selectedValue, setSelectedValue] = useState("");
   // const [productStatus, setProductStatus] = useState("");
@@ -395,21 +401,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         //setChat((chat) => [...chat, message]);
       });
     }
-    // socket.on("connect", () => {
-    //   console.log("SOCKET CONNECTED!", socket.id);
-    //   setConnected(true);
-    //   // Join the specific chatroom
-    //   socket.emit("joinRoom", router.query.id);
-
-    //   // update chat on new message dispatched
-    //   socket.on("message", (message: any) => {
-    //     console.log("message received: ", message);
-    //     console.log("to do: mutate()를 useQuery function으로 대체한다.");
-    //     refetch();
-    //     // mutate();
-    //     //setChat((chat) => [...chat, message]);
-    //   });
-
     return () => {
       socket?.off("message");
     };
@@ -533,9 +524,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       backUrl={"back"}
     >
       <div className="relative h-full px-4 pb-12">
-        <div className="w-full max-w-xl border-b border-gray-200 bg-red-200 p-4">
+        <div className="w-full max-w-xl p-4 bg-red-200 border-b border-gray-200">
           <div
-            className="flex cursor-pointer items-center"
+            className="flex items-center cursor-pointer"
             onClick={() => {
               router.push(`/products/${data?.chatRoomOfSeller?.productId}`);
             }}
@@ -568,9 +559,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               </div>
             </div>
           </div>
-          <div className="mt-2 flex flex-row justify-between">
+          <div className="flex flex-row justify-between mt-2">
             <div
-              className="text-md cursor-pointer rounded-md border border-black p-1"
+              className="p-1 border border-black rounded-md cursor-pointer text-md"
               onClick={() => {
                 console.log("약속잡기가 클릭 되었습니다.");
               }}
@@ -578,7 +569,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               약속잡기
             </div>
             <div
-              className="text-md cursor-pointer rounded-md border border-black p-1"
+              className="p-1 border border-black rounded-md cursor-pointer text-md"
               onClick={() => {
                 console.log("송금요청이 클릭 되었습니다.");
               }}
@@ -601,7 +592,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               {`${isProvider ? "판매" : "구매"} 후기 보내기`}
             </button>
             <div
-              className="text-md cursor-pointer rounded-md border border-black p-1"
+              className="p-1 border border-black rounded-md cursor-pointer text-md"
               onClick={() => {
                 console.log("장소공유가 클릭 되었습니다.");
               }}
@@ -609,7 +600,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               장소공유
             </div>
             <div
-              className="text-md cursor-pointer rounded-md border border-black p-1"
+              className="p-1 border border-black rounded-md cursor-pointer text-md"
               onClick={() => {
                 console.log("기타가 클릭 되었습니다.");
               }}
@@ -665,8 +656,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               </div>
             </div>
           </form> */}
-          <form onSubmit={handleSubmit(onValid)} className="mt-10 w-full border-t px-1 py-1">
-            <div className="relative w-full rounded-md bg-white px-2 py-2 outline-none">
+          <form onSubmit={handleSubmit(onValid)} className="w-full px-1 py-1 mt-10 border-t">
+            <div className="relative w-full px-2 py-2 bg-white rounded-md outline-none">
               <input
                 {...register("chatMsg", { required: true, maxLength: 80 })}
                 maxLength={80}

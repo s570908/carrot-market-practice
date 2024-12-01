@@ -57,7 +57,9 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
   const channel = `/ws-${worksapce}-${id}`;
 
   // dispatch to channel "message"
-  //******* Workspace를 사용하는 io일 경우에는 of(`ws-${worksapce}`) 이 부분이 매우 중요함. 반드시 사용해야함.
+  //*******************************************중요!!!!
+  // Workspace를 사용하는 io일 경우에는 of(`ws-${worksapce}`) 이 부분이 매우 중요함. 반드시 사용해야함.
+  //****************************************************
   res?.socket?.server?.io?.of(`ws-${worksapce}`).to(channel).emit("message", message);
 
   // recentMsg를 서버에 보내야 한다.
@@ -69,6 +71,9 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
       },
     },
   });
+
+  res?.socket?.server?.io?.of(`ws-${worksapce}`).to(channel).emit("chats", updatedChatRoom);
+  console.log("Check if you listened chats event");
 
   // await client.sellerChat.updateMany({
   //   where: {

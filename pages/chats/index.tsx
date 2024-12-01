@@ -67,7 +67,6 @@ interface ReservationResponse {
 const Chats: NextPage = () => {
   const router = useRouter();
   const { productId } = router.query; // URL에서 productId 쿼리 파라미터를 추출
-  // console.log("productId: ", productId);
   const { user } = useUser();
   const fetchChats = async (url: string) => {
     const response = await axios.get(url);
@@ -82,7 +81,13 @@ const Chats: NextPage = () => {
   //   refreshInterval: 1000,
   // }); // SWR을 사용하여 채팅방 목록을 불러옵니다, 제품 ID에 따라 필터링
   // const { data, error } = useSWR(url);
-  const { data, error, isLoading, isError } = useQuery(
+  const {
+    data,
+    error,
+    isLoading,
+    isError,
+    refetch: refetchChats,
+  } = useQuery(
     ["chats", productId], // 쿼리 키: productId가 있으면 달라짐
     () => fetchChats(url), // 데이터를 가져오는 함수
     {
@@ -188,9 +193,14 @@ const Chats: NextPage = () => {
       console.log(`Rooms for socket ${socket.id}:`, rooms);
     };
 
-    socket?.on("onlineList", handleOnlineList);
+    const handleOnChats = (chats: string) => {
+      console.log("chats: ", chats);
+      refetchChats();
+    };
 
+    socket.on("onlineList", handleOnlineList);
     socket.on("roomList", handleOnRoomList);
+    socket.on("chats", handleOnChats);
 
     // Request online list on component mount
     socket.emit("requestOnlineList");
@@ -200,8 +210,11 @@ const Chats: NextPage = () => {
     return () => {
       socket.off("onlineList", handleOnlineList);
       socket.off("roomList", handleOnRoomList);
+      socket.on("chats", handleOnChats);
     };
-  }, [socket]); // Add 'socket' as a dependency to ensure it updates when the socket changes
+  }, [refetchChats, socket]); // Add 'socket' as a dependency to ensure it updates when the socket changes
+
+  if (data?.unreadCountsPerRoom) console.log("data: ", JSON.stringify(data, null, 2));
 
   return (
     <Layout
@@ -220,8 +233,8 @@ const Chats: NextPage = () => {
       </div>
       <div className="divide-y-[1px]">
         {productId ? (
-          <div className="w-full max-w-xl border-b border-gray-200 bg-red-200 p-4">
-            <div className="flex cursor-pointer items-center" onClick={handleClick}>
+          <div className="w-full max-w-xl p-4 bg-red-200 border-b border-gray-200">
+            <div className="flex items-center cursor-pointer" onClick={handleClick}>
               <div className="flex items-center space-x-4">
                 <ImgComponent
                   width={80}
@@ -255,7 +268,7 @@ const Chats: NextPage = () => {
           </div>
         ) : null}
         {filteredChatRooms?.length === 0 ? (
-          <div className="flex h-20 items-center justify-center">채팅방이 없습니다</div>
+          <div className="flex items-center justify-center h-20">채팅방이 없습니다</div>
         ) : (
           filteredChatRooms
             ?.sort((a: any, b: any) => {
@@ -272,7 +285,7 @@ const Chats: NextPage = () => {
               const isBuyer = chatRoom?.buyerId === user?.id;
               return (
                 <Link href={`/chats/${chatRoom.id}`} key={chatRoom.id}>
-                  <a className="flex cursor-pointer items-center space-x-3 px-4 py-3">
+                  <a className="flex items-center px-4 py-3 space-x-3 cursor-pointer">
                     <div className="">
                       <ImgComponent
                         imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${chatRoom?.product?.image}/public`}
@@ -281,12 +294,12 @@ const Chats: NextPage = () => {
                         imgName={chatRoom?.product?.name}
                       />
                     </div>
-                    <div className="flex w-full flex-col space-y-1">
+                    <div className="flex flex-col w-full space-y-1">
                       <div className="flex flex-row space-x-2">
                         <div className="text-md">{chatRoom?.product?.name}</div>
                         <div className="text-md">{`${chatRoom?.product?.price}원`}</div>
                       </div>
-                      <div className="flex w-full flex-row items-center space-x-2">
+                      <div className="flex flex-row items-center w-full space-x-2">
                         <div className="relative w-10/12 space-y-1">
                           <div className="flex flex-row items-center space-x-2">
                             <div
@@ -313,7 +326,7 @@ const Chats: NextPage = () => {
                               </div>
                             </div>
                             {data.unreadCountsPerRoom[chatRoom.id] !== 0 ? (
-                              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500">
+                              <div className="flex items-center justify-center w-5 h-5 bg-red-500 rounded-full">
                                 <div className="text-sm text-white">
                                   {data.unreadCountsPerRoom[chatRoom.id]}
                                 </div>

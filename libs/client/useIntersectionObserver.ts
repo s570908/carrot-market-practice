@@ -33,7 +33,7 @@ export function useIntersectionObserver(
     const hasIOSupport = !!window.IntersectionObserver;
 
     if (!hasIOSupport || frozen || !node) {
-      console.log("returned----!hasIOSupport || frozen || !node");
+      //console.log("returned----!hasIOSupport || frozen || !node");
       return;
     }
 
