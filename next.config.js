@@ -8,6 +8,7 @@ const nextConfig = {
       "raw.githubusercontent.com",
       "www.gravatar.com",
       "iframe.videodelivery.net",
+      'picsum.photos'
     ],
   },
 };

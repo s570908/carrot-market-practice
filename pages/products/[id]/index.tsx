@@ -27,6 +27,10 @@ import Dropdown from "@components/Dropdown";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { useMutation, useQuery, useQueryClient } from "react-query";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Navigation } from "swiper/modules"; // 네비게이션 모듈
+import "swiper/css";
+import "swiper/css/navigation";
 
 interface ProductWithReview extends Review {
   createdBy: User;
@@ -398,16 +402,56 @@ const ItemDetail: NextPage = () => {
       openModal
     >
       <div className="px-4 py-4">
+        {/* 제품 이미지 슬라이더 */}
+        <Swiper
+          modules={[Navigation]}
+          navigation
+          loop={false} // 무한 루프 false
+          spaceBetween={16} // 슬라이드 간격
+          slidesPerView={1} // 한 번에 한 개 슬라이드
+          className="overflow-hidden rounded-lg shadow-lg"
+        >
+          {/* 메인 이미지 */}
+          <SwiperSlide>
+            <ImgComponent
+              isLayout={true}
+              layoutHeight="h-80"
+              imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.product?.image}/public`}
+              clsProps="object-scale-down"
+              imgName={data?.product?.name}
+            />
+          </SwiperSlide>
+          {/* 추가 이미지 (예제용) */}
+          <SwiperSlide>
+            <ImgComponent
+              isLayout={true}
+              layoutHeight="h-80"
+              imgAdd={`https://picsum.photos/400/300?random=1`}
+              clsProps="object-scale-down"
+              imgName="Additional Image 1"
+            />
+          </SwiperSlide>
+          <SwiperSlide>
+            <ImgComponent
+              isLayout={true}
+              layoutHeight="h-80"
+              imgAdd={`https://picsum.photos/400/300?random=2`}
+              clsProps="object-scale-down"
+              imgName="Additional Image 2"
+            />
+          </SwiperSlide>
+        </Swiper>
+        {/* 기존 코드 유지 */}
         <div className="mb-8">
-          <ImgComponent
+          {/* <ImgComponent
             isLayout={true}
             layoutHeight="h-80"
             imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.product?.image}/public`}
             // imgAdd={`https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg`}
             clsProps="object-scale-down"
             imgName={data?.product?.name}
-          />
-          <div className="flex items-center py-3 space-x-3 border-t border-b cursor-pointer">
+          /> */}
+          <div className="flex cursor-pointer items-center space-x-3 border-b border-t py-3">
             {data?.product?.user?.avatar ? (
               <ImgComponent
                 imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.product?.user?.avatar}/public`}
@@ -448,20 +492,20 @@ const ItemDetail: NextPage = () => {
                     return (
                       <div
                         key={index}
-                        className="relative inline-block w-6 h-6"
+                        className="relative inline-block h-6 w-6"
                       >
                         {/* 회색 별 */}
                         <svg
                           viewBox="0 0 24 24"
                           fill="currentColor"
-                          className="w-full h-full text-gray-300"
+                          className="h-full w-full text-gray-300"
                         >
                           <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
                         </svg>
 
                         {/* 노란색 별 */}
                         <div
-                          className="absolute top-0 left-0 h-full overflow-hidden"
+                          className="absolute left-0 top-0 h-full overflow-hidden"
                           style={{
                             clipPath: `inset(0 ${100 - fillPercentage}% 0 0)`,
                           }}
@@ -469,7 +513,7 @@ const ItemDetail: NextPage = () => {
                           <svg
                             viewBox="0 0 24 24"
                             fill="currentColor"
-                            className="w-full h-full text-yellow-400"
+                            className="h-full w-full text-yellow-400"
                           >
                             <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
                           </svg>
@@ -508,7 +552,7 @@ const ItemDetail: NextPage = () => {
                     {`${reservationUserName}가 예약중임`}
                   </div>
                   <button
-                    className="p-2 text-sm rounded-full bg-slate-200"
+                    className="rounded-full bg-slate-200 p-2 text-sm"
                     onClick={onChatRoom}
                   >
                     예약자와의 채팅방으로 이동
@@ -528,11 +572,11 @@ const ItemDetail: NextPage = () => {
             <h1 className="mt-4 text-3xl font-bold text-gray-900">
               {data ? data?.product?.name : "Now Loading..."}
             </h1>
-            <span className="block mt-3 text-3xl text-gray-900">
+            <span className="mt-3 block text-3xl text-gray-900">
               ￦{data ? data?.product?.price : "Now Loading..."}
             </span>
             <div className="my-3">
-              <div className="py-3 text-xl font-bold border-t">
+              <div className="border-t py-3 text-xl font-bold">
                 {/*@ts-ignore*/}
                 {data?.product?.productReviews?.length > 0
                   ? "Review"
@@ -543,7 +587,7 @@ const ItemDetail: NextPage = () => {
                 data?.product?.productReviews.map((review) => (
                   <div
                     key={review.id}
-                    className="flex flex-row space-x-12 justify-items-start"
+                    className="flex flex-row justify-items-start space-x-12"
                   >
                     <div className="flex flex-col items-center justify-center space-y-1">
                       {review.createdBy?.avatar ? (
@@ -555,13 +599,13 @@ const ItemDetail: NextPage = () => {
                           imgName={review.createdBy?.name}
                         />
                       ) : (
-                        <div className="w-12 h-12 rounded-full bg-slate-500" />
+                        <div className="h-12 w-12 rounded-full bg-slate-500" />
                       )}
                       <span className="font-medium text-gray-900">
                         {review?.createdBy.name}
                       </span>
                     </div>
-                    <div className="flex flex-row items-center space-x-20 justify-evenly">
+                    <div className="flex flex-row items-center justify-evenly space-x-20">
                       <div className="flex flex-col items-start">
                         <div className="flex items-center">
                           {[1, 2, 3, 4, 5].map((star) => (
@@ -635,7 +679,7 @@ const ItemDetail: NextPage = () => {
                   {data?.isLike ? (
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="w-6 h-6"
+                      className="h-6 w-6"
                       viewBox="0 0 20 20"
                       fill="currentColor"
                     >
@@ -647,7 +691,7 @@ const ItemDetail: NextPage = () => {
                     </svg>
                   ) : (
                     <svg
-                      className="w-6 h-6 "
+                      className="h-6 w-6 "
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
@@ -674,6 +718,36 @@ const ItemDetail: NextPage = () => {
               {data?.relatedProducts.map((product) => (
                 <Link href={`/products/${product.id}`} key={product.id}>
                   <a className="cursor-pointer">
+                    <Swiper
+                      modules={[Navigation]}
+                      navigation
+                      spaceBetween={16}
+                      slidesPerView={2} // 한 번에 두 개 슬라이드
+                      loop={false} // 무한 루프 비활성화
+                      className="mt-4"
+                    >
+                      {data?.relatedProducts.map((product) => (
+                        <SwiperSlide key={product.id}>
+                          <Link href={`/products/${product.id}`}>
+                            <a className="cursor-pointer">
+                              <ImgComponent
+                                imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${product?.image}/public`}
+                                isLayout={true}
+                                layoutHeight="h-56"
+                                clsProps="mt-6 mb-4 bg-slate-300"
+                                imgName={product.name}
+                              />
+                              <h3 className="-mb-1 text-base text-gray-700">
+                                {product.name}
+                              </h3>
+                              <span className="text-xs font-medium text-gray-900">
+                                ￦{product.price}
+                              </span>
+                            </a>
+                          </Link>
+                        </SwiperSlide>
+                      ))}
+                    </Swiper>
                     <ImgComponent
                       imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${product?.image}/public`}
                       isLayout={true}

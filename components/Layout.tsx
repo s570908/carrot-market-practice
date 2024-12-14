@@ -128,10 +128,10 @@ export default function Layout({
                     <div
                       className="mb-2"
                       onClick={() => {
-                        router.push(`/myItem/${router.query.id}/edit`);
+                        router.push(`/products/${router.query.id}/edit`);
                       }}
                     >
-                      게시글 수정
+                      상품 게시 수정
                     </div>
                     <div onClick={handleDeleteClick}>삭제</div>
                   </div>

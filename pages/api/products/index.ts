@@ -80,13 +80,33 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
   }
 
   if (req.method === "POST") {
+    // const {
+    //   body: { name, price, description, photoId },
+    //   session: { user },
+    // } = req;
+    // const products = await client.product.create({
+    //   data: {
+    //     image: photoId,
+    //     name,
+    //     price: +price,
+    //     description,
+    //     user: {
+    //       connect: {
+    //         id: user?.id,
+    //       },
+    //     },
+    //   },
+    // });
     const {
-      body: { name, price, description, photoId },
+      body: { name, price, description, images },
       session: { user },
     } = req;
+// images 데이터를 Prisma가 기대하는 형태로 변환
+const productImages = images.map((image: { imageId: string }) => ({
+  imageId: image.imageId, // ProductImage 모델의 필드 이름에 맞게 변경
+}));
     const products = await client.product.create({
       data: {
-        image: photoId,
         name,
         price: +price,
         description,
@@ -94,6 +114,9 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
           connect: {
             id: user?.id,
           },
+        },
+        images: {
+          create: productImages, // Prisma가 요구하는 형식으로 전달
         },
       },
     });

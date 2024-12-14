@@ -30,11 +30,13 @@ interface ProductsResponse {
   nextProducts: ProductWithCount[];
 }
 
+const limitNumber = 3;
+
 const Home: NextPage = () => {
   const { user, isLoading } = useUser();
   const router = useRouter();
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10); // limit을 상태로 설정
+  const [limit, setLimit] = useState(limitNumber); // limit을 상태로 설정
   const observerElem = useRef(null);
   // const { data } = useSWR<ProductsResponse>(`/api/products?page=${page}`);
   // ProductsResponse 타입에 맞는 데이터 요청 함수
@@ -120,7 +122,7 @@ const Home: NextPage = () => {
   //console.log("===data: ", data);
   return (
     <Layout seoTitle="Home" title="홈" hasTabBar notice>
-      <div className="flex flex-col px-4 space-y-5 divide-y">
+      <div className="flex flex-col space-y-5 divide-y px-4">
         {/* {data?.products?.map((product) => {
           const reserved = product?.status === Status.Reserved ? true : false;
           const sold = product?.status === Status.Sold ? true : false;
@@ -190,7 +192,7 @@ const Home: NextPage = () => {
         {isLoading && <p>Loading...</p>}
       </div>
       {/* 사용자에게 limit을 조정할 수 있는 인터페이스 추가 */}
-      <div className="my-4">
+      {/* <div className="my-4">
         <label htmlFor="limit" className="mr-2">
           페이지 당 항목 수:
         </label>
@@ -200,14 +202,14 @@ const Home: NextPage = () => {
           min="1"
           value={limit === 0 ? "" : limit} // limit이 0일 때 빈 문자열로 설정
           onChange={(e) => setLimit(Number(e.target.value) || 0)} // 빈 문자열 처리
-          className="px-2 py-1 border rounded"
+          className="rounded border px-2 py-1"
         />
-      </div>
+      </div> */}
       <div className="loader" ref={observerElem}>
         {isFetchingNextPage && hasNextPage ? "Loading..." : "No product left"}
       </div>
       {data ? (
-        <div className="relative w-full group">
+        <div className="group relative w-full">
           {/* <PaginationButton
             onClick={onPrevBtn}
             direction="prev"
@@ -255,7 +257,7 @@ const Home: NextPage = () => {
           </PaginationButton> */}
           <FloatingButton href="/products/upload" isGroup={true}>
             <svg
-              className="w-6 h-6"
+              className="h-6 w-6"
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"
