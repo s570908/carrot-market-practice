@@ -4,14 +4,7 @@ import Layout from "@components/Layout";
 import useSWR, { mutate, useSWRConfig } from "swr";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import {
-  ChatRoom,
-  Product,
-  Reservation,
-  Review,
-  Status,
-  User,
-} from "@prisma/client";
+import { ChatRoom, Product, Reservation, Review, Status, User } from "@prisma/client";
 // import useMutation from "@libs/client/useMutation";
 import { cls } from "@libs/utils";
 import useUser from "@libs/client/useUser";
@@ -71,8 +64,7 @@ const ItemDetail: NextPage = () => {
   // );
   const { data, refetch } = useQuery<ItemDetailResponse>(
     ["product", router?.query?.id],
-    () =>
-      axios.get(`/api/products/${router?.query?.id}`).then((res) => res.data),
+    () => axios.get(`/api/products/${router?.query?.id}`).then((res) => res.data),
     {
       enabled: !!router?.query?.id,
     }
@@ -81,17 +73,13 @@ const ItemDetail: NextPage = () => {
   //   useSWR<ReservationResponse>(
   //     router.query.id ? `/api/products/${router.query.id}/reservation` : null
   //   );
-  const { data: reservationData, refetch: reservationMutate } =
-    useQuery<ReservationResponse>(
-      ["reservation", router?.query?.id], // 쿼리 키 (id에 따라 쿼리가 달라짐)
-      () =>
-        axios
-          .get(`/api/products/${router?.query?.id}/reservation`)
-          .then((res) => res.data),
-      {
-        enabled: !!router?.query?.id, // query.id가 있을 때만 쿼리가 활성화됨
-      }
-    );
+  const { data: reservationData, refetch: reservationMutate } = useQuery<ReservationResponse>(
+    ["reservation", router?.query?.id], // 쿼리 키 (id에 따라 쿼리가 달라짐)
+    () => axios.get(`/api/products/${router?.query?.id}/reservation`).then((res) => res.data),
+    {
+      enabled: !!router?.query?.id, // query.id가 있을 때만 쿼리가 활성화됨
+    }
+  );
 
   console.log("reservationData: ", reservationData);
   // const url = router.query.id ? `/api/chat?productId=${router.query.id}` : "/api/chat";
@@ -104,56 +92,47 @@ const ItemDetail: NextPage = () => {
   // );
   const { data: chatRoomData, error } = useQuery(
     ["chatRoom", router?.query?.id], // 쿼리 키 (productId에 따라 달라짐)
-    () =>
-      axios
-        .get(`/api/chat?productId=${router?.query?.id}`)
-        .then((res) => res.data),
+    () => axios.get(`/api/chat?productId=${router?.query?.id}`).then((res) => res.data),
     {
       enabled: !!router?.query?.id, // query.id가 있을 때만 쿼리 실행
     }
   );
 
   // const [toggleFav] = useMutation(`/api/products/${router.query.id}/fav`);
-  const toggleFavMutation = useMutation(
-    () => axios.post(`/api/products/${router.query.id}/fav`),
-    {
-      // mutation이 발생하기 전에 호출되어 optimistic UI 처리
-      onMutate: async () => {
-        // 현재 쿼리를 취소하여 새로운 데이터가 들어오기 전에 중복되지 않게 함
-        await queryClient.cancelQueries(["product", router.query.id]);
+  const toggleFavMutation = useMutation(() => axios.post(`/api/products/${router.query.id}/fav`), {
+    // mutation이 발생하기 전에 호출되어 optimistic UI 처리
+    onMutate: async () => {
+      // 현재 쿼리를 취소하여 새로운 데이터가 들어오기 전에 중복되지 않게 함
+      await queryClient.cancelQueries(["product", router.query.id]);
 
-        // 캐시에서 현재 데이터를 가져옴
-        const previousData = queryClient.getQueryData<ItemDetailResponse>([
-          "product",
-          router.query.id,
-        ]);
+      // 캐시에서 현재 데이터를 가져옴
+      const previousData = queryClient.getQueryData<ItemDetailResponse>([
+        "product",
+        router.query.id,
+      ]);
 
-        // optimistic하게 데이터를 업데이트
-        if (previousData) {
-          queryClient.setQueryData(["product", router.query.id], {
-            ...previousData,
-            isLike: !previousData.isLike,
-          });
-        }
+      // optimistic하게 데이터를 업데이트
+      if (previousData) {
+        queryClient.setQueryData(["product", router.query.id], {
+          ...previousData,
+          isLike: !previousData.isLike,
+        });
+      }
 
-        // 만약 에러가 발생했을 경우를 대비해 이전 데이터를 반환
-        return { previousData };
-      },
-      // mutation 중 에러가 발생하면 optimistic 업데이트를 롤백
-      onError: (error, variables, context) => {
-        if (context?.previousData) {
-          queryClient.setQueryData(
-            ["product", router.query.id],
-            context.previousData
-          );
-        }
-      },
-      // 서버 요청이 완료되면 (성공 또는 실패) 데이터를 무효화하여 최신 상태로 업데이트
-      onSettled: () => {
-        queryClient.invalidateQueries(["product", router.query.id]);
-      },
-    }
-  );
+      // 만약 에러가 발생했을 경우를 대비해 이전 데이터를 반환
+      return { previousData };
+    },
+    // mutation 중 에러가 발생하면 optimistic 업데이트를 롤백
+    onError: (error, variables, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(["product", router.query.id], context.previousData);
+      }
+    },
+    // 서버 요청이 완료되면 (성공 또는 실패) 데이터를 무효화하여 최신 상태로 업데이트
+    onSettled: () => {
+      queryClient.invalidateQueries(["product", router.query.id]);
+    },
+  });
 
   const toggleFav = () => {
     toggleFavMutation.mutate();
@@ -203,7 +182,8 @@ const ItemDetail: NextPage = () => {
     // 1. 해당 chatRoom을 찾는다.
     //    해당 chatRoom을 찾는 방법: productId, 로그인한 user가 product.provider인 chatRoom을 모두 찾는다.
     // 2. 해당 chatRoom이 없으면 toast message를 띄운다.
-    // 3. 해당 chatRoom이 있으면 해당 chatRoom목록 페이지로 이동한다.
+    // 3. 해당 chatRoom이 한개이상 있으면 해당 chatRoom목록 페이지로 이동한다.
+    // 4. 해당 chatRoom이 한개 있으면 그 chatRoom으로 이동한다.
     console.log("=============router.query.id: ", router.query.id);
     const res = await axios({
       method: "GET",
@@ -216,7 +196,13 @@ const ItemDetail: NextPage = () => {
       // setChatRoomCount(res.data.chatRoomListRelatedProduct.length);
       if (res.data.chatRoomListRelatedProduct.length === 0) {
         toast.success("대화 중인 채팅방이 없습니다.");
+      } else if (res.data.chatRoomListRelatedProduct.length === 1) {
+        // 구매자가 만든 채팅방이 1개이므로 목록으로 가지 않고 직접 그 채팅방으로 이동한다.
+        // 채팅방 id: res.data.chatRoomListRelatedProduct.id
+        router.push(`/chats/${res.data.chatRoomListRelatedProduct[0].id}`);
       } else {
+        // 구매자가 만든 채팅방이 1개 이상이므로 목록으로 이동한다.
+        toast.success("채팅방이 여러개입니다. 채팅방목록으로 이동합니다.");
         router.push(`/chats?productId=${router.query.id}`);
       }
     } else {
@@ -372,9 +358,7 @@ const ItemDetail: NextPage = () => {
 
   const reservationUserName = reservationData?.reserve?.user?.name;
 
-  const queryId = Array.isArray(router.query.id)
-    ? router.query.id[0]
-    : router.query.id;
+  const queryId = Array.isArray(router.query.id) ? router.query.id[0] : router.query.id;
   const productId = queryId ? parseInt(queryId, 10) : null;
 
   const chatRoom = chatRoomData?.chatRoomListRelatedProduct?.filter(
@@ -390,13 +374,7 @@ const ItemDetail: NextPage = () => {
   };
 
   return (
-    <Layout
-      seoTitle="댕댕마켓"
-      title="댕댕마켓"
-      canGoBack
-      backUrl={"back"}
-      openModal
-    >
+    <Layout seoTitle="댕댕마켓" title="댕댕마켓" canGoBack backUrl={"back"} openModal>
       <div className="px-4 py-4">
         <div className="mb-8">
           <ImgComponent
@@ -407,7 +385,7 @@ const ItemDetail: NextPage = () => {
             clsProps="object-scale-down"
             imgName={data?.product?.name}
           />
-          <div className="flex items-center py-3 space-x-3 border-t border-b cursor-pointer">
+          <div className="flex cursor-pointer items-center space-x-3 border-b border-t py-3">
             {data?.product?.user?.avatar ? (
               <ImgComponent
                 imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.product?.user?.avatar}/public`}
@@ -419,13 +397,10 @@ const ItemDetail: NextPage = () => {
             ) : (
               // <div className="w-12 h-12 rounded-full bg-slate-300" />
               <ImgComponent
-                imgAdd={`https:${gravatar.url(
-                  user?.email ? user?.email : "anonymous@email.com",
-                  {
-                    s: "48px",
-                    d: "retro",
-                  }
-                )}`}
+                imgAdd={`https:${gravatar.url(user?.email ? user?.email : "anonymous@email.com", {
+                  s: "48px",
+                  d: "retro",
+                })}`}
                 width={48}
                 height={48}
                 clsProps="rounded-full"
@@ -440,28 +415,22 @@ const ItemDetail: NextPage = () => {
                 <div className="flex items-center">
                   {Array.from({ length: 5 }, (_, index) => {
                     const rating = 4.7; // 예시로 4.68을 사용
-                    const fillPercentage = Math.max(
-                      0,
-                      Math.min(100, (rating - index) * 100)
-                    );
+                    const fillPercentage = Math.max(0, Math.min(100, (rating - index) * 100));
 
                     return (
-                      <div
-                        key={index}
-                        className="relative inline-block w-6 h-6"
-                      >
+                      <div key={index} className="relative inline-block h-6 w-6">
                         {/* 회색 별 */}
                         <svg
                           viewBox="0 0 24 24"
                           fill="currentColor"
-                          className="w-full h-full text-gray-300"
+                          className="h-full w-full text-gray-300"
                         >
                           <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
                         </svg>
 
                         {/* 노란색 별 */}
                         <div
-                          className="absolute top-0 left-0 h-full overflow-hidden"
+                          className="absolute left-0 top-0 h-full overflow-hidden"
                           style={{
                             clipPath: `inset(0 ${100 - fillPercentage}% 0 0)`,
                           }}
@@ -469,7 +438,7 @@ const ItemDetail: NextPage = () => {
                           <svg
                             viewBox="0 0 24 24"
                             fill="currentColor"
-                            className="w-full h-full text-yellow-400"
+                            className="h-full w-full text-yellow-400"
                           >
                             <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
                           </svg>
@@ -492,9 +461,7 @@ const ItemDetail: NextPage = () => {
                     : `/reviewForSeller/${data?.product?.user?.id}`
                 }
               >
-                <a className="text-xs font-medium text-gray-500">
-                  판매자에 대한 후기 보기&rarr;
-                </a>
+                <a className="text-xs font-medium text-gray-500">판매자에 대한 후기 보기&rarr;</a>
               </Link>
             </div>
           </div>
@@ -504,13 +471,8 @@ const ItemDetail: NextPage = () => {
                 <div className="text-base">판매중</div>
               ) : reserved && isProvider ? (
                 <div className="flex flex-row items-center gap-3">
-                  <div className="text-base">
-                    {`${reservationUserName}가 예약중임`}
-                  </div>
-                  <button
-                    className="p-2 text-sm rounded-full bg-slate-200"
-                    onClick={onChatRoom}
-                  >
+                  <div className="text-base">{`${reservationUserName}가 예약중임`}</div>
+                  <button className="rounded-full bg-slate-200 p-2 text-sm" onClick={onChatRoom}>
                     예약자와의 채팅방으로 이동
                   </button>
                 </div>
@@ -528,23 +490,18 @@ const ItemDetail: NextPage = () => {
             <h1 className="mt-4 text-3xl font-bold text-gray-900">
               {data ? data?.product?.name : "Now Loading..."}
             </h1>
-            <span className="block mt-3 text-3xl text-gray-900">
+            <span className="mt-3 block text-3xl text-gray-900">
               ￦{data ? data?.product?.price : "Now Loading..."}
             </span>
             <div className="my-3">
-              <div className="py-3 text-xl font-bold border-t">
+              <div className="border-t py-3 text-xl font-bold">
                 {/*@ts-ignore*/}
-                {data?.product?.productReviews?.length > 0
-                  ? "Review"
-                  : "Description"}
+                {data?.product?.productReviews?.length > 0 ? "Review" : "Description"}
               </div>
               {/*@ts-ignore*/}
               {data?.product?.productReviews?.length > 0 ? (
                 data?.product?.productReviews.map((review) => (
-                  <div
-                    key={review.id}
-                    className="flex flex-row space-x-12 justify-items-start"
-                  >
+                  <div key={review.id} className="flex flex-row justify-items-start space-x-12">
                     <div className="flex flex-col items-center justify-center space-y-1">
                       {review.createdBy?.avatar ? (
                         <ImgComponent
@@ -555,13 +512,11 @@ const ItemDetail: NextPage = () => {
                           imgName={review.createdBy?.name}
                         />
                       ) : (
-                        <div className="w-12 h-12 rounded-full bg-slate-500" />
+                        <div className="h-12 w-12 rounded-full bg-slate-500" />
                       )}
-                      <span className="font-medium text-gray-900">
-                        {review?.createdBy.name}
-                      </span>
+                      <span className="font-medium text-gray-900">{review?.createdBy.name}</span>
                     </div>
-                    <div className="flex flex-row items-center space-x-20 justify-evenly">
+                    <div className="flex flex-row items-center justify-evenly space-x-20">
                       <div className="flex flex-col items-start">
                         <div className="flex items-center">
                           {[1, 2, 3, 4, 5].map((star) => (
@@ -569,9 +524,7 @@ const ItemDetail: NextPage = () => {
                               key={star}
                               className={cls(
                                 "h-5 w-5",
-                                review.score >= star
-                                  ? "text-yellow-400"
-                                  : "text-gray-300"
+                                review.score >= star ? "text-yellow-400" : "text-gray-300"
                               )}
                               xmlns="http://www.w3.org/2000/svg"
                               viewBox="0 0 20 20"
@@ -582,9 +535,7 @@ const ItemDetail: NextPage = () => {
                             </svg>
                           ))}
                         </div>
-                        <p className="my-2 text-lg text-gray-700">
-                          {review.review}
-                        </p>
+                        <p className="my-2 text-lg text-gray-700">{review.review}</p>
                       </div>
                       <span className="font-medium text-gray-900">
                         <RegDate regDate={review.createdAt} />
@@ -610,9 +561,7 @@ const ItemDetail: NextPage = () => {
                   large
                   // text="대화 중인 채팅방"
                   text={
-                    chatRoomCount > 0
-                      ? `대화 중인 채팅방 ${chatRoomCount}`
-                      : "대화 중인 채팅방"
+                    chatRoomCount > 0 ? `대화 중인 채팅방: ${chatRoomCount}개` : "대화 중인 채팅방"
                   }
                 />
               ) : (
@@ -635,7 +584,7 @@ const ItemDetail: NextPage = () => {
                   {data?.isLike ? (
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="w-6 h-6"
+                      className="h-6 w-6"
                       viewBox="0 0 20 20"
                       fill="currentColor"
                     >
@@ -647,7 +596,7 @@ const ItemDetail: NextPage = () => {
                     </svg>
                   ) : (
                     <svg
-                      className="w-6 h-6 "
+                      className="h-6 w-6 "
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
@@ -681,12 +630,8 @@ const ItemDetail: NextPage = () => {
                       clsProps="mt-6 mb-4 bg-slate-300"
                       imgName={product.name}
                     />
-                    <h3 className="-mb-1 text-base text-gray-700">
-                      {product.name}
-                    </h3>
-                    <span className="text-xs font-medium text-gray-900">
-                      ￦{product.price}
-                    </span>
+                    <h3 className="-mb-1 text-base text-gray-700">{product.name}</h3>
+                    <span className="text-xs font-medium text-gray-900">￦{product.price}</span>
                   </a>
                 </Link>
               ))}
