@@ -26,11 +26,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
       user: {
         select: {
           id: true,
-          name: true
-        }
-      }
-    }
-  })
+          name: true,
+        },
+      },
+    },
+  });
 
   if (req.method === "GET") {
     res.json({ ok: true, isReserved: reserveExist ? true : false, reserve: reserveExist });
@@ -55,13 +55,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
       if (!buyerId) {
         return res.status(404).json({ ok: false, error: "buyerId is not given in request body." });
       }
-      const buyerExist = Boolean(await client.user.findUnique({
-        where: { id: +buyerId}
-      }))
-      console.log("=== buyerExist: ",  buyerExist)
+      const buyerExist = Boolean(
+        await client.user.findUnique({
+          where: { id: +buyerId },
+        })
+      );
+      console.log("=== buyerExist: ", buyerExist);
       if (buyerExist === false) {
         return res.status(404).json({ ok: false, error: "buyerId is not valid." });
-      } 
+      }
       await client.reservation.create({
         data: {
           user: {

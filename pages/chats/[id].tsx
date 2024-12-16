@@ -15,7 +15,7 @@ import {
 import { useForm } from "react-hook-form";
 // import useMutation from "@libs/client/useMutation";
 import Message from "@components/Message";
-import { MutableRefObject, useEffect, useRef, useState, useMemo } from "react";
+import { MutableRefObject, useEffect, useRef, useState, useMemo, useLayoutEffect } from "react";
 import { useIntersectionObserver } from "@libs/client/useIntersectionObserver";
 import { FiChevronsDown } from "react-icons/fi";
 import { cls } from "@libs/utils";
@@ -213,6 +213,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     writtenReviews?.find((review: Review) => review.productForId === productId) !== undefined;
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const chatBoxRef = useRef<HTMLDivElement | null>(null);
+
   const entry = useIntersectionObserver(scrollRef, {
     root: null,
     rootMargin: "0%",
@@ -233,12 +235,50 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   //// api server를 통해서 chatRoom에 chat data를 보내기
   // const [sendChat, { loading: sendChatDataLoading, data: sendChatData }] =
   //   useMutation(`/api/chat/${router.query.id}/chats`);
+  // const {
+  //   mutate: sendChat,
+  //   isLoading: sendChatDataLoading,
+  //   data: sendChatData,
+  // } = useMutation(
+  //   (chatForm: ChatFormResponse) => axios.post(`/api/chat/${router.query.id}/chats`, chatForm),
+  //   {
+  //     onMutate: async (chatForm: ChatFormResponse) => {
+  //       await queryClient.cancelQueries(["chat", router.query.id]);
+  //       const previousChatData = queryClient.getQueryData(["chat", router.query.id]);
+  //       queryClient.setQueryData(["chat", router.query.id], (prev: any) => {
+  //         if (prev) {
+  //           const newMessage = {
+  //             id: Date.now(),
+  //             chatMsg: chatForm.chatMsg + "test",
+  //             user: { ...user },
+  //             userId: user?.id,
+  //           };
+  //           return {
+  //             ...prev,
+  //             sellerChat: [...prev.sellerChat, newMessage],
+  //           };
+  //         }
+  //         return prev;
+  //       });
+  //       return { previousChatData };
+  //     },
+  //     onError: (error, variables, context) => {
+  //       if (context?.previousChatData) {
+  //         queryClient.setQueryData(["chat", router.query.id], context.previousChatData); // 이전 데이터로 롤백
+  //       }
+  //     },
+  //     onSettled: () => {
+  //       queryClient.invalidateQueries(["chat", router.query.id]); // 쿼리 무효화
+  //     },
+  //   }
+  // );
+
   const {
     mutate: sendChat,
     isLoading: sendChatDataLoading,
     data: sendChatData,
   } = useMutation(
-    (chatForm: ChatFormResponse) => axios.post(`/api/chat/${router.query.id}/chats`, chatForm),
+    (chatForm: ChatFormResponse) => axios.post(`/api/chat/${router.query.id}`, chatForm),
     {
       onMutate: async (chatForm: ChatFormResponse) => {
         await queryClient.cancelQueries(["chat", router.query.id]);
@@ -355,6 +395,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
     sendChat(chatForm); // mutate에서 option을 false로 하였기 때문에 서버의 데이터가 아직 업데이트되지 않았으므로 지금 여기서 서버의 데이터를 업데이트한다.
   };
+
   // useEffect(() => {
   //   const chatBox = document.getElementById("chatBox") as HTMLElement;
   //   //// scrollTop 의 최대치는 scrollHeight-clientHeght. scrollTop에 이 최대치보다 큰 수를 넣더라도 scrollTop은 최대치 만큼만 반응한다.
@@ -369,10 +410,23 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     setNewMessageSubmitted(false);
   }, [isScrollToBottom]);
 
-  // 이 page로 전환되는 즉시 scroll to bottom이 되게 한다.
   useEffect(() => {
+    // const scrollToBottomByHtml = () => {
+    //   const chatBox = chatBoxRef.current;
+    //   console.log("chatBox: ", chatBox);
+    //   if (chatBox) {
+    //     chatBox.scrollTop = chatBox.scrollHeight - chatBox.clientHeight;
+    //     console.log(
+    //       "chatBox.scrollTop, chatBox.scrollHeight, chatBox.clientHeight: ",
+    //       chatBox.scrollTop,
+    //       chatBox.scrollHeight,
+    //       chatBox.clientHeight
+    //     );
+    //   }
+    // };
+    //scrollToBottomByHtml();
     scrollToBottom(scrollRef);
-  }, []);
+  }, [data?.sellerChat]); // chat data를 모두 가져온 후에만 scrollRef의 값을 가져올 수 있다.
 
   const [selectedValue, setSelectedValue] = useState("");
   // const [productStatus, setProductStatus] = useState("");
@@ -524,9 +578,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       backUrl={"back"}
     >
       <div className="relative h-full px-4 pb-12">
-        <div className="w-full max-w-xl p-4 bg-red-200 border-b border-gray-200">
+        <div className="w-full max-w-xl border-b border-gray-200 bg-red-200 p-4">
           <div
-            className="flex items-center cursor-pointer"
+            className="flex cursor-pointer items-center"
             onClick={() => {
               router.push(`/products/${data?.chatRoomOfSeller?.productId}`);
             }}
@@ -559,9 +613,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               </div>
             </div>
           </div>
-          <div className="flex flex-row justify-between mt-2">
+          <div className="mt-2 flex flex-row justify-between">
             <div
-              className="p-1 border border-black rounded-md cursor-pointer text-md"
+              className="text-md cursor-pointer rounded-md border border-black p-1"
               onClick={() => {
                 console.log("약속잡기가 클릭 되었습니다.");
               }}
@@ -569,7 +623,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               약속잡기
             </div>
             <div
-              className="p-1 border border-black rounded-md cursor-pointer text-md"
+              className="text-md cursor-pointer rounded-md border border-black p-1"
               onClick={() => {
                 console.log("송금요청이 클릭 되었습니다.");
               }}
@@ -592,7 +646,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               {`${isProvider ? "판매" : "구매"} 후기 보내기`}
             </button>
             <div
-              className="p-1 border border-black rounded-md cursor-pointer text-md"
+              className="text-md cursor-pointer rounded-md border border-black p-1"
               onClick={() => {
                 console.log("장소공유가 클릭 되었습니다.");
               }}
@@ -600,7 +654,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               장소공유
             </div>
             <div
-              className="p-1 border border-black rounded-md cursor-pointer text-md"
+              className="text-md cursor-pointer rounded-md border border-black p-1"
               onClick={() => {
                 console.log("기타가 클릭 되었습니다.");
               }}
@@ -612,6 +666,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         <div
           className="flex h-[calc(95vh-300px)] flex-col space-y-2 overflow-y-auto py-5 transition-all"
           id="chatBox"
+          ref={chatBoxRef}
         >
           {data?.sellerChat?.map((message: any) => {
             //console.log("message: ", JSON.stringify(message, null, 2));
@@ -639,7 +694,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               <FiChevronsDown className="text-xl text-gray-400" />
             </button>
           ) : null}
-          <div ref={scrollRef}></div>
+          <div ref={scrollRef} style={{ height: "1px" }}></div>
         </div>
         <div>
           {/* <form onSubmit={handleSubmit(onValid)} className="fixed inset-x-0 bottom-0 py-2 bg-white">
@@ -656,8 +711,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               </div>
             </div>
           </form> */}
-          <form onSubmit={handleSubmit(onValid)} className="w-full px-1 py-1 mt-10 border-t">
-            <div className="relative w-full px-2 py-2 bg-white rounded-md outline-none">
+          <form onSubmit={handleSubmit(onValid)} className="mt-10 w-full border-t px-1 py-1">
+            <div className="relative w-full rounded-md bg-white px-2 py-2 outline-none">
               <input
                 {...register("chatMsg", { required: true, maxLength: 80 })}
                 maxLength={80}
