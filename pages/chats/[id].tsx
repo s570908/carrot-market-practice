@@ -15,7 +15,15 @@ import {
 import { useForm } from "react-hook-form";
 // import useMutation from "@libs/client/useMutation";
 import Message from "@components/Message";
-import { MutableRefObject, useEffect, useRef, useState, useMemo, useLayoutEffect } from "react";
+import {
+  MutableRefObject,
+  useEffect,
+  useRef,
+  useState,
+  useMemo,
+  useLayoutEffect,
+  useCallback,
+} from "react";
 import { useIntersectionObserver } from "@libs/client/useIntersectionObserver";
 import { FiChevronsDown } from "react-icons/fi";
 import { cls } from "@libs/utils";
@@ -27,6 +35,10 @@ import io, { Socket } from "socket.io-client";
 import { useMutation, useQuery, useQueryClient } from "react-query";
 import axios from "axios";
 import useSocket from "@libs/client/useSocket";
+import dayjs from "@libs/dayjs";
+// import dayjs from "dayjs";
+// import "dayjs/locale/ko";
+// dayjs.locale("ko"); // 한국어 설정
 
 type Option = {
   value: string;
@@ -151,13 +163,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   const isProvider = data?.chatRoomOfSeller?.sellerId === user?.id;
   const isConsumer = data?.chatRoomOfSeller?.buyerId === user?.id;
 
-  // const { data: reservationData, mutate: reservationMutate } =
-  //   useSWR<ReservationResponse>(
-  //     router.query.id && data?.chatRoomOfSeller?.productId
-  //       ? `/api/products/${data?.chatRoomOfSeller?.productId}/reservation`
-  //       : null
-  //   );
-
   const fetchReservation = async (productId: string) => {
     const { data } = await axios.get(`/api/products/${productId}/reservation`);
     return data;
@@ -173,15 +178,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     enabled: !!router.query.id && !!productId,
   });
 
-  //console.log("reservationData: ", reservationData);
-
-  // const getFetcherWithParams = (url: any, { otherId, reviewType }) => {
-  //   const query = `?createdForId=${otherId}&reviewType=${reviewType}`;
-  //   return fetch(url + query, {
-  //     method: "GET",
-  //   }).then((res) => res.json());
-  // };
-
   const reviewType = isProvider ? "SellerReview" : "BuyerReview";
 
   const fetchReviewWritable = async (url: string) => {
@@ -193,9 +189,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     router.query.id && data?.chatRoomOfSeller?.productId
       ? `/api/products/${data?.chatRoomOfSeller?.productId}/checkReviewWritable?createdForId=${otherId}&reviewType=${reviewType}`
       : null;
-
-  // const { data: reviewWritableData, error } =
-  //   useSWR<ReviewWritableResponse>(url);
 
   const { data: reviewWritableData, error } = useQuery(
     ["reviewWritable", url],
@@ -232,47 +225,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   };
 
   const { register, handleSubmit, reset } = useForm<ChatFormResponse>();
-  //// api server를 통해서 chatRoom에 chat data를 보내기
-  // const [sendChat, { loading: sendChatDataLoading, data: sendChatData }] =
-  //   useMutation(`/api/chat/${router.query.id}/chats`);
-  // const {
-  //   mutate: sendChat,
-  //   isLoading: sendChatDataLoading,
-  //   data: sendChatData,
-  // } = useMutation(
-  //   (chatForm: ChatFormResponse) => axios.post(`/api/chat/${router.query.id}/chats`, chatForm),
-  //   {
-  //     onMutate: async (chatForm: ChatFormResponse) => {
-  //       await queryClient.cancelQueries(["chat", router.query.id]);
-  //       const previousChatData = queryClient.getQueryData(["chat", router.query.id]);
-  //       queryClient.setQueryData(["chat", router.query.id], (prev: any) => {
-  //         if (prev) {
-  //           const newMessage = {
-  //             id: Date.now(),
-  //             chatMsg: chatForm.chatMsg + "test",
-  //             user: { ...user },
-  //             userId: user?.id,
-  //           };
-  //           return {
-  //             ...prev,
-  //             sellerChat: [...prev.sellerChat, newMessage],
-  //           };
-  //         }
-  //         return prev;
-  //       });
-  //       return { previousChatData };
-  //     },
-  //     onError: (error, variables, context) => {
-  //       if (context?.previousChatData) {
-  //         queryClient.setQueryData(["chat", router.query.id], context.previousChatData); // 이전 데이터로 롤백
-  //       }
-  //     },
-  //     onSettled: () => {
-  //       queryClient.invalidateQueries(["chat", router.query.id]); // 쿼리 무효화
-  //     },
-  //   }
-  // );
-
   const {
     mutate: sendChat,
     isLoading: sendChatDataLoading,
@@ -311,10 +263,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     }
   );
 
-  // const [toggleReservation] = useMutation(
-  //   `/api/products/${data?.chatRoomOfSeller?.productId}/reservation`
-  // );
-
   const toggleReservation = async ({
     productId,
     buyerId,
@@ -336,10 +284,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     }
   );
 
-  // const [sellComplete] = useMutation(
-  //   `/api/products/${data?.chatRoomOfSeller?.productId}`
-  // );
-
   const sellComplete = async ({ productId, buyerId }: { productId: number; buyerId: number }) => {
     const { data } = await axios.post(`/api/products/${productId}`, {
       buyerId,
@@ -359,37 +303,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   const onValid = (chatForm: ChatFormResponse) => {
     if (sendChatDataLoading) return;
     reset();
-
-    // const newMessage = {
-    //   id: Date.now(),
-    //   chatMsg: chatForm.chatMsg + "test",
-    //   user: { ...user },
-    //   userId: user?.id,
-    // };
-
-    // console.log(newMessage);
-
-    // mutate(
-    //   (prev) => {
-    //     if (prev) {
-    //       return {
-    //         ...prev,
-    //         sellerChat: [...prev.sellerChat, newMessage],
-    //       } as any;
-    //     }
-    //   },
-    //   false // cache만 업데이트한다. 즉 optimistic UI이다. 서버의 데이터를 업데이트하지 않는다. 이것이 true라면 서버의 데이터를 이 시점에서 업데이트를 한다.
-    // );
-
-    // queryClient.setQueryData(["chat", router.query.id], (prev: any) => {
-    //   if (prev) {
-    //     return {
-    //       ...prev,
-    //       sellerChat: [...prev.sellerChat, newMessage], // 기존 메시지에 새 메시지 추가
-    //     };
-    //   }
-    //   return prev;
-    // });
 
     setNewMessageSubmitted(true);
 
@@ -411,25 +324,10 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   }, [isScrollToBottom]);
 
   useEffect(() => {
-    // const scrollToBottomByHtml = () => {
-    //   const chatBox = chatBoxRef.current;
-    //   console.log("chatBox: ", chatBox);
-    //   if (chatBox) {
-    //     chatBox.scrollTop = chatBox.scrollHeight - chatBox.clientHeight;
-    //     console.log(
-    //       "chatBox.scrollTop, chatBox.scrollHeight, chatBox.clientHeight: ",
-    //       chatBox.scrollTop,
-    //       chatBox.scrollHeight,
-    //       chatBox.clientHeight
-    //     );
-    //   }
-    // };
-    //scrollToBottomByHtml();
     scrollToBottom(scrollRef);
   }, [data?.sellerChat]); // chat data를 모두 가져온 후에만 scrollRef의 값을 가져올 수 있다.
 
   const [selectedValue, setSelectedValue] = useState("");
-  // const [productStatus, setProductStatus] = useState("");
 
   const initialOptions = useMemo(
     () => [
@@ -440,9 +338,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     []
   );
 
-  //const { socket, isConnected } = useSocket();
-  // console.log("socket: ", socket);
-  // console.log("isConnected : ", isConnected);
   const [connected, setConnected] = useState<boolean>(false);
 
   useEffect(() => {
@@ -551,6 +446,79 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   let optionsMenu: Option[];
 
+  const [tooltipDate, setTooltipDate] = useState<string | null>(null); // 현재 툴팁에 표시될 날짜
+  const [showTooltip, setShowTooltip] = useState(false); // 툴팁 표시 여부
+  const messageRefs = useRef<Map<string, { element: HTMLDivElement; createdAt: string }>>(
+    new Map()
+  );
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleScroll = useCallback(() => {
+    if (!chatBoxRef.current || !messageRefs.current || messageRefs.current.size === 0) {
+      setTooltipDate("");
+      return;
+    }
+    if (chatBoxRef.current) {
+      const { scrollTop, clientHeight } = chatBoxRef.current;
+
+      // 스크롤 중일 때 툴팁을 표시
+      //setScrolling(true);
+      setShowTooltip(true);
+
+      // 화면 상단에 표시된 첫 번째 메시지 찾기
+      const firstVisibleMessage = Array.from(messageRefs.current.values()).find(({ element }) => {
+        try {
+          const rect = element.getBoundingClientRect();
+          return rect.top >= 0 && rect.top < clientHeight;
+        } catch (error) {
+          console.error("Error accessing DOM element:", error);
+          return false;
+        }
+      });
+
+      if (firstVisibleMessage) {
+        setTooltipDate(dayjs(firstVisibleMessage.createdAt).format("YYYY년 MM월 DD일 dddd"));
+      }
+
+      // 스크롤이 멈춘 후 1초 후에 툴팁 숨기기
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+
+      scrollTimeoutRef.current = setTimeout(() => {
+        setShowTooltip(false);
+        //setScrolling(false);
+      }, 1000);
+    }
+  }, [setShowTooltip, setTooltipDate, messageRefs]);
+
+  // scrollTimeoutRef.current와 관련된 메모리 누수 방지를 위해, 컴포넌트 언마운트 시 타이머를 정리합니다:
+  useEffect(() => {
+    // messageRefs.current를 로컬 변수로 저장
+    const currentMessageRefs = messageRefs.current;
+    return () => {
+      // cleanup 함수에서 로컬 변수를 사용하여 초기화
+      currentMessageRefs.clear();
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    // 로컬 변수에 chatBoxRef.current 복사
+    const chatBoxElement = chatBoxRef.current;
+    if (chatBoxElement) {
+      chatBoxElement.addEventListener("scroll", handleScroll);
+    }
+
+    return () => {
+      if (chatBoxElement) {
+        chatBoxElement.removeEventListener("scroll", handleScroll);
+      }
+    };
+  }, [data?.sellerChat, handleScroll]); // 의존성 배열은 필요에 따라 조정
+
   if (selling) {
     optionsMenu = [
       { value: "예약중", label: "예약중", active: true },
@@ -567,6 +535,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   if (isLoading) return <div>Loading...</div>;
   if (queryError instanceof Error) return <div>Error: {queryError.message}</div>;
+
+  let lastMessageDate: string | null = null; // 마지막으로 표시된 날짜
 
   return (
     <Layout
@@ -670,15 +640,47 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         >
           {data?.sellerChat?.map((message: any) => {
             //console.log("message: ", JSON.stringify(message, null, 2));
+            const messageDate = dayjs(message.createdAt).format("YYYY-MM-DD"); // 메시지 날짜
+            const showDate = lastMessageDate !== messageDate; // 날짜를 표시할지 여부
+            lastMessageDate = messageDate; // 마지막 메시지 날짜 업데이트
             return (
-              <Message
-                reversed={message.userId === user?.id}
+              <div
                 key={message.id}
-                name={message.user.name}
-                message={message.chatMsg}
-                avatar={message.user.avatar}
-                date={message.createdAt}
-              />
+                ref={(el) => {
+                  if (el) {
+                    messageRefs.current.set(message.id, {
+                      element: el,
+                      createdAt: message.createdAt,
+                    });
+                  } else {
+                    messageRefs.current.delete(message.id);
+                  }
+                }}
+                className="border-b border-gray-200 p-4"
+              >
+                {/* 날짜 툴팁 */}
+                {showTooltip && tooltipDate && (
+                  <div className="fixed left-1/2 top-2 z-20 -translate-x-1/2 transform rounded-full bg-gray-600 bg-opacity-20 px-4 py-2 text-sm text-white">
+                    {tooltipDate}
+                  </div>
+                )}
+                {/* 날짜 변경 시 날짜 표시 */}
+                {showDate && (
+                  <div className="my-2 text-center text-sm text-white">
+                    <span className="rounded-full bg-gray-400 px-4">
+                      {dayjs(message.createdAt).format("YYYY년 MM월 DD일 dddd")}
+                    </span>
+                  </div>
+                )}
+                <Message
+                  reversed={message.userId === user?.id}
+                  key={message.id}
+                  name={message.user.name}
+                  message={message.chatMsg}
+                  avatar={message.user.avatar}
+                  date={message.createdAt}
+                />
+              </div>
             );
           })}
           {!entry?.isIntersecting ? (
@@ -688,7 +690,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               }}
               className={cls(
                 "inline",
-                "absolute bottom-28 right-1 z-20 flex h-7 w-7 cursor-pointer items-center justify-center bg-slate-700 "
+                "absolute bottom-28 right-1 z-50 flex h-7 w-7 cursor-pointer items-center justify-center rounded-md bg-slate-700 "
               )}
             >
               <FiChevronsDown className="text-xl text-gray-400" />
@@ -724,7 +726,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               <button
                 disabled={user === undefined}
                 type="submit"
-                className="absolute bottom-1 right-0.5 flex h-8 items-end rounded-md bg-orange-400 px-4 py-1.5 text-sm text-white hover:bg-orange-500"
+                className="absolute bottom-3 right-3 flex h-8 items-end rounded-md bg-orange-400 px-4 py-1.5 text-sm text-white hover:bg-orange-500"
               >
                 {sendChatDataLoading === true ? (
                   <div>
