@@ -324,21 +324,22 @@ const Upload: NextPage = () => {
                     console.log("image----------", image);
                     return (
                       <SortableItem key={image.id} id={image.id}>
-                        <div
-                          className={`relative h-20 w-20 overflow-hidden rounded-md ${
-                            index === 0
-                              ? "border-2 border-blue-500"
-                              : "border border-gray-300"
-                          }`}
-                        >
+                        <div className="relative h-20 w-20 rounded-md border border-gray-300">
                           <Image
                             src={image.url}
                             alt={`Preview ${index}`}
                             layout="fill" // 부모 요소를 꽉 채움
                             objectFit="cover" // 부모 요소에 맞게 이미지 크기 조정
                             quality={75} // 이미지 품질
-                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" // 반응형 크기
+                            // sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" // 반응형 크기
+                            className="rounded-md" // 이미지 마스킹
                           />
+                          {/* index가 0일 때 "대표사진" 표시 */}
+                          {index === 0 && (
+                            <div className="absolute bottom-0 left-0 z-20 flex h-6 w-full items-center justify-center bg-black text-xs font-bold text-white">
+                              대표사진
+                            </div>
+                          )}
                           <button
                             type="button"
                             onClick={(e) => {
@@ -350,9 +351,11 @@ const Upload: NextPage = () => {
                               e.stopPropagation();
                               e.preventDefault();
                             }}
-                            className="absolute right-1 top-1 z-10 rounded-full bg-red-500 p-1 text-xs text-white"
+                            className="absolute right-0 top-0 z-10 flex h-6 w-6 translate-x-[50%] translate-y-[-50%] items-center justify-center rounded-full bg-black text-white shadow-lg"
                           >
-                            ×
+                            <span className="relative top-[-1px] text-sm font-bold">
+                              ×
+                            </span>
                           </button>
                         </div>
                       </SortableItem>
