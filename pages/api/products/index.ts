@@ -39,6 +39,12 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
             id: true,
           },
         },
+        images: { // ProductImage 모델의 이미지 데이터 포함
+          select: {
+            id: true,
+            imageId: true,
+          },
+        },
       },
       take: limitValue,
       skip: (+page - 1) * limitValue,
@@ -65,6 +71,12 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
         user: {
           select: {
             id: true,
+          },
+        },
+        images: { // ProductImage 모델의 이미지 데이터 포함
+          select: {
+            id: true,
+            imageId: true,
           },
         },
       },

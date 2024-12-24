@@ -7,6 +7,7 @@ import Link from "next/link";
 import {
   ChatRoom,
   Product,
+  ProductImage,
   Reservation,
   Review,
   Status,
@@ -16,7 +17,7 @@ import {
 import { cls } from "@libs/utils";
 import useUser from "@libs/client/useUser";
 import ImgComponent from "@components/ImgComponent";
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import RegDate from "@components/RegDate";
 import { Skeleton } from "@mui/material";
 import gravatar from "gravatar";
@@ -28,6 +29,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { useMutation, useQuery, useQueryClient } from "react-query";
 import { Swiper, SwiperSlide } from "swiper/react";
+import { Swiper as SwiperCore } from "swiper"; // SwiperCore 타입 가져오기
 import { Navigation } from "swiper/modules"; // 네비게이션 모듈
 import "swiper/css";
 import "swiper/css/navigation";
@@ -39,6 +41,7 @@ interface ProductWithReview extends Review {
 interface ProductWithUser extends Product {
   user: User;
   productReviews: ProductWithReview[];
+  images: ProductImage[];
 }
 interface ItemDetailResponse {
   ok: boolean;
@@ -65,7 +68,9 @@ interface Payload {
 
 const ItemDetail: NextPage = () => {
   const { user, isLoading } = useUser();
+  const swiperRef = useRef<SwiperCore | null>(null); // SwiperCore 타입 지정
   const router = useRouter();
+  const [swiperInstance, setSwiperInstance] = useState(null);
   const [notification, setNotification] = useState("");
   const [chatRoomCount, setChatRoomCount] = useState(0);
   const queryClient = useQueryClient();
@@ -97,7 +102,6 @@ const ItemDetail: NextPage = () => {
       }
     );
 
-  console.log("reservationData: ", reservationData);
   // const url = router.query.id ? `/api/chat?productId=${router.query.id}` : "/api/chat";
   // const { data: dataChatRoom } = useSWR(
   //   `/api/chat?productId=${router.query.id}`
@@ -279,6 +283,28 @@ const ItemDetail: NextPage = () => {
   const onReviewClick = () => {
     router.push(`/products/${data?.product.id}/review`);
   };
+
+  useEffect(() => {
+    const handleRouteChange = () => {
+      if (swiperInstance as any) {
+        // 페이지가 로드될 때 첫 번째 이미지로 초기화
+        (swiperInstance as any)?.slideTo(0);
+      }
+      // if (swiperRef.current) {
+      //   // 페이지가 로드될 때 첫 번째 이미지로 초기화
+      //   swiperRef.current.slideTo(0);
+      // }
+    };
+
+    // 라우터 이벤트 리스너 추가
+    router.events.on("routeChangeComplete", handleRouteChange);
+
+    // 컴포넌트 언마운트 시 이벤트 리스너 제거
+    return () => {
+      router.events.off("routeChangeComplete", handleRouteChange);
+    };
+  }, [swiperInstance, router.events]);
+
   useEffect(() => {
     if (talkToSellerData?.data && talkToSellerData?.data?.ok) {
       talkToSellerData?.data?.chatRoom
@@ -409,37 +435,25 @@ const ItemDetail: NextPage = () => {
           loop={false} // 무한 루프 false
           spaceBetween={16} // 슬라이드 간격
           slidesPerView={1} // 한 번에 한 개 슬라이드
+          onSwiper={(swiper: any) => {
+            setSwiperInstance(swiper);
+          }}
           className="overflow-hidden rounded-lg shadow-lg"
         >
-          {/* 메인 이미지 */}
-          <SwiperSlide>
-            <ImgComponent
-              isLayout={true}
-              layoutHeight="h-80"
-              imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.product?.image}/public`}
-              clsProps="object-scale-down"
-              imgName={data?.product?.name}
-            />
-          </SwiperSlide>
-          {/* 추가 이미지 (예제용) */}
-          <SwiperSlide>
-            <ImgComponent
-              isLayout={true}
-              layoutHeight="h-80"
-              imgAdd={`https://picsum.photos/400/300?random=1`}
-              clsProps="object-scale-down"
-              imgName="Additional Image 1"
-            />
-          </SwiperSlide>
-          <SwiperSlide>
-            <ImgComponent
-              isLayout={true}
-              layoutHeight="h-80"
-              imgAdd={`https://picsum.photos/400/300?random=2`}
-              clsProps="object-scale-down"
-              imgName="Additional Image 2"
-            />
-          </SwiperSlide>
+          {data?.product?.images?.map((image: ProductImage, index: number) => {
+            console.log("image.imageId: ", image.imageId);
+            return (
+              <SwiperSlide key={image.id || index}>
+                <ImgComponent
+                  isLayout={true}
+                  layoutHeight="h-80"
+                  imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${image.imageId}/public`}
+                  clsProps="object-scale-down"
+                  imgName={data?.product?.name}
+                />
+              </SwiperSlide>
+            );
+          })}
         </Swiper>
         {/* 기존 코드 유지 */}
         <div className="mb-8">
@@ -715,55 +729,28 @@ const ItemDetail: NextPage = () => {
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Similar Items</h2>
             <div className="grid grid-cols-2 gap-4">
-              {data?.relatedProducts.map((product) => (
-                <Link href={`/products/${product.id}`} key={product.id}>
-                  <a className="cursor-pointer">
-                    <Swiper
-                      modules={[Navigation]}
-                      navigation
-                      spaceBetween={16}
-                      slidesPerView={2} // 한 번에 두 개 슬라이드
-                      loop={false} // 무한 루프 비활성화
-                      className="mt-4"
-                    >
-                      {data?.relatedProducts.map((product) => (
-                        <SwiperSlide key={product.id}>
-                          <Link href={`/products/${product.id}`}>
-                            <a className="cursor-pointer">
-                              <ImgComponent
-                                imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${product?.image}/public`}
-                                isLayout={true}
-                                layoutHeight="h-56"
-                                clsProps="mt-6 mb-4 bg-slate-300"
-                                imgName={product.name}
-                              />
-                              <h3 className="-mb-1 text-base text-gray-700">
-                                {product.name}
-                              </h3>
-                              <span className="text-xs font-medium text-gray-900">
-                                ￦{product.price}
-                              </span>
-                            </a>
-                          </Link>
-                        </SwiperSlide>
-                      ))}
-                    </Swiper>
-                    <ImgComponent
-                      imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${product?.image}/public`}
-                      isLayout={true}
-                      layoutHeight="h-56"
-                      clsProps="mt-6 mb-4 bg-slate-300"
-                      imgName={product.name}
-                    />
-                    <h3 className="-mb-1 text-base text-gray-700">
-                      {product.name}
-                    </h3>
-                    <span className="text-xs font-medium text-gray-900">
-                      ￦{product.price}
-                    </span>
-                  </a>
-                </Link>
-              ))}
+              {data?.relatedProducts.map((product) => {
+                console.log("product: ", product);
+                return (
+                  <Link href={`/products/${product.id}`} key={product.id}>
+                    <a className="cursor-pointer">
+                      <ImgComponent
+                        imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${product?.images[0].imageId}/public`}
+                        isLayout={true}
+                        layoutHeight="h-56"
+                        clsProps="mt-6 mb-4 bg-slate-300"
+                        imgName={product.name}
+                      />
+                      <h3 className="-mb-1 text-base text-gray-700">
+                        {product.name}
+                      </h3>
+                      <span className="text-xs font-medium text-gray-900">
+                        ￦{product.price}
+                      </span>
+                    </a>
+                  </Link>
+                );
+              })}
             </div>
           </div>
         )}

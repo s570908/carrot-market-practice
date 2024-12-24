@@ -32,6 +32,7 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import { toast } from "react-toastify";
 
 interface UploadProductForm {
   name: string;
@@ -227,6 +228,10 @@ const Upload: NextPage = () => {
     const images: CLImage[] = (updatedPreview || []).map((img) => ({
       imageId: img.CLurl || "", // undefined 방지를 위해 빈 문자열 처리
     }));
+    if (images.length === 0) {
+      toast.warn("이미지가 최소 1개 이상은 있어야 합니다.");
+      return;
+    }
     // 3. 상품 데이터와 함께 이미지 정보 전송
     const uploadProductData: UploadProduct = {
       ...data,
@@ -289,29 +294,44 @@ const Upload: NextPage = () => {
                   </div>
                 </label>
               </div>
-              {/* 탭 컨테이너 (순서변경 / 삭제하기) */}
-              <div className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-md bg-gray-200 p-2">
-                <button
-                  onClick={() => setIsDragEnabled(true)} // 드래그 모드 활성화
-                  className={`w-full rounded-md px-1 py-2 text-xs ${
-                    isDragEnabled
-                      ? "border border-blue-500 bg-white text-blue-500"
-                      : "text-gray-500"
-                  }`}
-                >
-                  순서변경
-                </button>
-                <button
-                  onClick={() => setIsDragEnabled(false)} // 드래그 모드 비활성화
-                  className={`w-full rounded-md px-1 py-2 text-xs ${
-                    !isDragEnabled
-                      ? "border border-blue-500 bg-white text-blue-500"
-                      : "text-gray-500"
-                  }`}
-                >
-                  삭제하기
-                </button>
-              </div>
+              {/* 탭 컨테이너 */}
+              {previewImages.length > 0 && (
+                <div className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-md bg-gray-200 p-2">
+                  {/* 프리뷰 이미지가 1개일 경우 "삭제하기"만 표시 */}
+                  {previewImages.length === 1 ? (
+                    <button
+                      onClick={() => setIsDragEnabled(false)} // 삭제 모드
+                      className="w-full rounded-md border border-blue-500 bg-white px-1 py-2 text-xs text-blue-500"
+                    >
+                      삭제하기
+                    </button>
+                  ) : (
+                    <>
+                      {/* 프리뷰 이미지가 2개 이상일 경우 "순서변경"과 "삭제하기" 표시 */}
+                      <button
+                        onClick={() => setIsDragEnabled(true)} // 드래그 모드 활성화
+                        className={`w-full rounded-md px-1 py-2 text-xs ${
+                          isDragEnabled
+                            ? "border border-blue-500 bg-white text-blue-500"
+                            : "text-gray-500"
+                        }`}
+                      >
+                        순서변경
+                      </button>
+                      <button
+                        onClick={() => setIsDragEnabled(false)} // 드래그 모드 비활성화
+                        className={`w-full rounded-md px-1 py-2 text-xs ${
+                          !isDragEnabled
+                            ? "border border-blue-500 bg-white text-blue-500"
+                            : "text-gray-500"
+                        }`}
+                      >
+                        삭제하기
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
             {/* 프리뷰 이미지 영역 */}
             <div className="col-span-5">
@@ -340,23 +360,26 @@ const Upload: NextPage = () => {
                               대표사진
                             </div>
                           )}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              handleImageDelete(image.id);
-                            }}
-                            onMouseDown={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                            }}
-                            className="absolute right-0 top-0 z-10 flex h-6 w-6 translate-x-[50%] translate-y-[-50%] items-center justify-center rounded-full bg-black text-white shadow-lg"
-                          >
-                            <span className="relative top-[-1px] text-sm font-bold">
-                              ×
-                            </span>
-                          </button>
+                          {/* 삭제 버튼: isDragEnabled가 false일 때만 표시 */}
+                          {!isDragEnabled && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                handleImageDelete(image.id);
+                              }}
+                              onMouseDown={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                              }}
+                              className="absolute right-0 top-0 z-10 flex h-6 w-6 translate-x-[50%] translate-y-[-50%] items-center justify-center rounded-full bg-black text-white shadow-lg"
+                            >
+                              <span className="relative top-[-1px] text-sm font-bold">
+                                ×
+                              </span>
+                            </button>
+                          )}
                         </div>
                       </SortableItem>
                     );

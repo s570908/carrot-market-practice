@@ -4,7 +4,7 @@ import Item from "@components/Item";
 import Layout from "@components/Layout";
 import useUser from "@libs/client/useUser";
 import useSWR, { SWRConfig } from "swr";
-import { Fav, Product, Status } from "@prisma/client";
+import { Fav, Product, ProductImage, Status } from "@prisma/client";
 import { useRouter } from "next/router";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import PaginationButton from "@components/PaginationButton";
@@ -18,6 +18,7 @@ export interface ProductWithCount extends Product {
   _count: {
     favs: number;
   };
+  images: ProductImage[];
 }
 
 interface User {
@@ -156,6 +157,7 @@ const Home: NextPage = () => {
             const reserved = product?.status === Status.Reserved;
             const sold = product?.status === Status.Sold;
             let status: Status = Status.Registered;
+            console.log("product: ", JSON.stringify(product, null, 2));
 
             if (reserved) {
               status = Status.Reserved;
@@ -170,7 +172,7 @@ const Home: NextPage = () => {
                 title={product.name}
                 price={product.price}
                 hearts={product._count?.favs}
-                photo={product.image}
+                photo={product.images[0]?.imageId}
                 isLike={product.favs
                   .map((uid: User) => (uid.userId === user?.id ? true : false))
                   .includes(true)}
@@ -202,7 +204,7 @@ const Home: NextPage = () => {
           min="1"
           value={limit === 0 ? "" : limit} // limit이 0일 때 빈 문자열로 설정
           onChange={(e) => setLimit(Number(e.target.value) || 0)} // 빈 문자열 처리
-          className="rounded border px-2 py-1"
+          className="px-2 py-1 border rounded"
         />
       </div> */}
       <div className="loader" ref={observerElem}>

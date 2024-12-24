@@ -168,6 +168,20 @@ import { useQuery } from "react-query";
 import { useRouter } from "next/router";
 import axios from "axios";
 import cameraIcon from "public/images/camera.png";
+import {
+  arrayMove,
+  horizontalListSortingStrategy,
+  SortableContext,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
+  closestCenter,
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
 
 interface EditProductForm {
   name: string;
@@ -193,6 +207,8 @@ const EditProduct: NextPage = () => {
   const [images, setImages] = useState<string[]>([]); // 이미지 URL 배열
   const [imageFiles, setImageFiles] = useState<File[]>([]); // 이미지 파일 배열
   const [mainImageIndex, setMainImageIndex] = useState<number | null>(null);
+  const [isDragEnabled, setIsDragEnabled] = useState(true); // 드래그 모드 활성화
+  const sensors = useSensors(useSensor(PointerSensor)); // PointerSensor 사용
   const MAX_IMAGES = 10; // 최대 이미지 개수
   const { register, handleSubmit, setValue, watch } =
     useForm<EditProductForm>();
@@ -215,6 +231,19 @@ const EditProduct: NextPage = () => {
       },
     }
   );
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      const newImages: PreviewImage[] = files.map((file, index) => ({
+        id: `image-${Date.now()}-${index}`, // 고유 ID 생성
+        kind: "Local", // 새로 추가된 이미지는 항상 Local
+        url: URL.createObjectURL(file),
+        file,
+      }));
+      setPreviewImages((prev) => [...prev, ...newImages].slice(0, maxImages));
+    }
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -247,6 +276,19 @@ const EditProduct: NextPage = () => {
     setMainImageIndex(index);
   };
 
+  // Drag & Drop 순서 변경 처리
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = previewImages.findIndex((image) => image.id === active.id);
+    const newIndex = previewImages.findIndex((image) => image.id === over.id);
+    // 잘못된 범위 초과 방지
+    if (newIndex < 0 || newIndex >= maxImages) return;
+    const newOrder = arrayMove(previewImages, oldIndex, newIndex); // 순서 변경
+    setPreviewImages(newOrder);
+  };
+
   const onSubmit = async (data: EditProductForm) => {
     // 서버에 데이터를 업로드하는 로직을 구현합니다.
     console.log("상품 업데이트 데이터:", data);
@@ -270,116 +312,131 @@ const EditProduct: NextPage = () => {
   return (
     <Layout seoTitle="상품 수정" canGoBack title="상품 수정">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 p-4">
-        {/* 이미지 업로드 영역 */}
-        <div className="flex items-center space-x-4">
-          {/* 이미지 업로드 버튼 */}
-          <label className="cursor-pointer">
-            <div className="flex flex-col items-center">
-              <div className="border-red-1 flex flex-col items-center rounded-md border p-1">
-                <Image
-                  src={cameraIcon}
-                  alt="camera icon"
-                  width={30} // 원하는 크기로 설정
-                  height={30}
-                  style={{ opacity: 0.5 }}
-                />
-                <span className="text-xs">
-                  {images.length}/{MAX_IMAGES}
-                </span>
+        <DndContext
+          sensors={isDragEnabled ? sensors : []}
+          collisionDetection={isDragEnabled ? closestCenter : undefined}
+          onDragEnd={isDragEnabled ? handleDragEnd : undefined}
+        >
+          <div className="grid grid-cols-6 gap-4">
+            <div className="flex flex-col gap-4">
+              {/* 이미지 업로드 버튼 */}
+              <div className="flex h-20 w-20 flex-col items-center justify-center rounded-md border border-gray-300">
+                <label className="flex cursor-pointer flex-col items-center">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <div className="flex flex-col items-center">
+                    <Image
+                      src="/images/camera.png"
+                      alt="Upload"
+                      width={30}
+                      height={30}
+                    />
+                    <span className="mt-1 text-sm text-gray-600">
+                      {previewImages.length}/{maxImages}
+                    </span>
+                  </div>
+                </label>
               </div>
-              <input
-                {...register("photos")}
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={handleImageChange}
-              />
+              {/* 탭 컨테이너 */}
+              {previewImages.length > 0 && (
+                <div className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-md bg-gray-200 p-2">
+                  {/* 프리뷰 이미지가 1개일 경우 "삭제하기"만 표시 */}
+                  {previewImages.length === 1 ? (
+                    <button
+                      onClick={() => setIsDragEnabled(false)} // 삭제 모드
+                      className="w-full rounded-md border border-blue-500 bg-white px-1 py-2 text-xs text-blue-500"
+                    >
+                      삭제하기
+                    </button>
+                  ) : (
+                    <>
+                      {/* 프리뷰 이미지가 2개 이상일 경우 "순서변경"과 "삭제하기" 표시 */}
+                      <button
+                        onClick={() => setIsDragEnabled(true)} // 드래그 모드 활성화
+                        className={`w-full rounded-md px-1 py-2 text-xs ${
+                          isDragEnabled
+                            ? "border border-blue-500 bg-white text-blue-500"
+                            : "text-gray-500"
+                        }`}
+                      >
+                        순서변경
+                      </button>
+                      <button
+                        onClick={() => setIsDragEnabled(false)} // 드래그 모드 비활성화
+                        className={`w-full rounded-md px-1 py-2 text-xs ${
+                          !isDragEnabled
+                            ? "border border-blue-500 bg-white text-blue-500"
+                            : "text-gray-500"
+                        }`}
+                      >
+                        삭제하기
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
-          </label>
-          {/* 이미지 미리보기 영역 */}
-          <div className="mt-4 flex gap-4">
-            {images.map((src, index) => (
-              <div key={index} className="relative">
-                {/* 대표사진 표시 */}
-                {mainImageIndex === index && (
-                  <span className="absolute bottom-0 left-0 rounded bg-black px-2 py-1 text-xs text-white">
-                    대표사진
-                  </span>
-                )}
-                {/* 이미지 프리뷰 */}
-                <img
-                  src={src}
-                  alt={`uploaded ${index}`}
-                  className="h-24 w-24 rounded-md object-cover"
-                  onClick={() => setMainImage(index)}
-                />
-                {/* 삭제 버튼 */}
-                <button
-                  type="button"
-                  className="absolute right-0 top-0 rounded-full bg-black px-2 text-white"
-                  onClick={() => removeImage(index)}
-                >
-                  X
-                </button>
-              </div>
-            ))}
+            {/* 프리뷰 이미지 영역 */}
+            <div className="col-span-5">
+              <SortableContext
+                items={previewImages.map((image) => image.id)} // 프리뷰 이미지의 id만 전달
+                strategy={horizontalListSortingStrategy}
+              >
+                <div className="grid grid-cols-5 gap-4">
+                  {previewImages.map((image, index) => {
+                    console.log("image----------", image);
+                    return (
+                      <SortableItem key={image.id} id={image.id}>
+                        <div className="relative h-20 w-20 rounded-md border border-gray-300">
+                          <Image
+                            src={image.url}
+                            alt={`Preview ${index}`}
+                            layout="fill" // 부모 요소를 꽉 채움
+                            objectFit="cover" // 부모 요소에 맞게 이미지 크기 조정
+                            quality={75} // 이미지 품질
+                            // sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" // 반응형 크기
+                            className="rounded-md" // 이미지 마스킹
+                          />
+                          {/* index가 0일 때 "대표사진" 표시 */}
+                          {index === 0 && (
+                            <div className="absolute bottom-0 left-0 z-20 flex h-6 w-full items-center justify-center bg-black text-xs font-bold text-white">
+                              대표사진
+                            </div>
+                          )}
+                          {/* 삭제 버튼: isDragEnabled가 false일 때만 표시 */}
+                          {!isDragEnabled && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                handleImageDelete(image.id);
+                              }}
+                              onMouseDown={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                              }}
+                              className="absolute right-0 top-0 z-10 flex h-6 w-6 translate-x-[50%] translate-y-[-50%] items-center justify-center rounded-full bg-black text-white shadow-lg"
+                            >
+                              <span className="relative top-[-1px] text-sm font-bold">
+                                ×
+                              </span>
+                            </button>
+                          )}
+                        </div>
+                      </SortableItem>
+                    );
+                  })}
+                </div>
+              </SortableContext>
+            </div>
           </div>
-          {photoPreview || data?.product?.image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={
-                photoPreview ||
-                `https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.product?.image}/public`
-              }
-              className="aspect-video h-[60px] w-full max-w-full rounded-md object-contain text-gray-600"
-              alt="photo"
-            />
-          ) : (
-            <label className="flex h-10 w-full cursor-pointer items-center justify-center rounded-md border-2 border-dashed border-gray-300 text-gray-600 hover:border-orange-500 hover:text-orange-500">
-              <svg
-                className="h-12 w-12"
-                stroke="currentColor"
-                fill="none"
-                viewBox="0 0 48 48"
-                aria-hidden="true"
-              >
-                <path
-                  d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <input
-                {...register("photos", { required: true })}
-                className="hidden"
-                type="file"
-                accept="image/*"
-              />
-            </label>
-          )}
-          {/* 선택한 이미지 미리보기 */}
-          {images.map((image, index) => (
-            <div key={index} className="relative">
-              <Image
-                src={image}
-                alt="selected"
-                layout="fill" // 이미지가 부모 요소를 채우도록 설정
-                objectFit="cover" // 이미지가 요소에 꽉 차도록
-                className="rounded-md"
-              />
-              <button
-                type="button"
-                className="absolute right-0 top-0 rounded-full bg-black text-white"
-                onClick={() => removeImage(index)}
-              >
-                X
-              </button>
-            </div>
-          ))}
-        </div>
-
+        </DndContext>
         <Input
           register={register("name", { required: true })}
           label="Name"

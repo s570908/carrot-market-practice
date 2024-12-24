@@ -27,6 +27,8 @@ const Item = ({
   date,
   status,
 }: ItemProps) => {
+  console.error("photo should be given");
+  // console.log("productId: ,", id);
   return (
     <Link href={`/products/${id}`}>
       <a className="flex cursor-pointer justify-between px-4 pt-5">

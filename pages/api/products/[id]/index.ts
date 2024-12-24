@@ -145,6 +145,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
             createdAt: true,
           },
         },
+        images: { // ProductImage 모델의 이미지 데이터 포함
+          select: {
+            id: true,
+            imageId: true,
+          },
+        },
       },
     });
 
@@ -177,14 +183,20 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         createdAt: "desc",
       },
       take: 10,
-      // include: {
-      //   user: {
-      //     select: {
-      //       id: true,
-      //       name: true,
-      //     },
-      //   },
-      // },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        images: { // ProductImage 모델의 이미지 데이터 포함
+          select: {
+            id: true,
+            imageId: true,
+          },
+        },
+      },
     });
 
     // login user인 내가 좋아요를 눌렀는지를 체크하여 이것을 reponse로 내보낸다: isLike
