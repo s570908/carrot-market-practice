@@ -250,8 +250,8 @@ const Chats: NextPage = () => {
               return (
                 <EachChatRoom
                   key={chatRoom.id}
+                  chatRoomId={chatRoom.id}
                   chatRoom={chatRoom}
-                  user={user}
                   onlineUsers={onlineUsers}
                   data={data}
                   messageData={messageData}

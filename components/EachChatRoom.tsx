@@ -4,6 +4,7 @@ import dayjs from "dayjs";
 import { cls } from "@libs/utils";
 import { MessageData } from "types/types";
 import "dayjs/locale/ko"; // 한국어 로케일을 불러옵니다.
+import useUser from "@libs/client/useUser";
 
 interface User {
   id: number; // string에서 number로 변경
@@ -17,7 +18,7 @@ interface Product {
 }
 
 interface ChatRoom {
-  id: string;
+  id: number;
   buyerId: number; // string에서 number로 변경
   buyer: User;
   seller: User;
@@ -33,15 +34,23 @@ interface Data {
 }
 
 interface EachChatRoomProps {
+  chatRoomId: number;
   chatRoom: ChatRoom;
-  user: User | undefined;
   onlineUsers: number[]; // number[]에서 string[]로 변경
   data: Data;
   messageData?: MessageData | null;
 }
 
-const EachChatRoom = ({ chatRoom, user, onlineUsers, data, messageData }: EachChatRoomProps) => {
-  console.log("EachChatRoom--messageData: ", messageData);
+const EachChatRoom = ({
+  chatRoomId,
+  chatRoom,
+  onlineUsers,
+  data,
+  messageData,
+}: EachChatRoomProps) => {
+  console.log("EachChatRoom--chatRoomId: ", chatRoomId);
+  console.log("EachChatRoom--chatRoom: ", chatRoom);
+  const { user } = useUser();
   if (!user) {
     return null; // user가 undefined일 경우 아무것도 렌더링하지 않음
   }
@@ -97,7 +106,7 @@ const EachChatRoom = ({ chatRoom, user, onlineUsers, data, messageData }: EachCh
                       : chatRoom.buyer.name}
                   </div>
                   <div className="text-sm text-gray-500">
-                    {messageData && messageData.channelId === +chatRoom.id
+                    {messageData && messageData.channelId === chatRoom.id
                       ? truncateMessage(messageData.chatMsg, 20)
                       : "No message"}
                   </div>
@@ -112,7 +121,7 @@ const EachChatRoom = ({ chatRoom, user, onlineUsers, data, messageData }: EachCh
               </div>
               <div className="text-sm text-gray-400">
                 최신 메세지 시간:{" "}
-                {messageData?.createdAt && messageData.channelId === +chatRoom.id
+                {messageData?.createdAt && messageData.channelId === chatRoom.id
                   ? dayjs(messageData.createdAt).format("YYYY년 MM월 DD일 A h:mm")
                   : "N/A"}
               </div>

@@ -4,57 +4,13 @@ import client from "@libs/client/client";
 import { withApiSession } from "@libs/server/withSession";
 
 async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) {
-  if (req.method === "POST") {
-    // consumer가 provider한테 product를 사고 싶을때 생성
-    const {
-      body: { buyerId, sellerId, productId },
-    } = req;
-    console.log("buyerId, sellerId, productId: ", buyerId, sellerId, productId);
-    const chatRoom = await client.chatRoom.findFirst({
-      where: {
-        AND: [{ buyerId }, { sellerId }, { productId }],
-      },
-    });
-    console.log("chatRoom: ", chatRoom);
-    if (chatRoom) {
-      res.json({
-        ok: true,
-        chatRoom,
-      });
-    } else {
-      const createChatRoom = await client.chatRoom.create({
-        data: {
-          buyer: {
-            connect: {
-              id: buyerId,
-            },
-          },
-          seller: {
-            connect: {
-              id: sellerId,
-            },
-          },
-          product: {
-            connect: {
-              id: productId,
-            },
-          },
-          recentMsgId: undefined, // `recentMsgId`를 명시적으로 null로 설정
-        },
-      });
-      res.json({
-        ok: true,
-        createChatRoom,
-      });
-    }
-  }
   if (req.method === "GET") {
     const {
       session: { user },
-      query: { productId }, // 쿼리에서 productId 추출
+      query: { id }, // 쿼리에서 productId 추출
     } = req;
-    if (!productId) {
-      return res.status(404).end({ error: "request query productId is not given." });
+    if (!id) {
+      return res.status(404).end({ error: "request query product Id is not given." });
     }
     if (!user) {
       return res.status(404).end({ error: "request user is not given." });
@@ -63,7 +19,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
     //console.log("==========req.query: ", req.query);
     //console.log("==============user, productId: ", user, productId);
 
-    const productIdValue = parseInt(productId as string, 10);
+    const productIdValue = parseInt(id as string, 10);
     const chatRoomListRelatedProduct = await client.chatRoom.findMany({
       // where: {
       //   AND: [
@@ -153,40 +109,33 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
         unreadCount,
       };
     });
-    console.log("mergedChatRooms: ", JSON.stringify(mergedChatRooms, null, 2));
+    //console.log("mergedChatRooms: ", JSON.stringify(mergedChatRooms, null, 2));
 
     res.json({
       ok: true,
-      chatRoomListRelatedProduct: mergedChatRooms,
+      chatRoomListWithUnreadCount: mergedChatRooms,
     });
   }
 
   if (req.method === "DELETE") {
     const {
-      query: { productId }, // 쿼리에서 productId 추출
+      query: { id }, // 쿼리에서 productId 추출
     } = req;
-    if (!productId) {
-      return res.status(404).end({ error: "request query is not given." });
+    if (!id) {
+      return res.status(404).end({ error: "request query id is not given." });
     }
-    if (productId) {
-      const delChatRoomList = await client.chatRoom.deleteMany({
-        where: {
-          id: +productId,
-        },
-      });
-      res.json({
-        ok: true,
-        delChatRoomList,
-      });
-    } else {
-      res.json({
-        ok: false,
-        error: "no chatRoom of roomId found",
-      });
-    }
+    const delChatRoomList = await client.chatRoom.deleteMany({
+      where: {
+        id: +id,
+      },
+    });
+    res.json({
+      ok: true,
+      delChatRoomList,
+    });
   }
 }
 
 export default withApiSession(
-  withHandler({ methods: ["GET", "POST", "DELETE"], handler, isPrivate: true })
+  withHandler({ methods: ["GET", "DELETE"], handler, isPrivate: true })
 );

@@ -1,5 +1,21 @@
 ### Global Scope
 
+### @index=53
+# @title = /api/chatRoomList/product/123
+@cookie53=carrotsession=Fe26.2*1*5c8db207750050b79222b8c438948e26582c99e53c59bbac2d257c31eeda9360*ZebtTvNLWV0oMCpI_xqRnA*1cstMUfbmdRel5bSfGH_FJuLnOEnG9veLvBJlt7Wusw*1736610752844*ea1732972def5fe8a085629f1486372c0ab481d14b08ad4982a4f160d6c30343*B8-DuRub5N1rhWMwjQ34F-hVneBRgv7zlQelzTGGom4~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
+@productId53=1
+GET http://localhost:3000/api/chatRoomList/product/{{productId53}}
+Cookie: {{cookie53}}
+Content-Type: application/json
+
+### @index=52
+# @title = /api/chat?productId={123}
+@cookie52=carrotsession=Fe26.2*1*5c8db207750050b79222b8c438948e26582c99e53c59bbac2d257c31eeda9360*ZebtTvNLWV0oMCpI_xqRnA*1cstMUfbmdRel5bSfGH_FJuLnOEnG9veLvBJlt7Wusw*1736610752844*ea1732972def5fe8a085629f1486372c0ab481d14b08ad4982a4f160d6c30343*B8-DuRub5N1rhWMwjQ34F-hVneBRgv7zlQelzTGGom4~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
+@productId52=1
+GET http://localhost:3000/api/chat?productId={{productId52}}
+Cookie: {{cookie52}}
+Content-Type: application/json
+
 ### @index=51
 # @title = /api/users/:id/reviewNew
 @cookie51=carrotsession=Fe26.2*1*a72e3cc7ad0751906324e876094f44800d712aafcf32fa3763d4988edf705599*aaZ94tQAsc4Kl_iCjpPvEQ*dTxIcKunAmBXmByv0DwrOfp1ig_8UJCUeMvd-Tz-Kjk*1727095450662*2eed59f0b92ff5a75465ea4c2e99b6253ccbaa93c3e246f68e5426adba85d585*pUGjcwaGaB--ghoO7bl4AmxOMpxrVEuBHGUoQ8m9rhs~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax

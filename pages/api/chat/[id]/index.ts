@@ -137,9 +137,9 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
     // Workspace를 사용하는 io일 경우에는 of(`ws-${worksapce}`) 이 부분이 매우 중요함. 반드시 사용해야함.
     //****************************************************
     res?.socket?.server?.io?.of(`ws-${worksapce}`).to(channel).emit("message", message);
-    console.log(
-      `workspace: ${worksapce}의 channel: ${channel}로 message: ${message}를 이벤트로 전송하였다.`
-    );
+    // console.log(
+    //   `workspace: ${worksapce}의 channel: ${channel}로 message: ${message}를 이벤트로 전송하였다.`
+    // );
 
     // 가장 최신 메시지 recentMsg를 서버에 보내야 한다.
     // 필요하지 않을 수도 있다. 추후 체크요망.

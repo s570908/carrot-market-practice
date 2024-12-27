@@ -20,6 +20,7 @@ import Dropdown from "@components/Dropdown";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { useMutation, useQuery, useQueryClient } from "react-query";
+import { ChatRoomResponse, ChatRoomWithUnreadCount } from "types/types";
 
 interface ProductWithReview extends Review {
   createdBy: User;
@@ -94,15 +95,14 @@ const ItemDetail: NextPage = () => {
 
   console.log("reservationData: ", reservationData);
 
-  const params = new URLSearchParams(queryId ? { productId: queryId } : undefined);
   const {
     data: chatRoomData,
     error,
     isLoading: chaRoomDataLoading,
     refetch: refetchChatRoomData,
-  } = useQuery(
-    ["chatRoom", queryId], // 쿼리 키 (productId에 따라 달라짐)
-    () => axios.get(`/api/chat`, { params }).then((res) => res.data),
+  } = useQuery<ChatRoomResponse>(
+    ["chatRoomList", queryId], // 쿼리 키 (productId에 따라 달라짐)
+    () => axios.get(`/api/chatRoomList/product/${queryId}`),
     {
       enabled: !!queryId, // query.id가 있을 때만 쿼리 실행
     }
@@ -154,7 +154,7 @@ const ItemDetail: NextPage = () => {
     data: talkToSellerData,
   } = useMutation(
     (chatData: { buyerId: number; sellerId: number; productId: number }) =>
-      axios.post(`/api/chat/`, chatData), // POST 요청
+      axios.post(`/api/chatRoomList/`, chatData), // POST 요청
     {
       onSuccess: (data) => {
         console.log("Chat initialized successfully", data);
@@ -184,36 +184,31 @@ const ItemDetail: NextPage = () => {
     // unboundMutate("/api/users/me", (prev: any) => ({ ok: !prev.ok }), false);
     toggleFav();
   };
-  const onChatRoomList = async () => {
+  const onChatRoomList = () => {
     // 1. 해당 chatRoom을 찾는다.
     //    해당 chatRoom을 찾는 방법: productId, 로그인한 user가 product.provider(product의 seller)인 chatRoom을 모두 찾는다.
     // 2. 해당 chatRoom이 없으면 toast message를 띄운다.
     // 3. 해당 chatRoom이 한개이상 있으면 해당 chatRoom목록 페이지로 이동한다.
     // 4. 해당 chatRoom이 한개 있으면 그 chatRoom으로 이동한다.
 
-    console.log("=============router.query.id: ", router.query.id);
-    const params = new URLSearchParams(queryId ? { productId: queryId } : undefined);
-    const res = await axios.get(`/api/chat`, { params });
-    if (res.data) {
-      // setList((prev) => [...prev, { ...res.data[0] }]); //리스트 추가
-      // preventRef.current = true;
-      console.log("===========res.data: ", res.data);
-      // setChatRoomCount(res.data.chatRoomListRelatedProduct.length);
-      if (res.data.chatRoomListRelatedProduct.length === 0) {
-        toast.success("대화 중인 채팅방이 없습니다.");
-      } else if (res.data.chatRoomListRelatedProduct.length === 1) {
-        // 구매자가 만든 채팅방이 1개이므로 목록으로 가지 않고 직접 그 채팅방으로 이동한다.
-        // 채팅방 id: res.data.chatRoomListRelatedProduct.id
-        router.push(`/chats/${res.data.chatRoomListRelatedProduct[0].id}`);
-      } else {
-        // 구매자가 만든 채팅방이 1개 이상이므로 목록으로 이동한다.
-        toast.success("채팅방이 여러개입니다. 채팅방목록으로 이동합니다.");
-        router.push(`/chats?productId=${router.query.id}`);
-      }
+    // Check if chatRoomData is available from useQuery
+    if (!chatRoomData || chatRoomData.chatRoomListWithUnreadCount.length === 0) {
+      toast.success("대화 중인 채팅방이 없습니다.");
+      return;
+    }
+
+    const chatRooms = chatRoomData.chatRoomListWithUnreadCount;
+
+    if (chatRooms.length === 1) {
+      // If there's only one chat room, navigate directly to it
+      router.push(`/chats/${chatRooms[0].id}`);
     } else {
-      console.log(res); //에러
+      // If there are multiple chat rooms, navigate to the chat room list page
+      toast.success("채팅방이 여러개입니다. 채팅방 목록으로 이동합니다.");
+      router.push(`/chats?productId=${queryId}`);
     }
   };
+
   const onChatClick = () => {
     console.log("onChatClick clicked.");
     if (talkToSellerLoading) return;
@@ -299,26 +294,20 @@ const ItemDetail: NextPage = () => {
     };
   }); // isProvider가 변경될 때마다 이펙트를 다시 실행합니다.
 
+  // Update chatRoomCount whenever chatRoomData changes
   useEffect(() => {
-    const fetchChatRooms = async () => {
-      // 페이지 로드 시 productId를 기반으로 API 요청을 보냅니다.
-      // const productId = router.query.id;
-      if (queryId) {
-        try {
-          const params = new URLSearchParams(queryId ? { productId: queryId } : undefined);
-          const response = await axios.get(`/api/chat`, { params });
-          const chatRooms = response.data.chatRoomListRelatedProduct;
-          // 채팅방 목록의 개수를 상태로 설정합니다.
-          setChatRoomCount(chatRooms.length);
-        } catch (error) {
-          console.error("Failed to fetch chat rooms", error);
-          // 에러 처리, 예를 들어 토스트 메시지를 표시할 수 있습니다.
-        }
-      }
-    };
+    if (chatRoomData?.chatRoomListWithUnreadCount) {
+      setChatRoomCount(chatRoomData.chatRoomListWithUnreadCount.length);
+    }
+  }, [chatRoomData]);
 
-    fetchChatRooms();
-  }, [queryId]);
+  // Handle error state
+  useEffect(() => {
+    if (error) {
+      console.error("Failed to fetch chat rooms", error);
+      // Add toast notifications or UI error feedback here if needed
+    }
+  }, [error]);
 
   const reserved = data?.product?.status === Status.Reserved ? true : false;
   const sold = data?.product?.status === Status.Sold ? true : false;
@@ -331,8 +320,8 @@ const ItemDetail: NextPage = () => {
 
   const reservationUserName = reservationData?.reserve?.user?.name;
 
-  const chatRoom = chatRoomData?.chatRoomListRelatedProduct?.filter(
-    (chatRoom: ChatRoom) =>
+  const chatRoom = chatRoomData?.chatRoomListWithUnreadCount?.filter(
+    (chatRoom: ChatRoomWithUnreadCount) =>
       chatRoom.productId === productId &&
       chatRoom.sellerId === user?.id &&
       chatRoom.buyerId === reservationData?.reserve?.user?.id
@@ -340,7 +329,7 @@ const ItemDetail: NextPage = () => {
 
   const onChatRoom = () => {
     console.log("Clicked");
-    router.push(`/chats/${chatRoom[0].id}`);
+    router.push(`/chats/${chatRoom?.[0].id}`);
   };
 
   if (dataLoading || chaRoomDataLoading || reservationDataLoading) {

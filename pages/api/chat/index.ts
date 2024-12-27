@@ -207,7 +207,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
       return res.status(400).json({ ok: false, error: "Missing required fields" });
     }
 
-    console.log("buyerId, sellerId, productId: ", buyerId, sellerId, productId);
+    //console.log("buyerId, sellerId, productId: ", buyerId, sellerId, productId);
     try {
       const chatRoom = await findOrCreateChatRoom({
         buyerId: Number(buyerId),
