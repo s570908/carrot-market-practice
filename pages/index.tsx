@@ -120,6 +120,7 @@ const Home: NextPage = () => {
     };
   }, [fetchNextPage, hasNextPage, handleObserver]);
 
+  // 로그인 user가 가입되어 있는 모든 chat room (channel) 목록을 가져온 후에 channels에 그 목록을 저장한다.
   useEffect(() => {
     const userData = user;
     if (channelData?.ok && userData) {
@@ -176,7 +177,7 @@ const Home: NextPage = () => {
   //console.log("===data: ", data);
   return (
     <Layout seoTitle="Home" title="홈" hasTabBar notice>
-      <div className="flex flex-col px-4 space-y-5 divide-y">
+      <div className="flex flex-col space-y-5 divide-y px-4">
         {/* {data?.products?.map((product) => {
           const reserved = product?.status === Status.Reserved ? true : false;
           const sold = product?.status === Status.Sold ? true : false;
@@ -256,14 +257,14 @@ const Home: NextPage = () => {
           min="1"
           value={limit === 0 ? "" : limit} // limit이 0일 때 빈 문자열로 설정
           onChange={(e) => setLimit(Number(e.target.value) || 0)} // 빈 문자열 처리
-          className="px-2 py-1 border rounded"
+          className="rounded border px-2 py-1"
         />
       </div>
       <div className="loader" ref={observerElem}>
         {isFetchingNextPage && hasNextPage ? "Loading..." : "No product left"}
       </div>
       {data ? (
-        <div className="relative w-full group">
+        <div className="group relative w-full">
           {/* <PaginationButton
             onClick={onPrevBtn}
             direction="prev"
@@ -311,7 +312,7 @@ const Home: NextPage = () => {
           </PaginationButton> */}
           <FloatingButton href="/products/upload" isGroup={true}>
             <svg
-              className="w-6 h-6"
+              className="h-6 w-6"
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"

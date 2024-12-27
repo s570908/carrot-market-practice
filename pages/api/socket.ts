@@ -47,16 +47,17 @@ export default function handler(req: NextApiRequest, res: NextApiResponseServerI
       }
 
       // 사용자 연결 이벤트 처리
+      // 사용자가 login 이벤트를 보낸다. payload에는 로그인  user id, 로그인 user가 가입한 chat room id 목록이 들어 있다.
       socket.on("login", (data: { id: number; channels: number[] }) => {
         console.log("login to the worksapce: ", socket.nsp.name);
 
         // Workspace URL과 Socket ID를 키로 사용자 ID를 기록
         onlineMap[socket.nsp.name][socket.id] = data.id;
 
-        // Workspace URL에 속한 모든 사용자 ID 배열을 페이로드로 송부
+        // Workspace URL에 속한 모든 socket에 사용자 ID 배열을 페이로드로 송부
         socket.nsp.emit("onlineList", Object.values(onlineMap[socket.nsp.name]));
 
-        // 채널별 소켓 룸에 사용자 추가
+        // 로그인 user의 socket을 각각의 채널(chat room)에 등록한다.
         data.channels.forEach((channel) => {
           const roomName = `${socket.nsp.name}-${channel}`;
           console.log(`룸네임: ${roomName} 에 조인한다.`);

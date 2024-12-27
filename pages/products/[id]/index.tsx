@@ -62,39 +62,49 @@ const ItemDetail: NextPage = () => {
   // const { data, mutate: boundMutate } = useSWR<ItemDetailResponse>(
   //   router.query.id ? `/api/products/${router.query.id}` : null
   // );
-  const { data, refetch } = useQuery<ItemDetailResponse>(
-    ["product", router?.query?.id],
-    () => axios.get(`/api/products/${router?.query?.id}`).then((res) => res.data),
+  const queryId = Array.isArray(router.query.id) ? router.query.id[0] : router.query.id;
+  const productId = queryId ? parseInt(queryId, 10) : null;
+
+  const {
+    data,
+    refetch,
+    isLoading: dataLoading,
+  } = useQuery<ItemDetailResponse>(
+    ["product", queryId],
+    () => axios.get(`/api/products/${queryId}`).then((res) => res.data),
     {
-      enabled: !!router?.query?.id,
+      enabled: !!queryId,
     }
   );
   // const { data: reservationData, mutate: reservationMutate } =
   //   useSWR<ReservationResponse>(
   //     router.query.id ? `/api/products/${router.query.id}/reservation` : null
   //   );
-  const { data: reservationData, refetch: reservationMutate } = useQuery<ReservationResponse>(
-    ["reservation", router?.query?.id], // 쿼리 키 (id에 따라 쿼리가 달라짐)
-    () => axios.get(`/api/products/${router?.query?.id}/reservation`).then((res) => res.data),
+  const {
+    data: reservationData,
+    refetch: reservationMutate,
+    isLoading: reservationDataLoading,
+  } = useQuery<ReservationResponse>(
+    ["reservation", queryId], // 쿼리 키 (id에 따라 쿼리가 달라짐)
+    () => axios.get(`/api/products/${queryId}/reservation`).then((res) => res.data),
     {
       enabled: !!router?.query?.id, // query.id가 있을 때만 쿼리가 활성화됨
     }
   );
 
   console.log("reservationData: ", reservationData);
-  // const url = router.query.id ? `/api/chat?productId=${router.query.id}` : "/api/chat";
-  // const { data: dataChatRoom } = useSWR(
-  //   `/api/chat?productId=${router.query.id}`
-  // ); // SWR을 사용하여 채팅방 목록을 불러옵니다, 제품 ID에 따라 필터링
 
-  // const { data: chatRoomData, error } = useSWR(
-  //   `/api/chat?productId=${router.query.id}`
-  // );
-  const { data: chatRoomData, error } = useQuery(
-    ["chatRoom", router?.query?.id], // 쿼리 키 (productId에 따라 달라짐)
-    () => axios.get(`/api/chat?productId=${router?.query?.id}`).then((res) => res.data),
+  const params = new URLSearchParams(queryId ? { productId: queryId } : undefined);
+  const {
+    data: chatRoomData,
+    error,
+    isLoading: chaRoomDataLoading,
+    refetch: refetchChatRoomData,
+  } = useQuery(
+    ["chatRoom", queryId], // 쿼리 키 (productId에 따라 달라짐)
+    () => axios.get(`/api/chat`, { params }).then((res) => res.data),
     {
-      enabled: !!router?.query?.id, // query.id가 있을 때만 쿼리 실행
+      enabled: !!queryId, // query.id가 있을 때만 쿼리 실행
     }
   );
 
@@ -138,10 +148,6 @@ const ItemDetail: NextPage = () => {
     toggleFavMutation.mutate();
   };
 
-  // const [
-  //   talkToSeller,
-  //   { loading: talkToSellerLoading, data: talkToSellerData },
-  // ] = useMutation(`/api/chat/`);
   const {
     mutate: talkToSeller,
     isLoading: talkToSellerLoading,
@@ -180,15 +186,14 @@ const ItemDetail: NextPage = () => {
   };
   const onChatRoomList = async () => {
     // 1. 해당 chatRoom을 찾는다.
-    //    해당 chatRoom을 찾는 방법: productId, 로그인한 user가 product.provider인 chatRoom을 모두 찾는다.
+    //    해당 chatRoom을 찾는 방법: productId, 로그인한 user가 product.provider(product의 seller)인 chatRoom을 모두 찾는다.
     // 2. 해당 chatRoom이 없으면 toast message를 띄운다.
     // 3. 해당 chatRoom이 한개이상 있으면 해당 chatRoom목록 페이지로 이동한다.
     // 4. 해당 chatRoom이 한개 있으면 그 chatRoom으로 이동한다.
+
     console.log("=============router.query.id: ", router.query.id);
-    const res = await axios({
-      method: "GET",
-      url: `/api/chat?productId=${router.query.id}`,
-    });
+    const params = new URLSearchParams(queryId ? { productId: queryId } : undefined);
+    const res = await axios.get(`/api/chat`, { params });
     if (res.data) {
       // setList((prev) => [...prev, { ...res.data[0] }]); //리스트 추가
       // preventRef.current = true;
@@ -208,13 +213,6 @@ const ItemDetail: NextPage = () => {
     } else {
       console.log(res); //에러
     }
-
-    const productId = router.query.id;
-    // router.push 메서드를 사용하여 쿼리 파라미터와 함께 URL로 이동합니다.
-    // router.push({
-    //   pathname: "/chats",
-    //   query: { productId }, // 쿼리 파라미터로 제품 ID를 전달합니다.
-    // });
   };
   const onChatClick = () => {
     console.log("onChatClick clicked.");
@@ -279,32 +277,6 @@ const ItemDetail: NextPage = () => {
     }
   }, [router, talkToSellerData]);
 
-  //   useEffect(() => {
-  //     // const payload = {
-  //     //   buyerId: user?.id,
-  //     //   itemId: data?.product.id,
-  //     //   eventName: 'intentToBuy'
-  //     // };
-  //     // eventEmitter.emit('buyerAction', payload);
-  //     const handleBuyerAction = (payload: Payload) => {
-  //       // Check if the event indicates intention to buy
-  //       if (payload.eventName === 'intentToBuy') {
-  //         // Process the buyer's intention
-  //         const sellerNotification = `Buyer ${payload?.buyerId} wants to buy item ${payload?.itemId}`;
-  //         setNotification(sellerNotification);
-
-  //         // Optionally, you can also send notifications to external services (e.g., through WebSocket, HTTP request)
-  //       }
-  //     };
-  // if (data?.product?.userId === user?.id)
-  //     eventEmitter.on('buyerAction', handleBuyerAction);
-
-  //     return () => {
-  //       if (data?.product?.userId === user?.id)
-  //       eventEmitter.off('buyerAction', handleBuyerAction);
-  //     };
-  //   }, []);
-
   useEffect(() => {
     // 이벤트를 처리할 콜백 함수 정의
     const handleBuyerAction = (payload: any) => {
@@ -330,10 +302,11 @@ const ItemDetail: NextPage = () => {
   useEffect(() => {
     const fetchChatRooms = async () => {
       // 페이지 로드 시 productId를 기반으로 API 요청을 보냅니다.
-      const productId = router.query.id;
-      if (productId) {
+      // const productId = router.query.id;
+      if (queryId) {
         try {
-          const response = await axios.get(`/api/chat?productId=${productId}`);
+          const params = new URLSearchParams(queryId ? { productId: queryId } : undefined);
+          const response = await axios.get(`/api/chat`, { params });
           const chatRooms = response.data.chatRoomListRelatedProduct;
           // 채팅방 목록의 개수를 상태로 설정합니다.
           setChatRoomCount(chatRooms.length);
@@ -345,7 +318,7 @@ const ItemDetail: NextPage = () => {
     };
 
     fetchChatRooms();
-  }, [router.query.id]);
+  }, [queryId]);
 
   const reserved = data?.product?.status === Status.Reserved ? true : false;
   const sold = data?.product?.status === Status.Sold ? true : false;
@@ -358,9 +331,6 @@ const ItemDetail: NextPage = () => {
 
   const reservationUserName = reservationData?.reserve?.user?.name;
 
-  const queryId = Array.isArray(router.query.id) ? router.query.id[0] : router.query.id;
-  const productId = queryId ? parseInt(queryId, 10) : null;
-
   const chatRoom = chatRoomData?.chatRoomListRelatedProduct?.filter(
     (chatRoom: ChatRoom) =>
       chatRoom.productId === productId &&
@@ -372,6 +342,10 @@ const ItemDetail: NextPage = () => {
     console.log("Clicked");
     router.push(`/chats/${chatRoom[0].id}`);
   };
+
+  if (dataLoading || chaRoomDataLoading || reservationDataLoading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <Layout seoTitle="댕댕마켓" title="댕댕마켓" canGoBack backUrl={"back"} openModal>

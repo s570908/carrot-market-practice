@@ -1,29 +1,3 @@
-// import Layout from "@components/Layout";
-// import type { NextPage } from "next";
-// import Link from "next/link";
-
-// const Write: NextPage = () => {
-//   return (
-//     <Layout title="채팅" hasTabBar>
-//       <div className="divide-y-[1px] py-3">
-//         {[...Array(5)].map((_, i) => (
-//           <Link href={`chats/${i}`} key={i}>
-//             <a className="flex items-center px-3 py-2 mb-3 space-x-3 ">
-//               <div className="w-12 h-12 rounded-full bg-slate-300" />
-//               <div>
-//                 <p className="text-gray-700">Steve Jebs</p>
-//                 <p className="text-sm text-gray-500">See you tomorrow in the corner at 2pm</p>
-//               </div>
-//             </a>
-//           </Link>
-//         ))}
-//       </div>
-//     </Layout>
-//   );
-// };
-
-// export default Write;
-
 import type { NextPage } from "next";
 import Link from "next/link";
 import Layout from "@components/Layout";
@@ -41,6 +15,9 @@ import RadioButtonGroup from "@components/RadioGroupButton";
 import { useQuery } from "react-query";
 import useSocket from "@libs/client/useSocket";
 import { cls } from "@libs/utils";
+import dayjs from "@libs/dayjs";
+import EachChatRoom from "@components/EachChatRoom";
+import { MessageData } from "types/types";
 
 interface ChatRoomWithUser extends ChatRoom {
   buyer: User;
@@ -68,19 +45,18 @@ const Chats: NextPage = () => {
   const router = useRouter();
   const { productId } = router.query; // URL에서 productId 쿼리 파라미터를 추출
   const { user } = useUser();
-  const fetchChats = async (url: string) => {
-    const response = await axios.get(url);
+  const fetchChats = async (url: string, params?: URLSearchParams) => {
+    const response = await axios.get(url, { params });
     return response.data;
   };
   const [socket, disconnectSocket] = useSocket("market");
-  const [onlineUsers, setOnlineUsers] = useState<string[]>([]); // Array to store online users
+  const [onlineUsers, setOnlineUsers] = useState<number[]>([]); // Array to store online users
+
+  const [messageData, setMessageData] = useState<MessageData | null>(null);
 
   // URL을 조건부로 설정
-  const url = productId ? `/api/chat?productId=${productId}` : "/api/chat";
-  // const { data } = useSWR("/api/chats", {
-  //   refreshInterval: 1000,
-  // }); // SWR을 사용하여 채팅방 목록을 불러옵니다, 제품 ID에 따라 필터링
-  // const { data, error } = useSWR(url);
+  const url = "/api/chat";
+  const params = productId ? new URLSearchParams({ productId: productId.toString() }) : undefined;
   const {
     data,
     error,
@@ -89,7 +65,7 @@ const Chats: NextPage = () => {
     refetch: refetchChats,
   } = useQuery(
     ["chats", productId], // 쿼리 키: productId가 있으면 달라짐
-    () => fetchChats(url), // 데이터를 가져오는 함수
+    () => fetchChats(url, params), // 데이터를 가져오는 함수
     {
       // refetchInterval: 1000, // 1초마다 데이터를 다시 가져오는 옵션
       enabled: !!url, // URL이 유효할 때만 쿼리 실행
@@ -119,24 +95,6 @@ const Chats: NextPage = () => {
   }
 
   const [recentMessageShown, setRecentMessageShown] = useState("");
-
-  // console.log("Chats---data:", JSON.stringify(data, null, 2));
-  // useEffect(() => {
-  //   if (data && data.ok) {
-  //     data.chatRoomList.map((room: any) => {
-  //       if (!room.recentMsgId) {
-  //         fetch(`/api/chat?roomId=${room.id}`, {
-  //           method: "DELETE",
-  //           headers: {
-  //             "Content-Type": "application/json",
-  //           },
-  //         });
-  //       }
-  //     });
-  //   }
-  // }, [data]);
-
-  // console.log("chats---login user: ", JSON.stringify(user, null, 2));
 
   const handleClick = () => {
     console.log("chatRoomList Product Detail clicked");
@@ -185,7 +143,7 @@ const Chats: NextPage = () => {
     if (!socket) return;
 
     // Listen for the 'onlineList' event from the server
-    const handleOnlineList = (users: string[]) => {
+    const handleOnlineList = (users: number[]) => {
       console.log("onlineList event received. onlineList: ", users);
       setOnlineUsers(users); // Update online users list
     };
@@ -198,9 +156,15 @@ const Chats: NextPage = () => {
       refetchChats();
     };
 
+    const handleOnMessage = (data: MessageData) => {
+      console.log("handleOnMessage--data: ", data);
+      setMessageData(data);
+    };
+
     socket.on("onlineList", handleOnlineList);
     socket.on("roomList", handleOnRoomList);
     socket.on("chats", handleOnChats);
+    socket.on("message", handleOnMessage);
 
     // Request online list on component mount
     socket.emit("requestOnlineList");
@@ -210,11 +174,17 @@ const Chats: NextPage = () => {
     return () => {
       socket.off("onlineList", handleOnlineList);
       socket.off("roomList", handleOnRoomList);
-      socket.on("chats", handleOnChats);
+      socket.off("chats", handleOnChats);
+      socket.off("message", handleOnMessage);
     };
   }, [refetchChats, socket]); // Add 'socket' as a dependency to ensure it updates when the socket changes
 
   // if (data?.unreadCountsPerRoom) console.log("data: ", JSON.stringify(data, null, 2));
+
+  const truncateMessage = (msg: string, length: number) => {
+    if (msg.length <= length) return msg;
+    return msg.substring(0, length) + "...";
+  };
 
   return (
     <Layout
@@ -277,70 +247,15 @@ const Chats: NextPage = () => {
               return dateB - dateA;
             })
             .map((chatRoom: any) => {
-              // Calculate whether the user is online
-              const isUserOnline = onlineUsers.includes(
-                chatRoom.buyerId === user?.id ? chatRoom.seller.id : chatRoom.buyer.id
-              );
-              // 로그인 유저가 채팅방에서 구매자인지 여부
-              const isBuyer = chatRoom?.buyerId === user?.id;
               return (
-                <Link href={`/chats/${chatRoom.id}`} key={chatRoom.id}>
-                  <a className="flex cursor-pointer items-center space-x-3 px-4 py-3">
-                    <div className="">
-                      <ImgComponent
-                        imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${chatRoom?.product?.image}/public`}
-                        width={72}
-                        height={72}
-                        imgName={chatRoom?.product?.name}
-                      />
-                    </div>
-                    <div className="flex w-full flex-col space-y-1">
-                      <div className="flex flex-row space-x-2">
-                        <div className="text-md">{chatRoom?.product?.name}</div>
-                        <div className="text-md">{`${chatRoom?.product?.price}원`}</div>
-                      </div>
-                      <div className="flex w-full flex-row items-center space-x-2">
-                        <div className="relative w-10/12 space-y-1">
-                          <div className="flex flex-row items-center space-x-2">
-                            <div
-                              className={cls(
-                                "h-2.5 w-2.5 rounded-full",
-                                isUserOnline ? "bg-green-400" : "bg-gray-400"
-                              )}
-                            />
-                            <p className="text-gray-700">
-                              {chatRoom.buyerId === user?.id
-                                ? `판매자: ${chatRoom.seller.name}`
-                                : `구매자: ${chatRoom.buyer.name}`}
-                            </p>
-                          </div>
-                          <div className="flex flex-row items-center justify-between">
-                            <div className="flex flex-row items-center space-x-2">
-                              <div className="whitespace-nowrap rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
-                                {chatRoom.recentMsg?.userId === chatRoom.seller.id
-                                  ? chatRoom.seller.name
-                                  : chatRoom.buyer.name}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {chatRoom.recentMsg?.chatMsg}
-                              </div>
-                            </div>
-                            {data.unreadCountsPerRoom[chatRoom.id] !== 0 ? (
-                              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500">
-                                <div className="text-sm text-white">
-                                  {data.unreadCountsPerRoom[chatRoom.id]}
-                                </div>
-                              </div>
-                            ) : null}
-                          </div>
-                          <div className="text-sm text-gray-400">
-                            최신 메세지 시간: {chatRoom.recentMsg?.updatedAt}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </a>
-                </Link>
+                <EachChatRoom
+                  key={chatRoom.id}
+                  chatRoom={chatRoom}
+                  user={user}
+                  onlineUsers={onlineUsers}
+                  data={data}
+                  messageData={messageData}
+                />
               );
             })
         )}
