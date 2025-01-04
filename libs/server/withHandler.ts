@@ -1,14 +1,19 @@
+import { MethodType } from "apiLibs/atypes";
 import { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
-type MethodType = "GET" | "POST" | "DELETE";
+
+// type MethodType = "GET" | "POST" | "DELETE";
+
 export interface ResponseType {
   ok: boolean;
   [key: string]: any | undefined;
 }
+
 interface ConfigType {
   methods: MethodType[];
   handler: NextApiHandler | any;
   isPrivate?: boolean;
 }
+
 type HandlerType = {
   (config: ConfigType): NextApiHandler;
 };

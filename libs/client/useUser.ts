@@ -21,8 +21,7 @@
 import { useRouter } from "next/router";
 import { useEffect } from "react";
 import useSWR from "swr";
-import fetcher from "@libs/client/fetcher";
-import { ResponseType } from "@libs/server/withHandler";
+import { fetcher } from "@libs/client/fetcher";
 import { User } from "@prisma/client";
 
 interface ProfileResponse {

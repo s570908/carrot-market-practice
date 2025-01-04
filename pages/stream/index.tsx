@@ -12,45 +12,41 @@ import Image from "next/image";
 import { cls } from "@libs/utils";
 import axios from "axios";
 import { QueryFunctionContext, useQuery } from "react-query";
+import { StreamsResponse } from "apiLibs/atypes";
+import { getStreamsPaging } from "apiLibs/streams";
+import { handleLoadingAndError } from "@components/LoadingError";
 
-interface StreamsResponse {
-  ok: boolean;
-  streams: Stream[];
-  result: [];
-}
+// interface StreamsResponse {
+//   ok: boolean;
+//   streams: Stream[];
+//   result: [];
+// }
 
 const Streams: NextPage = () => {
   const { user } = useUser();
   const router = useRouter();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-  // const { data } = useSWR<StreamsResponse>(`/api/streams?page=${page}&limit=${limit}`, {
-  //   refreshInterval: 1000,
-  // });
 
-  const fetchStreams = async ({ queryKey }: QueryFunctionContext<any>) => {
-    const [, page, limit] = queryKey; // queryKey에서 page와 limit 추출
-    const { data } = await axios.get<StreamsResponse>(
-      `/api/streams?page=${page}&limit=${limit}`
-    );
-    return data;
-  };
+  // const fetchStreams = async ({ queryKey }: QueryFunctionContext<any>) => {
+  //   const [, page, limit] = queryKey; // queryKey에서 page와 limit 추출
+  //   const { data } = await axios.get<StreamsResponse>(
+  //     `/api/streams?page=${page}&limit=${limit}`
+  //   );
+  //   return data;
+  // };
 
   const {
     data: streamsData,
     isLoading,
+    isError,
     error,
-  } = useQuery<StreamsResponse>(
+  } = useQuery(
     ["streams", page, limit], // 쿼리 키, page와 limit에 따라 쿼리가 달라짐
-    fetchStreams, // 데이터를 가져오는 함수
+    () => getStreamsPaging(page, limit), // 데이터를 가져오는 함수
     {
       // refetchInterval: 1000, // 1초마다 데이터 리프레시
     }
-  );
-
-  console.log(
-    "strem/index.tsx---/api/streams?page=${page}&limit=${limit} data: ",
-    JSON.stringify(streamsData, null, 2)
   );
 
   const onPrevBtn = (page: number) => {
@@ -61,6 +57,18 @@ const Streams: NextPage = () => {
     router.push(`${router.pathname}?page=${page + 1}&limit=${limit}`);
     setPage((prev) => prev + 1);
   };
+
+  const isLoadingAny = isLoading;
+  const isErrorAny = isError;
+  const errorAny = error;
+
+  const loadingOrError = handleLoadingAndError(isLoadingAny, isErrorAny, errorAny);
+  if (loadingOrError) return loadingOrError;
+
+  console.log(
+    "strem/index.tsx---/api/streams?page=${page}&limit=${limit} data: ",
+    JSON.stringify(streamsData, null, 2)
+  );
 
   return (
     <Layout seoTitle="라이브" title="라이브" hasTabBar notice>
@@ -84,16 +92,11 @@ const Streams: NextPage = () => {
                   )}
                 </div>
                 <div className="flex flex-row items-center justify-evenly space-x-32">
-                  <h1 className="mt-2 text-2xl font-bold text-gray-900">
-                    {stream.name}
-                  </h1>
+                  <h1 className="mt-2 text-2xl font-bold text-gray-900">{stream.name}</h1>
                   <div>
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className={cls(
-                        stream.live ? "text-red-500" : "text-gray-500",
-                        "h-6 w-6"
-                      )}
+                      className={cls(stream.live ? "text-red-500" : "text-gray-500", "h-6 w-6")}
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -112,12 +115,7 @@ const Streams: NextPage = () => {
           );
         })}
       </div>
-      <PaginationButton
-        onClick={onPrevBtn}
-        direction="prev"
-        page={page}
-        isGroup={true}
-      >
+      <PaginationButton onClick={onPrevBtn} direction="prev" page={page} isGroup={true}>
         <svg
           xmlns="http://www.w3.org/2000/svg"
           className="h-6 w-6"

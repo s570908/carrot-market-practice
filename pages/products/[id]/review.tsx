@@ -3,7 +3,6 @@ import Button from "@components/Button";
 import Layout from "@components/Layout";
 import TextArea from "@components/TextArea";
 import { useForm } from "react-hook-form";
-// import useMutation from "@libs/client/useMutation";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import useUser from "@libs/client/useUser";
@@ -13,6 +12,11 @@ import ImgComponent from "@components/ImgComponent";
 import Link from "next/link";
 import { useMutation, useQuery } from "react-query";
 import axios from "axios";
+import { parseId } from "@libs/utils";
+import { getProduct, writeReview } from "apiLibs/products";
+import { getSimpleProfile } from "apiLibs/users";
+import { ReviewData } from "apiLibs/atypes";
+import { handleLoadingAndError } from "@components/LoadingError";
 
 interface ProductWithUser extends Product {
   user: User;
@@ -32,12 +36,12 @@ interface ReviewForm {
   [key: string]: string;
 }
 
-interface ReviewData {
-  review: string;
-  score: number;
-  reviewType: ReviewType;
-  createdForId: any;
-}
+// interface ReviewData {
+//   review: string;
+//   score: number;
+//   reviewType: ReviewType;
+//   createdForId: any;
+// }
 
 const Review: NextPage = () => {
   const { user } = useUser();
@@ -45,29 +49,31 @@ const Review: NextPage = () => {
   // const { data, mutate: boundMutate } = useSWR<ItemDetailResponse>(
   //   router.query.id ? `/api/products/${router.query.id}` : null
   // );
-  const { data, refetch: boundMutate } = useQuery<ItemDetailResponse>(
-    ["product", router?.query?.id], // 쿼리 키 (id에 따라 쿼리가 달라짐)
-    () =>
-      axios.get(`/api/products/${router?.query?.id}`).then((res) => res.data),
+
+  const id = parseId(router.query.id);
+  const otherId = parseId(router.query.otherId);
+
+  const { data, isLoading, isError, error } = useQuery(
+    ["product", id], // 쿼리 키 (id에 따라 쿼리가 달라짐)
+    () => getProduct(id!),
     {
-      enabled: !!router?.query?.id, // query.id가 있을 때만 쿼리 실행
+      enabled: !!id, // query.id가 있을 때만 쿼리 실행
     }
   );
-  const { otherId } = router.query;
-  // const { data: dataOther } = useSWR<UserResponse>(
-  //   `/api/users/${otherId}/simpleProfile`
-  // );
-  const { data: dataOther } = useQuery<UserResponse>(
+
+  const {
+    data: otherData,
+    isLoading: isLoadingOther,
+    isError: isErrorOther,
+    error: errorOther,
+  } = useQuery<UserResponse>(
     ["user", otherId], // 쿼리 키 (otherId에 따라 변경)
-    () =>
-      axios.get(`/api/users/${otherId}/simpleProfile`).then((res) => res.data),
+    () => getSimpleProfile(otherId!),
     {
       enabled: !!otherId, // otherId가 있을 때만 쿼리 실행
     }
   );
-  const isSeller = data?.product.userId === user?.id;
-  const isBuyer = data?.product.userId !== user?.id;
-  console.log("isSeller: -----------", data?.product.userId, otherId, isSeller);
+
   const { register, handleSubmit, watch } = useForm<ReviewForm>({
     mode: "onChange",
   });
@@ -75,12 +81,13 @@ const Review: NextPage = () => {
   // const [writeReview, { loading: writeReviewLoading, data: writeReviewData }] =
   //   useMutation(`/api/products/${router.query.id}/reviewNew`);
   const {
-    mutate: writeReview,
-    isLoading: writeReviewLoading,
+    mutate: sendReview,
+    isLoading: isLoadingWriteReview,
+    isError: isErrorWriteReview,
+    error: errorWriteReview,
     data: writeReviewData,
   } = useMutation(
-    (reviewData: ReviewData) =>
-      axios.post(`/api/products/${router?.query?.id}/reviewNew`, reviewData), // POST 요청
+    writeReview, // POST 요청
     {
       onSuccess: (data) => {
         console.log("Review submitted successfully", data);
@@ -93,12 +100,20 @@ const Review: NextPage = () => {
     }
   );
 
+  useEffect(() => {
+    if (writeReviewData?.ok) {
+      router.back();
+    }
+  }, [writeReviewData, router]);
+
   const handleSubmitReview = (reviewData: ReviewData) => {
-    writeReview(reviewData); // mutate() 함수 호출
+    if (id) {
+      sendReview({ reviewData, productId: id }); // mutate() 함수 호출
+    }
   };
 
   const onValid = ({ review }: ReviewForm) => {
-    if (writeReviewLoading) return;
+    if (isLoading || isLoadingWriteReview || !otherId) return;
     handleSubmitReview({
       review,
       score: starScore,
@@ -107,11 +122,16 @@ const Review: NextPage = () => {
     });
   };
 
-  useEffect(() => {
-    if (writeReviewData?.data?.ok) {
-      router.back();
-    }
-  }, [writeReviewData, router]);
+  const isLoadingAny = isLoading || isLoadingOther || isLoadingWriteReview;
+  const isErrorAny = isError || isErrorOther || isErrorWriteReview;
+  const errorAny = error || errorOther || errorWriteReview;
+
+  const loadingOrError = handleLoadingAndError(isLoadingAny, isErrorAny, errorAny);
+  if (loadingOrError) return loadingOrError;
+
+  const isSeller = data?.product.userId === user?.id;
+  const isBuyer = data?.product.userId !== user?.id;
+  console.log("isSeller: -----------", data?.product.userId, otherId, isSeller);
 
   return (
     <Layout
@@ -129,41 +149,39 @@ const Review: NextPage = () => {
             clsProps="object-scale-down"
             imgName={data?.product?.name}
           />
-          <div className="flex items-center py-3 space-x-3 border-t border-b cursor-pointer">
-            {dataOther?.other?.avatar ? (
+          <div className="flex cursor-pointer items-center space-x-3 border-b border-t py-3">
+            {otherData?.other?.avatar ? (
               <ImgComponent
                 imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.product?.user?.avatar}/public`}
                 width={48}
                 height={48}
                 clsProps="rounded-full"
-                imgName={dataOther?.other?.name}
+                imgName={otherData?.other?.name}
               />
             ) : (
-              <div className="w-12 h-12 rounded-full bg-slate-300" />
+              <div className="h-12 w-12 rounded-full bg-slate-300" />
             )}
             <div>
               <p className="text-sm font-medium text-gray-700">
-                {dataOther ? dataOther?.other?.name : "Now Loading..."}
+                {otherData ? otherData?.other?.name : "Now Loading..."}
               </p>
               <Link href={`/profile/${data?.product?.user?.id}`}>
-                <a className="text-xs font-medium text-gray-500">
-                  View profile &rarr;
-                </a>
+                <a className="text-xs font-medium text-gray-500">View profile &rarr;</a>
               </Link>
             </div>
           </div>
-          <div className="flex flex-col items-start py-3 space-x-3 border-t border-b">
+          <div className="flex flex-col items-start space-x-3 border-b border-t py-3">
             <h1 className="text-3xl font-bold text-gray-900">
               {data ? data?.product?.name : "Now Loading..."}
             </h1>
-            <span className="block mt-3 text-3xl text-gray-900">
+            <span className="mt-3 block text-3xl text-gray-900">
               ￦{data ? data?.product?.price : "Now Loading..."}
             </span>
           </div>
-          <form className="p-4 space-y-4" onSubmit={handleSubmit(onValid)}>
+          <form className="space-y-4 p-4" onSubmit={handleSubmit(onValid)}>
             <div className="flex flex-col items-start justify-start">
               <span className="text-sm font-bold">몇 점짜리 물건인고?</span>
-              <div className="flex flex-row-reverse items-center justify-around my-2">
+              <div className="my-2 flex flex-row-reverse items-center justify-around">
                 {[5, 4, 3, 2, 1].map((val, key) => (
                   <>
                     <input
@@ -173,16 +191,16 @@ const Review: NextPage = () => {
                       value={val}
                       checked={val === starScore}
                       id={`score${val}`}
-                      className="hidden peer"
+                      className="peer hidden"
                       name="score"
                     />
                     <label
                       htmlFor={`score${val}`}
                       onClick={(e) => setStarScore(val)}
-                      className="text-gray-300 cursor-pointer peer-checked:text-orange-400 peer-hover:text-orange-300"
+                      className="cursor-pointer text-gray-300 peer-checked:text-orange-400 peer-hover:text-orange-300"
                     >
                       <svg
-                        className="w-5 h-5"
+                        className="h-5 w-5"
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 20 20"
                         fill="currentColor"

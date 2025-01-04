@@ -9,13 +9,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
     const {
       body: { buyerId, sellerId, productId },
     } = req;
-    console.log("buyerId, sellerId, productId: ", buyerId, sellerId, productId);
     const chatRoom = await client.chatRoom.findFirst({
       where: {
         AND: [{ buyerId }, { sellerId }, { productId }],
       },
     });
-    //console.log("chatRoom: ", chatRoom);
+    console.log("chatRoom: ", chatRoom);
     if (chatRoom) {
       res.json({
         ok: true,
@@ -44,15 +43,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
       });
       res.json({
         ok: true,
-        createChatRoom,
+        chatRoom: createChatRoom,
       });
     }
   }
   if (req.method === "GET") {
-    const {
-      query: { key },
-      session: { user },
-    } = req;
+    let { key } = req.query;
+    const { user } = req.session;
+
+    key = key || "all"; // key가 null이면 'all'로 설정
 
     if (!key || typeof key !== "string") {
       return res.status(400).json({
@@ -81,13 +80,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
     const sellerChatRoomList = await client.chatRoom.findMany({
       where: whereCondition,
       select: {
-        id: true, // id만 선택
+        id: true, // id 선택
+        product: true, // product 선택
+        recentMsg: true,
       },
     });
 
     res.json({
       ok: true,
-      sellerChatRoomList: sellerChatRoomList.map((room) => room.id), // ID만 배열로 반환
+      sellerChatRoomList: sellerChatRoomList.map((room) => ({
+        id: room.id,
+        product: room.product,
+        recentMsg: room.recentMsg,
+      })), // ID만 배열로 반환
     });
   }
 }

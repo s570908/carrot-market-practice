@@ -1,7 +1,8 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import withHandler, { ResponseType } from "@libs/server/withHandler";
+import withHandler from "@libs/server/withHandler";
 import client from "@libs/client/client";
 import { withApiSession } from "@libs/server/withSession";
+import { ApiResponseType } from "apiLibs/atypes";
 
 interface ChatRoomParams {
   buyerId: number;
@@ -198,7 +199,7 @@ const mergeChatRoomsWithUnreadCounts = (chatRooms: any[], userUnreadCounts: any[
   });
 };
 
-async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) {
+async function handler(req: NextApiRequest, res: NextApiResponse<ApiResponseType>) {
   if (req.method === "POST") {
     // consumer(buyer)가 provider(seller)한테 product를 사고 싶을때 생성
     const { buyerId, sellerId, productId } = req.body;

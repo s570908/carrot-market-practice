@@ -1,53 +1,55 @@
-import { Product } from "prisma/prisma-client";
-import useSWR from "swr";
 import Item from "./Item";
+import { useQuery } from "react-query";
+import { getProducts } from "apiLibs/users";
+import { handleLoadingAndError } from "./LoadingError";
+import { Kind } from "@prisma/client";
 
 interface ProductListProps {
-  kind: "favs" | "sales" | "purchases";
-}
-
-// interface ProductWithCount extends Product {
-//   _count: {
-//     favs: number;
-//   };
-// }
-
-// interface Record {
-//   id: number;
-//   product: ProductWithCount;
-// }
-
-interface Record {
-  id: number;
-  product: Product & {
-    _count: {
-      favs: number;
-    };
-  };
-}
-
-interface IProductListResponse {
-  [key: string]: Record[];
+  kind: Kind;
 }
 
 export default function ProductList({ kind }: ProductListProps) {
-  console.log("ProductList: begins");
-  const { data } = useSWR<IProductListResponse>(`/api/users/me/${kind}`);
+  const { data, isLoading, isError, error } = useQuery(
+    ["products", kind],
+    () => getProducts(kind),
+    {
+      keepPreviousData: true,
+    }
+  );
+
   console.log("ProductList: data---", JSON.stringify(data, null, 2));
+
+  const loadingOrError = handleLoadingAndError(isLoading, isError, error);
+  if (loadingOrError) return loadingOrError;
 
   return data ? (
     <>
-      {data[kind]?.map((record) => (
-        <Item
-          id={record.product.id}
-          key={record.id}
-          title={record.product.name}
-          price={record.product.price}
-          comments={1}
-          hearts={record.product._count.favs}
-          photo={record.product.image}
-        />
-      ))}
+      {data[kind]?.map((record) => {
+        const { product } = record;
+        console.log("ProductList--record: ", record);
+        // kind에 따라 hearts 값을 동적으로 설정
+        let hearts: number = 0;
+        if (kind === Kind.Fav) {
+          hearts = (product._count as { favs: number }).favs;
+        } else if (kind === Kind.Sale) {
+          hearts = (product._count as { sales: number }).sales;
+        } else if (kind === Kind.Purchase) {
+          hearts = (product._count as { purchases: number }).purchases;
+        }
+
+        return (
+          <Item
+            id={product.id}
+            key={record.id}
+            title={product.name}
+            price={product.price}
+            comments={1}
+            hearts={hearts}
+            photo={product.image ?? undefined} // null 값을 undefined로 변환
+            isLike={true} // isLoading을 사용하여 처리}
+          />
+        );
+      })}
     </>
   ) : null;
 }

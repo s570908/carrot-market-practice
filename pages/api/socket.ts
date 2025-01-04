@@ -50,6 +50,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponseServerI
       // 사용자가 login 이벤트를 보낸다. payload에는 로그인  user id, 로그인 user가 가입한 chat room id 목록이 들어 있다.
       socket.on("login", (data: { id: number; channels: number[] }) => {
         console.log("login to the worksapce: ", socket.nsp.name);
+        console.log("login socket event--data: ", data);
 
         // Workspace URL과 Socket ID를 키로 사용자 ID를 기록
         onlineMap[socket.nsp.name][socket.id] = data.id;

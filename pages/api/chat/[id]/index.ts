@@ -32,8 +32,6 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
         },
       },
     });
-    //console.log("api.chat.[id].index---sellerChat: ", JSON.stringify(sellerChat, null, 2));
-    // const newChatCount = allChatMessages.filter(chat => chat.isNew === true).length;
 
     const chatRoomOfSeller = await client.chatRoom.findUnique({
       where: {
@@ -67,23 +65,25 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
       },
     });
 
-    const sellerChatId = allChatMessages[allChatMessages.length - 1].id;
+    if (allChatMessages.length > 0) {
+      const sellerChatId = allChatMessages[allChatMessages.length - 1].id;
 
-    // 가져온 메세지 모두는 이것을 가져온 사용자가 이미 읽은 것으로 결정한다.
-    // 가장 최근 메시지를 가장 마지막으로 읽은 메시지로 처리
-    const result = await client.lastReadMessage.upsert({
-      where: { userId_chatRoomId: { userId: user?.id, chatRoomId: +id } },
-      create: { userId: user?.id, chatRoomId: +id, sellerChatId: sellerChatId },
-      update: { sellerChatId: sellerChatId },
-    });
+      // 가져온 메세지 모두는 이것을 가져온 사용자가 이미 읽은 것으로 결정한다.
+      // 가장 최근 메시지를 가장 마지막으로 읽은 메시지로 처리
+      const result = await client.lastReadMessage.upsert({
+        where: { userId_chatRoomId: { userId: user?.id, chatRoomId: +id } },
+        create: { userId: user?.id, chatRoomId: +id, sellerChatId: sellerChatId },
+        update: { sellerChatId: sellerChatId },
+      });
 
-    const channel = `/ws-${worksapce}-${id}`;
+      const channel = `/ws-${worksapce}-${id}`;
 
-    res?.socket?.server?.io
-      ?.of(`ws-${worksapce}`)
-      .to(channel)
-      .emit("chats-lastReadMessage", result);
-    console.log("Check if you listened chats-lastReadMessage event");
+      res?.socket?.server?.io
+        ?.of(`ws-${worksapce}`)
+        .to(channel)
+        .emit("chats-lastReadMessage", result);
+      console.log("Check if you listened chats-lastReadMessage event");
+    }
 
     if (chatRoomOfSeller?.buyerId !== user?.id && chatRoomOfSeller?.sellerId !== user?.id) {
       res.json({ ok: false, error: "접근 권한이 없습니다." });
@@ -137,12 +137,15 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
     // Workspace를 사용하는 io일 경우에는 of(`ws-${worksapce}`) 이 부분이 매우 중요함. 반드시 사용해야함.
     //****************************************************
     res?.socket?.server?.io?.of(`ws-${worksapce}`).to(channel).emit("message", message);
-    // console.log(
-    //   `workspace: ${worksapce}의 channel: ${channel}로 message: ${message}를 이벤트로 전송하였다.`
-    // );
+    console.log(
+      `workspace: ${worksapce}의 channel: ${channel}로 message: ${message}를 이벤트로 전송하였다.`
+    );
 
     // 가장 최신 메시지 recentMsg를 서버에 보내야 한다.
-    // 필요하지 않을 수도 있다. 추후 체크요망.
+    // 필요하지 않을 수도 있다. 추후 체크요망. 필요한 것 같다.
+    // EachChatRoom.tsx에서...
+    // message socket event를 받고, message.channelId와 EachChatRoom의 chatRoom id 가 일치하면
+    // client.chatRoom을 reftech하도록 만듣다. useQuery를 이용한다.
     const updatedChatRoom = await client.chatRoom.update({
       where: { id: +id },
       data: {

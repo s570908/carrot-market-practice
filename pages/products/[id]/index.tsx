@@ -1,26 +1,27 @@
 import type { GetStaticProps, NextPage } from "next";
 import Button from "@components/Button";
 import Layout from "@components/Layout";
-import useSWR, { mutate, useSWRConfig } from "swr";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { ChatRoom, Product, Reservation, Review, Status, User } from "@prisma/client";
-// import useMutation from "@libs/client/useMutation";
-import { cls } from "@libs/utils";
+import { cls, parseId } from "@libs/utils";
 import useUser from "@libs/client/useUser";
 import ImgComponent from "@components/ImgComponent";
-import { Suspense, useEffect } from "react";
+import { useEffect } from "react";
 import RegDate from "@components/RegDate";
 import { Skeleton } from "@mui/material";
 import gravatar from "gravatar";
-// import EventEmitter from "eventemitter3";
 import { useState } from "react";
 import eventEmitter from "@libs/eventEmitter";
 import Dropdown from "@components/Dropdown";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { useMutation, useQuery, useQueryClient } from "react-query";
-import { ChatRoomResponse, ChatRoomWithUnreadCount } from "types/types";
+import { fetcher } from "@libs/client/fetcher";
+import { ItemDetailResponse } from "apiLibs/atypes";
+import { getProduct, getReservation, writeToggleFav } from "apiLibs/products";
+import { getChatRoomsByProduct, writeChatRoom } from "apiLibs/chatRooms";
+import { handleLoadingAndError } from "@components/LoadingError";
 
 interface ProductWithReview extends Review {
   createdBy: User;
@@ -30,12 +31,12 @@ interface ProductWithUser extends Product {
   user: User;
   productReviews: ProductWithReview[];
 }
-interface ItemDetailResponse {
-  ok: boolean;
-  product: ProductWithUser;
-  relatedProducts: Product[];
-  isLike: boolean;
-}
+// interface ItemDetailResponse {
+//   ok: boolean;
+//   product: ProductWithUser;
+//   relatedProducts: Product[];
+//   isLike: boolean;
+// }
 
 interface ReservationWithUser extends Reservation {
   user: User;
@@ -54,42 +55,32 @@ interface Payload {
 }
 
 const ItemDetail: NextPage = () => {
-  const { user, isLoading } = useUser();
+  const { user } = useUser();
   const router = useRouter();
   const [notification, setNotification] = useState("");
   const [chatRoomCount, setChatRoomCount] = useState(0);
   const queryClient = useQueryClient();
-  // const { mutate: unboundMutate } = useSWRConfig();
-  // const { data, mutate: boundMutate } = useSWR<ItemDetailResponse>(
-  //   router.query.id ? `/api/products/${router.query.id}` : null
-  // );
-  const queryId = Array.isArray(router.query.id) ? router.query.id[0] : router.query.id;
-  const productId = queryId ? parseInt(queryId, 10) : null;
+  const id = parseId(router.query.id);
 
-  const {
-    data,
-    refetch,
-    isLoading: dataLoading,
-  } = useQuery<ItemDetailResponse>(
-    ["product", queryId],
-    () => axios.get(`/api/products/${queryId}`).then((res) => res.data),
+  const { data, refetch, isLoading, isError, error } = useQuery(
+    ["product", id],
+    () => getProduct(id!),
     {
-      enabled: !!queryId,
+      enabled: !!id,
     }
   );
-  // const { data: reservationData, mutate: reservationMutate } =
-  //   useSWR<ReservationResponse>(
-  //     router.query.id ? `/api/products/${router.query.id}/reservation` : null
-  //   );
+
   const {
     data: reservationData,
-    refetch: reservationMutate,
-    isLoading: reservationDataLoading,
-  } = useQuery<ReservationResponse>(
-    ["reservation", queryId], // 쿼리 키 (id에 따라 쿼리가 달라짐)
-    () => axios.get(`/api/products/${queryId}/reservation`).then((res) => res.data),
+    //refetch: refetchReservation,
+    isLoading: isLoadingReservation,
+    isError: isErrorReservation,
+    error: errorReservation,
+  } = useQuery(
+    ["reservation", id], // 쿼리 키 (id에 따라 쿼리가 달라짐)
+    () => getReservation(id!),
     {
-      enabled: !!router?.query?.id, // query.id가 있을 때만 쿼리가 활성화됨
+      enabled: !!id, // query.id가 있을 때만 쿼리가 활성화됨
     }
   );
 
@@ -97,33 +88,44 @@ const ItemDetail: NextPage = () => {
 
   const {
     data: chatRoomData,
-    error,
-    isLoading: chaRoomDataLoading,
-    refetch: refetchChatRoomData,
-  } = useQuery<ChatRoomResponse>(
-    ["chatRoomList", queryId], // 쿼리 키 (productId에 따라 달라짐)
-    () => axios.get(`/api/chatRoomList/product/${queryId}`),
+    error: errorChatRoom,
+    isLoading: isLoadingChatRoom,
+    isError: isErrorChatRoom,
+    refetch: refetchChatRoom,
+  } = useQuery(
+    ["chatRoomList", id], // 쿼리 키 (productId에 따라 달라짐)
+    () => getChatRoomsByProduct(id!),
     {
-      enabled: !!queryId, // query.id가 있을 때만 쿼리 실행
+      enabled: !!id, // query.id가 있을 때만 쿼리 실행
+      onSuccess: (data) => {
+        console.log("/api/chatRoomList/product--queryId:", id);
+        console.log("/api/chatRoomList/product--data:", JSON.stringify(data, null, 2));
+
+        console.log(
+          "/api/chatRoomList/product--data.chatRoomListWithUnreadCount: ",
+          data.chatRoomListWithUnreadCount
+        );
+      },
     }
   );
 
-  // const [toggleFav] = useMutation(`/api/products/${router.query.id}/fav`);
-  const toggleFavMutation = useMutation(() => axios.post(`/api/products/${router.query.id}/fav`), {
+  const {
+    mutate: toggleFavMutate,
+    error: errorFav,
+    isLoading: isLoadingFav,
+    isError: isErrorFav,
+  } = useMutation(writeToggleFav, {
     // mutation이 발생하기 전에 호출되어 optimistic UI 처리
     onMutate: async () => {
       // 현재 쿼리를 취소하여 새로운 데이터가 들어오기 전에 중복되지 않게 함
-      await queryClient.cancelQueries(["product", router.query.id]);
+      await queryClient.cancelQueries(["product", id]);
 
       // 캐시에서 현재 데이터를 가져옴
-      const previousData = queryClient.getQueryData<ItemDetailResponse>([
-        "product",
-        router.query.id,
-      ]);
+      const previousData = queryClient.getQueryData<ItemDetailResponse>(["product", id]);
 
       // optimistic하게 데이터를 업데이트
       if (previousData) {
-        queryClient.setQueryData(["product", router.query.id], {
+        queryClient.setQueryData(["product", id], {
           ...previousData,
           isLike: !previousData.isLike,
         });
@@ -135,56 +137,43 @@ const ItemDetail: NextPage = () => {
     // mutation 중 에러가 발생하면 optimistic 업데이트를 롤백
     onError: (error, variables, context) => {
       if (context?.previousData) {
-        queryClient.setQueryData(["product", router.query.id], context.previousData);
+        queryClient.setQueryData(["product", id], context.previousData);
       }
     },
     // 서버 요청이 완료되면 (성공 또는 실패) 데이터를 무효화하여 최신 상태로 업데이트
     onSettled: () => {
-      queryClient.invalidateQueries(["product", router.query.id]);
+      queryClient.invalidateQueries(["product", id]);
     },
   });
 
-  const toggleFav = () => {
-    toggleFavMutation.mutate();
-  };
-
   const {
     mutate: talkToSeller,
-    isLoading: talkToSellerLoading,
+    isLoading: isLoadingTalkToSeller,
+    isError: isErrorTalkToSeller,
+    error: errorTalkToSeller,
     data: talkToSellerData,
-  } = useMutation(
-    (chatData: { buyerId: number; sellerId: number; productId: number }) =>
-      axios.post(`/api/chatRoomList/`, chatData), // POST 요청
-    {
-      onSuccess: (data) => {
-        console.log("Chat initialized successfully", data);
-        // 성공 시 처리할 로직
-      },
-      onError: (error) => {
-        console.error("Error initializing chat", error);
-        // 에러 시 처리할 로직
-      },
-    }
-  );
+  } = useMutation(writeChatRoom, {
+    onSuccess: (data) => {
+      console.log("Chat initialized successfully", data);
+      // 성공 시 처리할 로직
+    },
+    onError: (error) => {
+      console.error("Error initializing chat", error);
+      // 에러 시 처리할 로직
+    },
+  });
 
   const handleChat = (buyerId: number, sellerId: number, productId: number) => {
     talkToSeller({ buyerId, sellerId, productId });
   };
 
-  // const [buyItem, { loading: buyItemLoading, data: buyItemData }] = useMutation(
-  //   `/api/products/${
-  //     router.query.id
-  //   }?seller=${data?.product?.userId.toString()}`
-  // );
-  const isProvider = data?.product?.userId === user?.id;
-  const isConsumer = data?.product?.userId !== user?.id;
   const onFavClick = () => {
     if (!data) return;
-    // boundMutate((prev) => prev && { ...prev, isLike: !prev.isLike }, false);
-    // unboundMutate("/api/users/me", (prev: any) => ({ ok: !prev.ok }), false);
-    toggleFav();
+    toggleFavMutate(id!);
   };
   const onChatRoomList = () => {
+    //console.log("onChatRoomList--chatRoomData: ", chatRoomData);
+
     // 1. 해당 chatRoom을 찾는다.
     //    해당 chatRoom을 찾는 방법: productId, 로그인한 user가 product.provider(product의 seller)인 chatRoom을 모두 찾는다.
     // 2. 해당 chatRoom이 없으면 toast message를 띄운다.
@@ -192,12 +181,17 @@ const ItemDetail: NextPage = () => {
     // 4. 해당 chatRoom이 한개 있으면 그 chatRoom으로 이동한다.
 
     // Check if chatRoomData is available from useQuery
-    if (!chatRoomData || chatRoomData.chatRoomListWithUnreadCount.length === 0) {
+    if (
+      !chatRoomData ||
+      !chatRoomData.chatRoomListWithUnreadCount ||
+      chatRoomData.chatRoomListWithUnreadCount.length === 0
+    ) {
       toast.success("대화 중인 채팅방이 없습니다.");
       return;
     }
 
     const chatRooms = chatRoomData.chatRoomListWithUnreadCount;
+    console.log("chatRooms: ", chatRooms);
 
     if (chatRooms.length === 1) {
       // If there's only one chat room, navigate directly to it
@@ -205,22 +199,16 @@ const ItemDetail: NextPage = () => {
     } else {
       // If there are multiple chat rooms, navigate to the chat room list page
       toast.success("채팅방이 여러개입니다. 채팅방 목록으로 이동합니다.");
-      router.push(`/chats?productId=${queryId}`);
+      router.push(`/chats?productId=${id}`);
     }
   };
 
   const onChatClick = () => {
     console.log("onChatClick clicked.");
-    if (talkToSellerLoading) return;
+    if (isLoadingTalkToSeller) return;
     //// login user가 buyer이고 product를 upload한 사람이 seller이다.
     // talkToSeller({ buyerId: user?.id, sellerId: data?.product.userId });
     // handleChat(user?.id, data?.product?.userId);
-    console.log(
-      "buyerId, sellerId, productId: ",
-      user?.id,
-      data?.product?.userId,
-      data?.product?.id
-    );
     if (user?.id && data?.product?.userId && data?.product?.id) {
       // talkToSeller({
       //   buyerId: user?.id,
@@ -255,20 +243,15 @@ const ItemDetail: NextPage = () => {
     router.push(`/products/${data?.product.id}/review`);
   };
   useEffect(() => {
-    if (talkToSellerData?.data && talkToSellerData?.data?.ok) {
-      talkToSellerData?.data?.chatRoom
-        ? router.push({
-            pathname: `/chats/${talkToSellerData?.data?.chatRoom?.id}`,
-            // query: {
-            //   buyerId: user?.id,
-            //   sellerId: data?.product.userId,
-            //   productId: data?.product.id,
-            // },
-          })
-        : router.push({
-            pathname: `/chats/${talkToSellerData?.data?.createChatRoom?.id}`,
-            // query: { productId: data?.product.id },
-          });
+    if (talkToSellerData && talkToSellerData.chatRoom) {
+      router.push({
+        pathname: `/chats/${talkToSellerData.chatRoom.id}`,
+        // query: {
+        //   buyerId: user?.id,
+        //   sellerId: data?.product.userId,
+        //   productId: data?.product.id,
+        // },
+      });
     }
   }, [router, talkToSellerData]);
 
@@ -309,6 +292,23 @@ const ItemDetail: NextPage = () => {
     }
   }, [error]);
 
+  const onChatRoom = () => {
+    console.log("Clicked");
+    router.push(`/chats/${chatRoom?.[0].id}`);
+  };
+
+  const isLoadingAny =
+    isLoading || isLoadingReservation || isLoadingChatRoom || isLoadingFav || isLoadingTalkToSeller;
+  const isErrorAny =
+    isError || isErrorReservation || isErrorChatRoom || isErrorFav || isErrorTalkToSeller;
+  const errorAny = error || errorReservation || errorChatRoom || errorFav || errorTalkToSeller;
+
+  const loadingOrError = handleLoadingAndError(isLoadingAny, isErrorAny, errorAny);
+  if (loadingOrError) return loadingOrError;
+
+  const isProvider = data?.product?.userId === user?.id;
+  const isConsumer = data?.product?.userId !== user?.id;
+
   const reserved = data?.product?.status === Status.Reserved ? true : false;
   const sold = data?.product?.status === Status.Sold ? true : false;
   const selling = !reserved && !sold;
@@ -321,20 +321,13 @@ const ItemDetail: NextPage = () => {
   const reservationUserName = reservationData?.reserve?.user?.name;
 
   const chatRoom = chatRoomData?.chatRoomListWithUnreadCount?.filter(
-    (chatRoom: ChatRoomWithUnreadCount) =>
-      chatRoom.productId === productId &&
-      chatRoom.sellerId === user?.id &&
-      chatRoom.buyerId === reservationData?.reserve?.user?.id
+    (chatRoom) =>
+      chatRoom.product.id === id &&
+      chatRoom.seller.id === user?.id &&
+      chatRoom.buyer.id === reservationData?.reserve?.user?.id
   );
 
-  const onChatRoom = () => {
-    console.log("Clicked");
-    router.push(`/chats/${chatRoom?.[0].id}`);
-  };
-
-  if (dataLoading || chaRoomDataLoading || reservationDataLoading) {
-    return <div>Loading...</div>;
-  }
+  console.log("chatRoomCount: ", chatRoomCount);
 
   return (
     <Layout seoTitle="댕댕마켓" title="댕댕마켓" canGoBack backUrl={"back"} openModal>
@@ -348,7 +341,7 @@ const ItemDetail: NextPage = () => {
             clsProps="object-scale-down"
             imgName={data?.product?.name}
           />
-          <div className="flex cursor-pointer items-center space-x-3 border-b border-t py-3">
+          <div className="flex items-center py-3 space-x-3 border-t border-b cursor-pointer">
             {data?.product?.user?.avatar ? (
               <ImgComponent
                 imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.product?.user?.avatar}/public`}
@@ -381,19 +374,19 @@ const ItemDetail: NextPage = () => {
                     const fillPercentage = Math.max(0, Math.min(100, (rating - index) * 100));
 
                     return (
-                      <div key={index} className="relative inline-block h-6 w-6">
+                      <div key={index} className="relative inline-block w-6 h-6">
                         {/* 회색 별 */}
                         <svg
                           viewBox="0 0 24 24"
                           fill="currentColor"
-                          className="h-full w-full text-gray-300"
+                          className="w-full h-full text-gray-300"
                         >
                           <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
                         </svg>
 
                         {/* 노란색 별 */}
                         <div
-                          className="absolute left-0 top-0 h-full overflow-hidden"
+                          className="absolute top-0 left-0 h-full overflow-hidden"
                           style={{
                             clipPath: `inset(0 ${100 - fillPercentage}% 0 0)`,
                           }}
@@ -401,7 +394,7 @@ const ItemDetail: NextPage = () => {
                           <svg
                             viewBox="0 0 24 24"
                             fill="currentColor"
-                            className="h-full w-full text-yellow-400"
+                            className="w-full h-full text-yellow-400"
                           >
                             <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
                           </svg>
@@ -435,7 +428,7 @@ const ItemDetail: NextPage = () => {
               ) : reserved && isProvider ? (
                 <div className="flex flex-row items-center gap-3">
                   <div className="text-base">{`${reservationUserName}가 예약중임`}</div>
-                  <button className="rounded-full bg-slate-200 p-2 text-sm" onClick={onChatRoom}>
+                  <button className="p-2 text-sm rounded-full bg-slate-200" onClick={onChatRoom}>
                     예약자와의 채팅방으로 이동
                   </button>
                 </div>
@@ -453,18 +446,18 @@ const ItemDetail: NextPage = () => {
             <h1 className="mt-4 text-3xl font-bold text-gray-900">
               {data ? data?.product?.name : "Now Loading..."}
             </h1>
-            <span className="mt-3 block text-3xl text-gray-900">
+            <span className="block mt-3 text-3xl text-gray-900">
               ￦{data ? data?.product?.price : "Now Loading..."}
             </span>
             <div className="my-3">
-              <div className="border-t py-3 text-xl font-bold">
+              <div className="py-3 text-xl font-bold border-t">
                 {/*@ts-ignore*/}
                 {data?.product?.productReviews?.length > 0 ? "Review" : "Description"}
               </div>
               {/*@ts-ignore*/}
               {data?.product?.productReviews?.length > 0 ? (
                 data?.product?.productReviews.map((review) => (
-                  <div key={review.id} className="flex flex-row justify-items-start space-x-12">
+                  <div key={review.id} className="flex flex-row space-x-12 justify-items-start">
                     <div className="flex flex-col items-center justify-center space-y-1">
                       {review.createdBy?.avatar ? (
                         <ImgComponent
@@ -475,11 +468,11 @@ const ItemDetail: NextPage = () => {
                           imgName={review.createdBy?.name}
                         />
                       ) : (
-                        <div className="h-12 w-12 rounded-full bg-slate-500" />
+                        <div className="w-12 h-12 rounded-full bg-slate-500" />
                       )}
                       <span className="font-medium text-gray-900">{review?.createdBy.name}</span>
                     </div>
-                    <div className="flex flex-row items-center justify-evenly space-x-20">
+                    <div className="flex flex-row items-center space-x-20 justify-evenly">
                       <div className="flex flex-col items-start">
                         <div className="flex items-center">
                           {[1, 2, 3, 4, 5].map((star) => (
@@ -522,10 +515,12 @@ const ItemDetail: NextPage = () => {
                 <Button
                   onClick={onChatRoomList}
                   large
-                  // text="대화 중인 채팅방"
                   text={
-                    chatRoomCount > 0 ? `대화 중인 채팅방: ${chatRoomCount}개` : "대화 중인 채팅방"
+                    chatRoomCount > 0
+                      ? `대화 중인 채팅방: ${chatRoomCount}개`
+                      : "대화 중인 채팅방이 없습니다."
                   }
+                  disabled={chatRoomCount <= 0}
                 />
               ) : (
                 <>
@@ -547,7 +542,7 @@ const ItemDetail: NextPage = () => {
                   {data?.isLike ? (
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="h-6 w-6"
+                      className="w-6 h-6"
                       viewBox="0 0 20 20"
                       fill="currentColor"
                     >
@@ -559,7 +554,7 @@ const ItemDetail: NextPage = () => {
                     </svg>
                   ) : (
                     <svg
-                      className="h-6 w-6 "
+                      className="w-6 h-6 "
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"

@@ -2,7 +2,6 @@ import type { GetServerSideProps, NextPage } from "next";
 import Layout from "@components/Layout";
 import useUser from "@libs/client/useUser";
 import { useRouter } from "next/router";
-//import useSWR from "swr";
 import {
   ChatRoom,
   Product,
@@ -13,32 +12,28 @@ import {
   User as PrismaUser,
 } from "@prisma/client";
 import { useForm } from "react-hook-form";
-// import useMutation from "@libs/client/useMutation";
 import Message from "@components/Message";
-import {
-  MutableRefObject,
-  useEffect,
-  useRef,
-  useState,
-  useMemo,
-  useLayoutEffect,
-  useCallback,
-} from "react";
+import { MutableRefObject, useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useIntersectionObserver } from "@libs/client/useIntersectionObserver";
 import { FiChevronsDown } from "react-icons/fi";
-import { cls } from "@libs/utils";
+import { cls, parseId } from "@libs/utils";
 import Loading from "@components/Loading";
 import ImgComponent from "@components/ImgComponent";
 import { getChatRoomData } from "@libs/server/chatUtils";
 import Dropdown from "@components/Dropdown";
-import io, { Socket } from "socket.io-client";
 import { useMutation, useQuery, useQueryClient } from "react-query";
 import axios from "axios";
 import useSocket from "@libs/client/useSocket";
 import dayjs from "@libs/dayjs";
-// import dayjs from "dayjs";
-// import "dayjs/locale/ko";
-// dayjs.locale("ko"); // 한국어 설정
+import { getChat, writeChatMessage } from "apiLibs/chats";
+import { handleLoadingAndError } from "@components/LoadingError";
+import {
+  getReservation,
+  getReviewWritable,
+  writeSellComplete,
+  writeToggleReservation,
+} from "apiLibs/products";
+import { ChatFormResponse } from "apiLibs/atypes";
 
 type Option = {
   value: string;
@@ -50,41 +45,28 @@ export type User = PrismaUser & {
   writtenReviews: Review[];
 };
 
-interface ChatWithUser extends SellerChat {
-  user: User;
-}
-
-interface ReservationWithUser extends Reservation {
-  user: User;
-}
-
-interface ReservationResponse {
-  ok: boolean;
-  isReserved: boolean;
-  reserve: ReservationWithUser;
-}
-
 interface ReviewWritableResponse {
   ok: boolean;
   error?: string;
   message?: string;
 }
 
-interface SellerChatResponse {
-  ok: boolean;
-  sellerChat: ChatWithUser[];
-  chatRoomOfSeller: {
-    buyerId: number;
-    sellerId: number;
-    productId: number;
-    buyer: User;
-    seller: User;
-    product: Product;
-  };
-}
-interface ChatFormResponse {
-  chatMsg: string;
-}
+// interface SellerChatResponse {
+//   ok: boolean;
+//   sellerChat: ChatWithUser[];
+//   chatRoomOfSeller: {
+//     buyerId: number;
+//     sellerId: number;
+//     productId: number;
+//     buyer: User;
+//     seller: User;
+//     product: Product;
+//   };
+// }
+
+// interface ChatFormResponse {
+//   chatMsg: string;
+// }
 
 interface ChatRoomWithDetails extends ChatRoom {
   buyer: User;
@@ -104,42 +86,28 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   const [newMessageSubmitted, setNewMessageSubmitted] = useState(false);
   const { user } = useUser();
-  const router = useRouter();
   const queryClient = useQueryClient();
   const [socket, disconnectSocket] = useSocket(workspace);
-
-  //// router.query.id: chatRoom id
-  //// chatRoom list 가져오기
-  // const { buyerId, sellerId, productId } = router.query;
-  // console.log(
-  //   "chats.id.tsx -------- buyerId, sellerId, productId: ",
-  //   buyerId,
-  //   sellerId,
-  //   productId
-  // );
-  // const { data, mutate } = useSWR<SellerChatResponse>(
-  //   router.query.id ? `/api/chat/${router.query.id}` : null,
-  //   { refreshInterval: 300000 }
-  // );
-
-  // axios를 사용해 데이터를 가져오는 함수
-  const fetchChatData = async () => {
-    const response = await axios.get(`/api/chat/${router.query.id}`);
-    return response.data;
-  };
+  const router = useRouter();
+  const id = (router.query.id !== undefined ? parseId(router.query.id) : 0) ?? 0;
 
   const {
     data,
     isLoading,
-    error: queryError,
+    isError,
+    error,
     refetch, // 데이터를 수동으로 패칭할 수 있는 함수
   } = useQuery(
-    ["chat", router.query.id], // 쿼리 키
+    ["chat", id], // 쿼리 키
     // () => fetch(`/api/chat/${router.query.id}`).then((res) => res.json()), // 데이터 패칭 함수
-    fetchChatData,
+    () => getChat(id!), // id가 undefined가 아닌 경우에만 호출
     {
-      enabled: !!router.query.id, // id가 있을 때만 쿼리를 실행
+      enabled: id !== undefined, // id가 있을 때만 쿼리를 실행
       refetchInterval: 300000, // 5분마다 데이터 재패칭
+      // onSuccess: (data) => {
+      //   console.log("/api/chat/${router.query.id}--router.query.id:", router.query.id);
+      //   console.log("/api/chat/${router.query.id}--data:", data);
+      // },
     }
   );
 
@@ -162,39 +130,35 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   const isProvider = data?.chatRoomOfSeller?.sellerId === user?.id;
   const isConsumer = data?.chatRoomOfSeller?.buyerId === user?.id;
+  const reviewType = isProvider ? "SellerReview" : "BuyerReview";
 
-  const fetchReservation = async (productId: string) => {
-    const { data } = await axios.get(`/api/products/${productId}/reservation`);
-    return data;
-  };
+  // const fetchReservation = async (productId: string) => {
+  //   const { data } = await axios.get(`/api/products/${productId}/reservation`);
+  //   return data;
+  // };
 
   const productId = data?.chatRoomOfSeller?.productId;
+  const buyerId = data?.chatRoomOfSeller?.buyerId;
 
   const {
     data: reservationData,
-    isLoading: isFetchingReservation,
-    isError,
-  } = useQuery(["reservation", productId], () => fetchReservation(productId), {
-    enabled: !!router.query.id && !!productId,
+    isLoading: isLoadingReservation,
+    isError: isErrorReservation,
+    error: errorReservation,
+  } = useQuery(["reservation", productId], () => getReservation(productId!), {
+    enabled: productId !== undefined,
   });
 
-  const reviewType = isProvider ? "SellerReview" : "BuyerReview";
-
-  const fetchReviewWritable = async (url: string) => {
-    const { data } = await axios.get(url);
-    return data;
-  };
-
-  const url =
-    router.query.id && data?.chatRoomOfSeller?.productId
-      ? `/api/products/${data?.chatRoomOfSeller?.productId}/checkReviewWritable?createdForId=${otherId}&reviewType=${reviewType}`
-      : null;
-
-  const { data: reviewWritableData, error } = useQuery(
-    ["reviewWritable", url],
-    () => fetchReviewWritable(url!),
+  const {
+    data: reviewWritableData,
+    isLoading: isLoadingReviewWritable,
+    isError: isErrorReviewWritable,
+    error: errorReviewWritable,
+  } = useQuery(
+    ["reviewWritable", productId, otherId, reviewType],
+    () => getReviewWritable({ productId: productId!, otherId: otherId!, reviewType }),
     {
-      enabled: !!url, // url이 있을 때만 쿼리를 실행
+      enabled: !!id && !!productId && !!otherId, // 모든 값이 있을 때만 쿼리를 실행
     }
   );
 
@@ -225,7 +189,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   };
 
   const { register, handleSubmit, reset } = useForm<ChatFormResponse>();
-  const {
+
+  /*   const {
     mutate: sendChat,
     isLoading: sendChatDataLoading,
     data: sendChatData,
@@ -261,52 +226,85 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         queryClient.invalidateQueries(["chat", router.query.id]); // 쿼리 무효화
       },
     }
-  );
+  ); */
 
-  const toggleReservation = async ({
-    productId,
-    buyerId,
-  }: {
-    productId: number;
-    buyerId: number;
-  }) => {
-    const { data } = await axios.post(`/api/products/${productId}/reservation`, { buyerId });
-    return data;
-  };
+  const {
+    mutate: sendChat,
+    isLoading: isLoadingSendChat,
+    isError: isErrorSendChat,
+    error: errorSendChat,
+    data: sendChatData,
+  } = useMutation(writeChatMessage, {
+    // 뮤테이션이 시작되기 전에 실행
+    onMutate: async (params: { chatForm: ChatFormResponse; chatId: number }) => {
+      await queryClient.cancelQueries(["chat", params.chatId]);
+      const previousChatData = queryClient.getQueryData(["chat", params.chatId]);
+      queryClient.setQueryData(["chat", params.chatId], (prev: any) => {
+        if (prev) {
+          const newMessage = {
+            id: Date.now(),
+            chatMsg: params.chatForm.chatMsg + "test",
+            user: { ...user },
+            userId: user?.id,
+          };
+          return {
+            ...prev,
+            sellerChat: [...prev.sellerChat, newMessage],
+          };
+        }
+        return prev;
+      });
+      return { previousChatData };
+    },
+    // 뮤테이션이 실패했을 때 실행
+    onError: (error, variables, context) => {
+      if (context?.previousChatData) {
+        queryClient.setQueryData(["chat", variables.chatId], context.previousChatData); // 이전 데이터로 롤백
+      }
+    },
+    // 뮤테이션이 성공하거나 실패한 후에 실행
+    onSettled: () => {
+      queryClient.invalidateQueries(["chat", id]); // 쿼리 무효화
+    },
+  });
 
-  const { mutate: toggleReservationMutate } = useMutation(
-    (variables: { productId: number; buyerId: number }) => toggleReservation(variables),
-    {
-      onSuccess: () => {
-        // 쿼리 무효화하여 최신 데이터로 갱신
-        queryClient.invalidateQueries("reservation");
-      },
-    }
-  );
+  const {
+    mutate: toggleReservationMutate,
+    isLoading: isLoadingToggleReservation,
+    isError: isErrorToggleReservation,
+    error: errorToggleReservation,
+  } = useMutation(writeToggleReservation, {
+    onSuccess: () => {
+      // 쿼리 무효화하여 최신 데이터로 갱신
+      queryClient.invalidateQueries("reservation");
+    },
+  });
 
-  const sellComplete = async ({ productId, buyerId }: { productId: number; buyerId: number }) => {
-    const { data } = await axios.post(`/api/products/${productId}`, {
-      buyerId,
-    });
-    return data;
-  };
+  // const sellComplete = async ({ productId, buyerId }: { productId: number; buyerId: number }) => {
+  //   const { data } = await axios.post(`/api/products/${productId}`, {
+  //     buyerId,
+  //   });
+  //   return data;
+  // };
 
-  const { mutate: sellCompleteMutate } = useMutation(
-    (variables: { productId: number; buyerId: number }) => sellComplete(variables),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(["chat", router.query.id]); // 판매 완료 후 데이터 갱신
-      },
-    }
-  );
+  const {
+    mutate: sendSellComplete,
+    isLoading: isLoadingSendSellComplete,
+    isError: isErrorSendSellComplete,
+    error: errorSendSellComplete,
+  } = useMutation(writeSellComplete, {
+    onSuccess: () => {
+      queryClient.invalidateQueries(["chat", id]); // 판매 완료 후 데이터 갱신
+    },
+  });
 
   const onValid = (chatForm: ChatFormResponse) => {
-    if (sendChatDataLoading) return;
+    if (isLoadingSendChat) return;
     reset();
 
     setNewMessageSubmitted(true);
 
-    sendChat(chatForm); // mutate에서 option을 false로 하였기 때문에 서버의 데이터가 아직 업데이트되지 않았으므로 지금 여기서 서버의 데이터를 업데이트한다.
+    sendChat({ chatForm, chatId: id }); // mutate에서 option을 false로 하였기 때문에 서버의 데이터가 아직 업데이트되지 않았으므로 지금 여기서 서버의 데이터를 업데이트한다.
   };
 
   // useEffect(() => {
@@ -343,11 +341,10 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   useEffect(() => {
     if (socket) {
       socket?.on("message", (message: any) => {
-        //console.log("message received: ", message);
-        //console.log("to do: mutate()를 useQuery function으로 대체한다.");
-        refetch();
-        // mutate();
-        //setChat((chat) => [...chat, message]);
+        // 해당 chatRoom에서만 refetch하도록...
+        if (router.query.id && message.channelId === +router.query.id) {
+          refetch();
+        }
       });
     }
     return () => {
@@ -392,21 +389,25 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     //console.log("selectedValue: ", selectedValue);
     //console.log("reserved: ", reserved);
     // console.log("sold: ", sold);
+    if (productId === undefined || buyerId === undefined) {
+      //console.error("Product ID or Buyer ID is undefined");
+      return;
+    }
     if (selling) {
       // 로그인 유저가 파는 사람이고 구매자가 예약 하겠다고 하면 예약중으로 변경한다.
       if (selectedValue === "예약중") {
         //console.log("api to do: 예약중");
         toggleReservationMutate({
-          productId: data?.chatRoomOfSeller?.productId,
-          buyerId: data?.chatRoomOfSeller?.buyerId,
+          productId,
+          buyerId,
         });
       }
       // 로그인 유저가 파는 사람이고 구매자가 예약중이면 구매자의 예약을 제거하고 구매자에게 판매 완료한다.
       if (selectedValue === "거래완료") {
         //console.log("api to do: 거래완료");
-        sellCompleteMutate({
-          productId: data?.chatRoomOfSeller?.productId,
-          buyerId: data?.chatRoomOfSeller?.buyerId,
+        sendSellComplete({
+          productId,
+          buyerId,
         });
       }
     } else if (reserved) {
@@ -414,15 +415,15 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         // 로그인 유저가 파는 사람이고 구매자가 예약중인 상태에서 구매자의 예약을 취소한다.
         //console.log("api to do: 예약중에서 판매중으로 바뀌도록 한다.");
         toggleReservationMutate({
-          productId: data?.chatRoomOfSeller?.productId,
-          buyerId: data?.chatRoomOfSeller?.buyerId,
+          productId,
+          buyerId,
         });
       } else if (selectedValue === "거래완료") {
         // 로그인 유저가 파는 사람이고 구매자가 예약중이면 구매자의 예약을 제거하고 구매자에게 판매 완료한다.
         //console.log("api to do: 거래완료");
-        sellCompleteMutate({
-          productId: data?.chatRoomOfSeller?.productId,
-          buyerId: data?.chatRoomOfSeller?.buyerId,
+        sendSellComplete({
+          productId,
+          buyerId,
         });
       } else if (selectedValue === "거래완료") {
         // 거래 완료시 거래 완료 선택시 할일 없음
@@ -432,7 +433,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     setSelectedValue("");
     // reservationMutate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedValue, reserved, sold, data?.chatRoomOfSeller?.buyerId]);
+  }, [selectedValue, reserved, sold, productId, buyerId]);
 
   const chatUserId =
     data?.chatRoomOfSeller?.buyerId === user?.id
@@ -533,8 +534,30 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     }
   }
 
-  if (isLoading) return <div>Loading...</div>;
-  if (queryError instanceof Error) return <div>Error: {queryError.message}</div>;
+  const isLoadingAny =
+    isLoading ||
+    isLoadingReservation ||
+    isLoadingReviewWritable ||
+    isLoadingSendChat ||
+    isLoadingToggleReservation ||
+    isLoadingSendSellComplete;
+  const isErrorAny =
+    isError ||
+    isErrorReservation ||
+    isErrorReviewWritable ||
+    isErrorSendChat ||
+    isErrorToggleReservation ||
+    isErrorSendSellComplete;
+  const errorAny =
+    error ||
+    errorReservation ||
+    errorReviewWritable ||
+    errorSendChat ||
+    errorToggleReservation ||
+    errorSendSellComplete;
+
+  const loadingOrError = handleLoadingAndError(isLoadingAny, isErrorAny, errorAny);
+  if (loadingOrError) return loadingOrError;
 
   let lastMessageDate: string | null = null; // 마지막으로 표시된 날짜
 
@@ -548,11 +571,11 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       backUrl={"back"}
     >
       <div className="relative h-full px-4 pb-12">
-        <div className="w-full max-w-xl border-b border-gray-200 bg-red-200 p-4">
+        <div className="w-full max-w-xl p-4 bg-red-200 border-b border-gray-200">
           <div
-            className="flex cursor-pointer items-center"
+            className="flex items-center cursor-pointer"
             onClick={() => {
-              router.push(`/products/${data?.chatRoomOfSeller?.productId}`);
+              router.push(`/products/${productId}`);
             }}
           >
             <div className="flex items-center space-x-4">
@@ -583,9 +606,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               </div>
             </div>
           </div>
-          <div className="mt-2 flex flex-row justify-between">
+          <div className="flex flex-row justify-between mt-2">
             <div
-              className="text-md cursor-pointer rounded-md border border-black p-1"
+              className="p-1 border border-black rounded-md cursor-pointer text-md"
               onClick={() => {
                 console.log("약속잡기가 클릭 되었습니다.");
               }}
@@ -593,7 +616,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               약속잡기
             </div>
             <div
-              className="text-md cursor-pointer rounded-md border border-black p-1"
+              className="p-1 border border-black rounded-md cursor-pointer text-md"
               onClick={() => {
                 console.log("송금요청이 클릭 되었습니다.");
               }}
@@ -616,7 +639,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               {`${isProvider ? "판매" : "구매"} 후기 보내기`}
             </button>
             <div
-              className="text-md cursor-pointer rounded-md border border-black p-1"
+              className="p-1 border border-black rounded-md cursor-pointer text-md"
               onClick={() => {
                 console.log("장소공유가 클릭 되었습니다.");
               }}
@@ -624,7 +647,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               장소공유
             </div>
             <div
-              className="text-md cursor-pointer rounded-md border border-black p-1"
+              className="p-1 border border-black rounded-md cursor-pointer text-md"
               onClick={() => {
                 console.log("기타가 클릭 되었습니다.");
               }}
@@ -656,18 +679,18 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                     messageRefs.current.delete(message.id);
                   }
                 }}
-                className="border-b border-gray-200 p-4"
+                className="p-4 border-b border-gray-200"
               >
                 {/* 날짜 툴팁 */}
                 {showTooltip && tooltipDate && (
-                  <div className="fixed left-1/2 top-2 z-20 -translate-x-1/2 transform rounded-full bg-gray-600 bg-opacity-20 px-4 py-2 text-sm text-white">
+                  <div className="fixed z-20 px-4 py-2 text-sm text-white transform -translate-x-1/2 bg-gray-600 rounded-full left-1/2 top-2 bg-opacity-20">
                     {tooltipDate}
                   </div>
                 )}
                 {/* 날짜 변경 시 날짜 표시 */}
                 {showDate && (
-                  <div className="my-2 text-center text-sm text-white">
-                    <span className="rounded-full bg-gray-400 px-4">
+                  <div className="my-2 text-sm text-center text-white">
+                    <span className="px-4 bg-gray-400 rounded-full">
                       {dayjs(message.createdAt).format("YYYY년 MM월 DD일 dddd")}
                     </span>
                   </div>
@@ -713,8 +736,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               </div>
             </div>
           </form> */}
-          <form onSubmit={handleSubmit(onValid)} className="mt-10 w-full border-t px-1 py-1">
-            <div className="relative w-full rounded-md bg-white px-2 py-2 outline-none">
+          <form onSubmit={handleSubmit(onValid)} className="w-full px-1 py-1 mt-10 border-t">
+            <div className="relative w-full px-2 py-2 bg-white rounded-md outline-none">
               <input
                 {...register("chatMsg", { required: true, maxLength: 80 })}
                 maxLength={80}
@@ -728,7 +751,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                 type="submit"
                 className="absolute bottom-3 right-3 flex h-8 items-end rounded-md bg-orange-400 px-4 py-1.5 text-sm text-white hover:bg-orange-500"
               >
-                {sendChatDataLoading === true ? (
+                {isLoadingSendChat === true ? (
                   <div>
                     <Loading color="" size={12} />
                   </div>

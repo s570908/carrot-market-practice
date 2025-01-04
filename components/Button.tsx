@@ -1,17 +1,21 @@
 import { cls } from "@libs/utils";
+
 interface ButtonProps {
   large?: boolean;
   text: string;
+  disabled?: boolean;
   [key: string]: any;
 }
-const Button = ({ text, large, ...rest }: ButtonProps) => {
-  //console.log("Button--text, large, rest: ", text, large, rest);
+
+const Button = ({ text, large, disabled, ...rest }: ButtonProps) => {
   return (
     <button
       {...rest}
+      disabled={disabled}
       className={cls(
         "w-full rounded-md border border-transparent bg-orange-500 px-4 font-medium text-white shadow-sm hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2",
-        large ? "py-3 text-base" : "mt-6 py-2 text-sm"
+        large ? "py-3 text-base" : "mt-6 py-2 text-sm",
+        disabled ? "cursor-not-allowed opacity-90" : ""
       )}
     >
       {text}

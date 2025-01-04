@@ -32,7 +32,7 @@ const Upload: NextPage = () => {
     if (photo && photo.length > 0) {
       const { uploadURL } = await (await fetch(`/api/files`)).json(); // cloudflare에서 업로드할 url을 얻어온다.
       const form = new FormData();
-      form.append("file", photo[0], name);  // form을 file 타입으로 만들고 photo[0]를 블랍(binary large object) 입력으로 사용하고 파일명을 name으로 사용한다.
+      form.append("file", photo[0], name); // form을 file 타입으로 만들고 photo[0]를 블랍(binary large object) 입력으로 사용하고 파일명을 name으로 사용한다.
       const {
         result: { id },
       } = await (
@@ -40,7 +40,7 @@ const Upload: NextPage = () => {
           method: "POST",
           body: form,
         })
-      ).json();      // 이미지 폼을 uploadURL에 업로드한다. 업로드된 이미지의 URL을 id로 받는다.
+      ).json(); // 이미지 폼을 uploadURL에 업로드한다. 업로드된 이미지의 URL을 id로 받는다.
       uploadProduct({ name, price, description, photoId: id }); // 이미지의 URL인 id를 name, price, description을 함께 backend에 기록한다.
     } else {
       uploadProduct({ name, price, description });
@@ -50,12 +50,12 @@ const Upload: NextPage = () => {
     //   const form = new FormData();
 
     //   // https://javascript.info/formdata
-    //   /*       
+    //   /*
     //   formData.append("image", imageBlob, "image.png");
-      
-    //   That’s same as if there were <input type="file" name="image"> in the form, 
+
+    //   That’s same as if there were <input type="file" name="image"> in the form,
     //   and the visitor submitted a file named "image.png" (3rd argument) with the data imageBlob (2nd argument) from their filesystem.
-    //   The server reads form data and the file, as if it were a regular form submission. 
+    //   The server reads form data and the file, as if it were a regular form submission.
     //   */
     //   form.append("file", photo[0], name); // file: 타입, photo[0]: image blob, name: file name
     //   const result = await (
@@ -73,7 +73,7 @@ const Upload: NextPage = () => {
   useEffect(() => {
     if (data?.ok) {
       // 업로드가 잘 되었다면 ....
-      router.push(`/products/${data.products.id}`);
+      router.replace(`/products/${data.products.id}`);
     }
   }, [data, router]);
   const photo = watch("photo");
