@@ -42,6 +42,7 @@ import {
   writeStreamMessage,
 } from "apiLibs/streams";
 import { videoClient } from "apiLibs/aclient";
+import { handleLoadingAndError } from "@components/LoadingError";
 
 const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) => {
   const { user } = useUser();
@@ -124,9 +125,11 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
   // };
 
   const {
-    mutate: streamDeleteMutation,
+    mutate: streamDelete,
     data: streamDeleteData,
-    isLoading: streamDeleteLoading,
+    isLoading: isLoadingStreamDelete,
+    isError: isErrorStreamDelete,
+    error: errorStreamDelete,
   } = useMutation(deleteStream, {
     onSuccess: () => {
       console.log("Stream deleted successfully");
@@ -151,7 +154,12 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
   //   return data;
   // };
 
-  const { data: streamData } = useQuery(
+  const {
+    data: streamData,
+    isLoading,
+    isError,
+    error,
+  } = useQuery(
     ["stream", id], // 쿼리 키 설정
     () => getStreamDetail(id!), // id를 안전하게 number로 변환
     {
@@ -165,7 +173,12 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
   //   return data;
   // };
 
-  const { data: viewsData } = useQuery<ViewsResult>(
+  const {
+    data: viewsData,
+    isLoading: isLoadingViews,
+    isError: isErrorViews,
+    error: errorViews,
+  } = useQuery<ViewsResult>(
     ["views", streamData?.stream?.cloudflareId], // 쿼리 키로 cloudflareId를 사용
     () => getViews(streamData?.stream?.cloudflareId!), // 데이터를 가져오는 함수
     {
@@ -181,8 +194,9 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
 
   const {
     data: lifecycleData,
-    isLoading,
-    error,
+    isLoading: isLoadingLifecycle,
+    isError: isErrorLifecycle,
+    error: errorLifecycle,
   } = useQuery<LifecycleResult>(
     ["lifecycle", streamData?.stream?.cloudflareId], // 쿼리 키로 cloudflareId를 사용
     () => getLifecycle(streamData?.stream?.cloudflareId!), // 데이터를 가져오는 함수
@@ -211,13 +225,13 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
   };
 
   const handleDeleteStream = async () => {
-    if (streamDeleteLoading === true) {
+    if (isLoadingStreamDelete === true) {
       return;
     }
     if (typeof router.query.id === "string") {
-      streamDeleteMutation(router.query.id); // id를 문자열로 전달
+      streamDelete(router.query.id); // id를 문자열로 전달
     } else if (Array.isArray(router.query.id)) {
-      streamDeleteMutation(router.query.id[0]); // id가 배열일 경우 첫 번째 요소 사용
+      streamDelete(router.query.id[0]); // id가 배열일 경우 첫 번째 요소 사용
     } else {
       console.error("Invalid stream ID");
     }
@@ -261,6 +275,19 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
     scrollToBottom(scrollRef);
     setNewMessageSubmitted(false);
   }, [isScrollToBottom]);
+
+  const isLoadingAny =
+    isLoading ||
+    isLoadingStreamMessageAdd ||
+    isLoadingStreamDelete ||
+    isLoadingViews ||
+    isLoadingLifecycle;
+  const isErrorAny =
+    isError || isErrorStreamMessageAdd || isErrorStreamDelete || isErrorViews || isErrorLifecycle;
+  const errorAny =
+    error || errorStreamMessageAdd || errorStreamDelete || errorViews || errorLifecycle;
+  const loadingOrError = handleLoadingAndError(isLoadingAny, isErrorAny, errorAny);
+  if (loadingOrError) return loadingOrError;
 
   return (
     <Layout
@@ -306,7 +333,7 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
                   <DeleteButton
                     onClick={handleDeleteStream}
                     text="스트림 삭제"
-                    loading={streamDeleteLoading}
+                    loading={isLoadingStreamDelete}
                   />
                   <button
                     onClick={handleToggleStreamInfo}
