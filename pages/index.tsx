@@ -172,7 +172,7 @@ const Home: NextPage = () => {
                 title={product.name}
                 price={product.price}
                 hearts={product._count?.favs}
-                photo={product.images[0]?.imageId}
+                photo={product?.images[0]?.imageId}
                 isLike={product.favs
                   .map((uid: User) => (uid.userId === user?.id ? true : false))
                   .includes(true)}

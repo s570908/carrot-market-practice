@@ -5,7 +5,7 @@ import Layout from "@components/Layout";
 import TextArea from "@components/TextArea";
 import { useForm } from "react-hook-form";
 // import useMutation from "@libs/client/useMutation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Product } from "@prisma/client";
 import { useRouter } from "next/router";
 import useUser from "@libs/client/useUser";
@@ -91,13 +91,17 @@ const Upload: NextPage = () => {
   const { register, handleSubmit, watch } = useForm<UploadProductForm>();
   // const [preview, setPreview] = useState([]); // 프리뷰 이미지 배열
   const [previewImages, setPreviewImages] = useState<PreviewImage[]>([]);
-  const sensors = useSensors(useSensor(PointerSensor)); // PointerSensor 사용
-
+  // 기본 센서 설정
+  const [isDragEnabled, setIsDragEnabled] = useState(true); // 드래그 모드 활성화 여부
+  const pointerSensor = useSensor(PointerSensor, {
+    // 드래그 모드가 비활성화되었을 때 동작하지 않도록 설정
+    activationConstraint: isDragEnabled ? undefined : { distance: 9999 },
+  });
+  const sensors = useSensors(pointerSensor); // sensors 설정
   const maxImages = 10;
   const [previewPerView, setPreviewPerView] = useState(3); // 한 번에 표시할 프리뷰 이미지 개수
   const [initialPreview, setInitialPreview] = useState([]); // 초기 로딩된 프리뷰
   const [deletedCLImage, setDeletedCLImage] = useState([]); // 삭제된 Cloudflare 이미지 배열
-  const [isDragEnabled, setIsDragEnabled] = useState(true); // 드래그 모드 활성화 여부
   const [formSize, setFormSize] = useState({ width: 0, height: 0 }); // form 크기 저장
 
   // const [uploadProduct, { loading, data }] = useMutation<UploadProductMutation>("/api/products");
@@ -124,7 +128,7 @@ const Upload: NextPage = () => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
       const newImages: PreviewImage[] = files.map((file, index) => ({
-        id: `image-${Date.now()}-${index}`, // 고유 ID 생성
+        id: `local-${Date.now()}-${index}`,
         kind: "Local", // 새로 추가된 이미지는 항상 Local
         url: URL.createObjectURL(file),
         file,
@@ -183,7 +187,7 @@ const Upload: NextPage = () => {
       }
 
       // 3. 업로드된 이미지 데이터로 상태 업데이트
-      setPreviewImages(updatedImages);
+      // setPreviewImages(updatedImages);
 
       return updatedImages;
     } catch (error) {
@@ -237,11 +241,18 @@ const Upload: NextPage = () => {
       ...data,
       images, // 이미지 정보 배열 포함
     };
+    console.log("onValid 호출");
     mutate(uploadProductData);
   };
 
+  // useEffect로 이미지 개수 감시 및 isDragEnabled 업데이트
   useEffect(() => {
-    console.log("useEffect--------data: ", data);
+    if (previewImages.length === 1) {
+      setIsDragEnabled(false);
+    }
+  }, [previewImages]);
+
+  useEffect(() => {
     if (data?.ok) {
       // 업로드가 잘 되었다면 ....
       router.push(`/products/${data.products.id}`);
@@ -265,7 +276,7 @@ const Upload: NextPage = () => {
     <Layout seoTitle="상품 올리기" canGoBack title="상품 올리기" backUrl="back">
       <form className="space-y-4 p-4" onSubmit={handleSubmit(onValid)}>
         <DndContext
-          sensors={isDragEnabled ? sensors : []}
+          sensors={sensors}
           collisionDetection={isDragEnabled ? closestCenter : undefined}
           onDragEnd={isDragEnabled ? handleDragEnd : undefined}
         >
@@ -295,41 +306,40 @@ const Upload: NextPage = () => {
                 </label>
               </div>
               {/* 탭 컨테이너 */}
-              {previewImages.length > 0 && (
+              {previewImages.length > 1 && (
                 <div className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-md bg-gray-200 p-2">
                   {/* 프리뷰 이미지가 1개일 경우 "삭제하기"만 표시 */}
-                  {previewImages.length === 1 ? (
+                  <>
+                    {/* 프리뷰 이미지가 2개 이상일 경우 "순서변경"과 "삭제하기" 표시 */}
                     <button
-                      onClick={() => setIsDragEnabled(false)} // 삭제 모드
-                      className="w-full rounded-md border border-blue-500 bg-white px-1 py-2 text-xs text-blue-500"
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault(); // 이벤트 전파 방지
+                        setIsDragEnabled(true);
+                      }} // 드래그 모드 활성화
+                      className={`w-full rounded-md px-1 py-2 text-xs ${
+                        isDragEnabled
+                          ? "border border-blue-500 bg-white text-blue-500"
+                          : "text-gray-500"
+                      }`}
+                    >
+                      순서변경
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault(); // 이벤트 전파 방지
+                        setIsDragEnabled(false);
+                      }} // 드래그 모드 비활성화
+                      className={`w-full rounded-md px-1 py-2 text-xs ${
+                        !isDragEnabled
+                          ? "border border-blue-500 bg-white text-blue-500"
+                          : "text-gray-500"
+                      }`}
                     >
                       삭제하기
                     </button>
-                  ) : (
-                    <>
-                      {/* 프리뷰 이미지가 2개 이상일 경우 "순서변경"과 "삭제하기" 표시 */}
-                      <button
-                        onClick={() => setIsDragEnabled(true)} // 드래그 모드 활성화
-                        className={`w-full rounded-md px-1 py-2 text-xs ${
-                          isDragEnabled
-                            ? "border border-blue-500 bg-white text-blue-500"
-                            : "text-gray-500"
-                        }`}
-                      >
-                        순서변경
-                      </button>
-                      <button
-                        onClick={() => setIsDragEnabled(false)} // 드래그 모드 비활성화
-                        className={`w-full rounded-md px-1 py-2 text-xs ${
-                          !isDragEnabled
-                            ? "border border-blue-500 bg-white text-blue-500"
-                            : "text-gray-500"
-                        }`}
-                      >
-                        삭제하기
-                      </button>
-                    </>
-                  )}
+                  </>
                 </div>
               )}
             </div>
@@ -341,7 +351,6 @@ const Upload: NextPage = () => {
               >
                 <div className="grid grid-cols-5 gap-4">
                   {previewImages.map((image, index) => {
-                    console.log("image----------", image);
                     return (
                       <SortableItem key={image.id} id={image.id}>
                         <div className="relative h-20 w-20 rounded-md border border-gray-300">
@@ -356,7 +365,7 @@ const Upload: NextPage = () => {
                           />
                           {/* index가 0일 때 "대표사진" 표시 */}
                           {index === 0 && (
-                            <div className="absolute bottom-0 left-0 z-20 flex h-6 w-full items-center justify-center bg-black text-xs font-bold text-white">
+                            <div className="absolute bottom-0 left-0 w-full rounded-bl-md rounded-br-md bg-black py-1 text-center text-xs font-bold text-white">
                               대표사진
                             </div>
                           )}
@@ -368,10 +377,6 @@ const Upload: NextPage = () => {
                                 e.stopPropagation();
                                 e.preventDefault();
                                 handleImageDelete(image.id);
-                              }}
-                              onMouseDown={(e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
                               }}
                               className="absolute right-0 top-0 z-10 flex h-6 w-6 translate-x-[50%] translate-y-[-50%] items-center justify-center rounded-full bg-black text-white shadow-lg"
                             >

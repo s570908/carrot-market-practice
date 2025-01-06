@@ -55,6 +55,7 @@ const ImgComponent = ({
             layout="fill"
             className={clsProps}
             alt={imgName}
+            priority
           />
         ) : (
           <Image
@@ -63,6 +64,7 @@ const ImgComponent = ({
             height={height}
             className={clsProps}
             alt={imgName}
+            priority
           />
         )}
       </div>

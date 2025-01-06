@@ -735,7 +735,7 @@ const ItemDetail: NextPage = () => {
                   <Link href={`/products/${product.id}`} key={product.id}>
                     <a className="cursor-pointer">
                       <ImgComponent
-                        imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${product?.images[0].imageId}/public`}
+                        imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${product?.images[0]?.imageId}/public`}
                         isLayout={true}
                         layoutHeight="h-56"
                         clsProps="mt-6 mb-4 bg-slate-300"

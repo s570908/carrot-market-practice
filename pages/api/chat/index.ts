@@ -100,7 +100,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
               id: true,
               userId: true,
               name: true,
-              images: true,
+              images: { // ProductImage 모델의 이미지 데이터 포함
+                select: {
+                  id: true,
+                  imageId: true,
+                },
+              },
               price: true,
               status: true,
             },
