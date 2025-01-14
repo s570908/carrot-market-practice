@@ -18,6 +18,7 @@ interface LayoutProps {
   isProfile?: boolean;
   notice?: boolean;
   openModal?: boolean;
+  userId?: number; // 제품 소유자의 ID를 받을 prop 추가
   [key: string]: any;
 }
 
@@ -43,6 +44,7 @@ export default function Layout({
   isProfile,
   notice,
   openModal,
+  userId, // userId prop 추가
   ...rest
 }: LayoutProps) {
   const { user } = useUser();
@@ -76,6 +78,10 @@ export default function Layout({
   }, [data, user]);
 
   const titleHead = `${seoTitle} | Carrot Market`;
+
+  // 현재 사용자가 제품 소유자인지 확인
+  const isOwner = user?.id === userId;
+
   return (
     <div>
       <Head>
@@ -113,7 +119,7 @@ export default function Layout({
             </a>
           </Link>
         ) : null}
-        {openModal ? (
+        {openModal && isOwner ? (
           <div className="">
             <div>
               <IoEllipsisVerticalSharp
@@ -128,7 +134,7 @@ export default function Layout({
                     <div
                       className="mb-2"
                       onClick={() => {
-                        router.push(`/products/${router.query.id}/edit`);
+                        router.push(`/products/${router?.query?.id}/edit`);
                       }}
                     >
                       상품 게시 수정

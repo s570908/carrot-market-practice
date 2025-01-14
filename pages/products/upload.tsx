@@ -127,15 +127,79 @@ const Upload: NextPage = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
-      const newImages: PreviewImage[] = files.map((file, index) => ({
-        id: `local-${Date.now()}-${index}`,
-        kind: "Local", // 새로 추가된 이미지는 항상 Local
-        url: URL.createObjectURL(file),
-        file,
-      }));
-      setPreviewImages((prev) => [...prev, ...newImages].slice(0, maxImages));
+      console.log("handleFileChange clicked!!");
+      console.log("files: ", files);
+      // 현재 선택된 각 파일에 대해 중복 체크
+      const duplicateFileNames = files
+        .filter((newFile) => {
+          console.log("dup---newFile.name:", newFile.name);
+          console.log("dup---previewImages: ", previewImages);
+          return previewImages.some(
+            (existingImage) => existingImage.file?.name === newFile.name
+          );
+        })
+        .map((file) => file.name);
+
+      // 중복된 파일이 있으면 toast 메시지 표시
+      if (duplicateFileNames.length > 0) {
+        toast.warn(
+          `이미 첨부된 이미지입니다: ${duplicateFileNames.join(", ")}`,
+          {
+            position: "top-center",
+            autoClose: 3000,
+            closeOnClick: true,
+          }
+        );
+      }
+
+      // 중복되지 않은 파일만 필터링하여 처리
+      const uniqueFiles = files.filter(
+        (newFile) =>
+          !previewImages.some(
+            (existingImage) => existingImage.file?.name === newFile.name
+          )
+      );
+
+      if (uniqueFiles.length > 0) {
+        const totalImages = previewImages.length + uniqueFiles.length;
+        if (totalImages > maxImages) {
+          toast.error(`이미지는 최대 ${maxImages}개까지 업로드 가능합니다.`);
+          return;
+        }
+
+        const newImages: PreviewImage[] = uniqueFiles.map((file, index) => ({
+          id: `local-${Date.now()}-${index}`,
+          kind: "Local",
+          url: URL.createObjectURL(file),
+          file,
+        }));
+
+        setPreviewImages((prev) => [...prev, ...newImages]);
+        // 선택 후 value 초기화
+        e.target.value = "";
+      }
+      // const newImages: PreviewImage[] = files.map((file, index) => ({
+      //   id: `local-${Date.now()}-${index}`,
+      //   kind: "Local", // 새로 추가된 이미지는 항상 Local
+      //   url: URL.createObjectURL(file),
+      //   file,
+      // }));
+      // setPreviewImages((prev) => [...prev, ...newImages].slice(0, maxImages));
     }
   };
+
+  // const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   if (e.target.files) {
+  //     const files = Array.from(e.target.files);
+  //     const newImages: PreviewImage[] = files.map((file, index) => ({
+  //       id: `local-${Date.now()}-${index}`,
+  //       kind: "Local", // 새로 추가된 이미지는 항상 Local
+  //       url: URL.createObjectURL(file),
+  //       file,
+  //     }));
+  //     setPreviewImages((prev) => [...prev, ...newImages].slice(0, maxImages));
+  //   }
+  // };
 
   const handleImageUpload = async () => {
     try {
@@ -200,11 +264,31 @@ const Upload: NextPage = () => {
   //   setPreview(newPreview);
   // };
 
+  // 이미지 삭제 핸들러
   const handleImageDelete = (id: string) => {
-    const updatedPreviewImages = previewImages.filter(
-      (image) => image.id !== id
-    );
-    setPreviewImages(updatedPreviewImages);
+    setPreviewImages((prev) => {
+      // 삭제할 이미지의 URL 객체를 해제
+      const imageToDelete = prev.find((image) => image.id === id);
+      if (imageToDelete?.kind === "Local") {
+        URL.revokeObjectURL(imageToDelete.url);
+        // 실제로 이미지 url이 제거됐는지 테스트하는 코드
+        // handleTestRevoke(imageToDelete.url);
+      }
+      return prev.filter((image) => image.id !== id);
+    });
+  };
+
+  const handleTestRevoke = (url: string) => {
+    const img: HTMLImageElement = document.createElement("img");
+    img.src = url;
+
+    img.onload = () => {
+      console.log("이미지 로드 성공:", url);
+    };
+
+    img.onerror = () => {
+      console.log("이미지 로드 실패 (URL 해제됨):", url);
+    };
   };
 
   const handleResetPreview = () => {
@@ -250,6 +334,13 @@ const Upload: NextPage = () => {
     if (previewImages.length === 1) {
       setIsDragEnabled(false);
     }
+    return () => {
+      previewImages.forEach((image) => {
+        if (image.kind === "Local") {
+          URL.revokeObjectURL(image.url);
+        }
+      });
+    };
   }, [previewImages]);
 
   useEffect(() => {

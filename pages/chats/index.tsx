@@ -255,7 +255,7 @@ const Chats: NextPage = () => {
                   <a className="flex cursor-pointer items-center space-x-3 px-4 py-3">
                     <div className="">
                       <ImgComponent
-                        imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${chatRoom?.product?.image}/public`}
+                        imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${chatRoom?.product?.images?.[0]?.imageId}/public`}
                         width={72}
                         height={72}
                         imgName={chatRoom?.product?.name}

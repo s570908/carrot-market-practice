@@ -191,7 +191,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
               id: true,
               userId: true,
               name: true,
-              images: true,
+              images: { // 이미지 데이터를 포함
+                select: {
+                  id: true,
+                  imageId: true,
+                },
+              },
               price: true,
               status: true,
             },

@@ -331,44 +331,39 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         body;
 
       // 1. 삭제된 이미지들을 Cloudflare에서 먼저 삭제
-      if (deletedImageIds && deletedImageIds.length > 0) {
-        try {
-          // 모든 이미지 삭제 요청을 동시에 처리
-          await Promise.all(
-            deletedImageIds.map((imageId: string) =>
-              axios.delete(
-                `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ID}/images/v1/${imageId}`,
-                {
-                  headers: {
-                    Authorization: `Bearer ${process.env.CF_IMAGE_TOKEN}`,
-                  },
-                  timeout: 10000,
-                }
-              )
-            )
-          );
-        } catch (error) {
-          console.error("Cloudflare 이미지 삭제 실패:", error);
-          return res.status(500).json({
-            ok: false,
-            error: "Failed to delete images from Cloudflare",
-          });
-        }
-      }
+      // if (deletedImageIds && deletedImageIds.length > 0) {
+      //   try {
+      //     // 모든 이미지 삭제 요청을 동시에 처리
+      //     await Promise.all(
+      //       deletedImageIds.map((imageId: string) =>
+      //         axios.delete(
+      //           `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ID}/images/v1/${imageId}`,
+      //           {
+      //             headers: {
+      //               Authorization: `Bearer ${process.env.CF_IMAGE_TOKEN}`,
+      //             },
+      //             timeout: 10000,
+      //           }
+      //         )
+      //       )
+      //     );
+      //   } catch (error) {
+      //     console.error("Cloudflare 이미지 삭제 실패:", error);
+      //     return res.status(500).json({
+      //       ok: false,
+      //       error: "Failed to delete images from Cloudflare",
+      //     });
+      //   }
+      // }
 
       // 2. Prisma 트랜잭션으로 상품 정보와 이미지 정보 동시 업데이트
       const updatedProduct = await client.$transaction(async (prisma) => {
-        // 2-1. 기존 이미지 삭제
-        if (deletedImageIds && deletedImageIds.length > 0) {
-          await prisma.productImage.deleteMany({
-            where: {
-              imageId: {
-                in: deletedImageIds,
-              },
-              productId: +id,
-            },
-          });
-        }
+        // 2-1. 기존 이미지 관계를 모두 삭제
+      await prisma.productImage.deleteMany({
+        where: {
+          productId: +id,
+        },
+      });
 
         // 2-2. 새 이미지 추가 및 상품 정보 업데이트
         const product = await prisma.product.update({
@@ -381,6 +376,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
             description,
             images: {
               createMany: {
+                // 새 이미지 배열을 이용하여 관계 생성
                 data: images.map((image: { imageId: string }) => ({
                   imageId: image.imageId,
                 })),
@@ -391,6 +387,32 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
             images: true,
           },
         });
+
+        // 2-3. 삭제된 이미지들을 Cloudflare에서 삭제
+        if (deletedImageIds && deletedImageIds.length > 0) {
+          try {
+            // 모든 이미지 삭제 요청을 동시에 처리
+            await Promise.all(
+              deletedImageIds.map((imageId: string) =>
+                axios.delete(
+                  `https://api.cloudflare.com/client/v4/accounts/${process.env.CF_ID}/images/v1/${imageId}`,
+                  {
+                    headers: {
+                      Authorization: `Bearer ${process.env.CF_IMAGE_TOKEN}`,
+                    },
+                    timeout: 10000,
+                  }
+                )
+              )
+            );
+          } catch (error) {
+            console.error("Cloudflare 이미지 삭제 실패:", error);
+            return res.status(500).json({
+              ok: false,
+              error: "Failed to delete images from Cloudflare",
+            });
+          }
+        }
 
         return product;
       });

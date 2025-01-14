@@ -117,31 +117,21 @@ const EditProduct: NextPage = () => {
     isError,
   } = useQuery<ItemDetailResponse>(
     ["product", router?.query?.id],
-    () =>
-      axios.get(`/api/products/${router?.query?.id}`).then((res) => res.data),
+    () => {
+      // router.query.id가 없으면 Promise reject
+      if (!router?.query?.id) {
+        return Promise.reject(new Error("Product ID is required"));
+      }
+      return axios
+        .get(`/api/products/${router.query.id}`)
+        .then((res) => res.data);
+    },
     {
-      enabled: !!router?.query?.id,
-      // onSuccess: (data) => {
-      //   if (data.ok) {
-      //     // 데이터를 각 필드의 초기값으로 설정
-      //     setValue("name", data.product.name);
-      //     setValue("price", data.product.price);
-      //     setValue("description", data.product.description);
-      //     // if (data.product.photoId) {
-      //     //   setPhotoPreview(`https://image-url/${data.product.photoId}`);
-      //     // }
-      //     // 기존 이미지 로드 및 PreviewImage 타입 변환
-      //     setPreviewImages(
-      //       data.product.images.map((image) => ({
-      //         id: image.imageId,
-      //         kind: "Cloudflare",
-      //         url: `https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${image.imageId}/public`,
-      //         file: null,
-      //         CLurl: image.imageId,
-      //       }))
-      //     );
-      //   }
-      // },
+      enabled: Boolean(router?.query?.id),
+      // 에러 발생시 재시도 옵션
+      retry: 1,
+      // 캐시 시간 설정
+      staleTime: 30000,
     }
   );
   const updateProduct = async (
@@ -174,21 +164,69 @@ const EditProduct: NextPage = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
+      console.log("handleFileChange clicked!!");
+      console.log("files: ", files);
 
-      // 최대 이미지 개수 체크
-      const totalImages = previewImages.length + files.length;
-      if (totalImages > maxImages) {
-        toast.error(`이미지는 최대 ${maxImages}개까지 업로드 가능합니다.`);
-        return;
+      // 현재 선택된 각 파일에 대해 중복 체크
+      const duplicateFiles = files.filter((newFile) => {
+        return previewImages.some((existingImage) => {
+          if (existingImage.kind === "Local") {
+            // 로컬 파일 비교
+            return existingImage.file?.name === newFile.name;
+          } else {
+            // Cloudflare 이미지 URL과 파일명을 비교
+            return existingImage.url === URL.createObjectURL(newFile);
+          }
+        });
+      });
+
+      // 중복된 파일 이름만 추출
+      const duplicateFileNames = duplicateFiles.map((file) => file.name);
+
+      // 중복된 파일이 있으면 toast 메시지 표시
+      if (duplicateFileNames.length > 0) {
+        toast.warn(
+          `이미 추가된 이미지입니다: ${duplicateFileNames.join(", ")}`,
+          {
+            position: "top-center",
+            autoClose: 3000,
+            closeOnClick: true,
+          }
+        );
       }
-      const newImages = files.map((file, index) => ({
-        id: `local-${Date.now()}-${index}`,
-        kind: "Local" as const,
-        url: URL.createObjectURL(file),
-        file,
-      }));
 
-      setPreviewImages((prev) => [...prev, ...newImages]);
+      // 중복되지 않은 파일만 필터링하여 처리
+      const uniqueFiles = files.filter(
+        (newFile) =>
+          !previewImages.some((existingImage) => {
+            if (existingImage.kind === "Local") {
+              return existingImage.file?.name === newFile.name;
+            } else {
+              return existingImage.url === URL.createObjectURL(newFile);
+            }
+          })
+      );
+
+      if (uniqueFiles.length > 0) {
+        const totalImages = previewImages.length + uniqueFiles.length;
+        if (totalImages > maxImages) {
+          toast.error(`이미지는 최대 ${maxImages}개까지 업로드 가능합니다.`);
+          e.target.value = ""; // value 초기화
+          return;
+        }
+
+        const newImages: PreviewImage[] = uniqueFiles.map((file, index) => ({
+          id: `local-${Date.now()}-${index}`,
+          kind: "Local",
+          url: URL.createObjectURL(file),
+          file,
+        }));
+
+        setPreviewImages((prev) => [...prev, ...newImages]);
+      }
+
+      // 선택 후 value 초기화
+      e.target.value = "";
     }
   };
 
@@ -567,7 +605,7 @@ const EditProduct: NextPage = () => {
                             layout="fill" // 부모 요소를 꽉 채움
                             objectFit="cover" // 부모 요소에 맞게 이미지 크기 조정
                             quality={75} // 이미지 품질
-                            // sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" // 반응형 크기
+                            priority={true}
                             className="rounded-md" // 이미지 마스킹
                           />
                           {/* index가 0일 때 "대표사진" 표시 */}

@@ -426,6 +426,7 @@ const ItemDetail: NextPage = () => {
       canGoBack
       backUrl={"back"}
       openModal
+      userId={data?.product?.userId} // userId prop 전달
     >
       <div className="px-4 py-4">
         {/* 제품 이미지 슬라이더 */}
