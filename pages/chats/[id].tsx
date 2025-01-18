@@ -15,7 +15,13 @@ import {
 import { useForm } from "react-hook-form";
 // import useMutation from "@libs/client/useMutation";
 import Message from "@components/Message";
-import { MutableRefObject, useEffect, useRef, useState, useMemo } from "react";
+import React, {
+  MutableRefObject,
+  useEffect,
+  useRef,
+  useState,
+  useMemo,
+} from "react";
 import { useIntersectionObserver } from "@libs/client/useIntersectionObserver";
 import { FiChevronsDown } from "react-icons/fi";
 import { cls } from "@libs/utils";
@@ -27,6 +33,7 @@ import Dropdown from "@components/Dropdown";
 import io, { Socket } from "socket.io-client";
 import { useMutation, useQuery, useQueryClient } from "react-query";
 import axios from "axios";
+import dayjs from "dayjs";
 
 type Option = {
   value: string;
@@ -543,6 +550,15 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   if (queryError instanceof Error)
     return <div>Error: {queryError.message}</div>;
 
+  const formatDate = (date: string) => {
+    return dayjs(date).format("YYYY년 MM월 DD일");
+  };
+
+  const handleAppointmentClick = () => {
+    const chatroomId = router.query.id; // 현재 채팅방방 ID
+    router.push(`/appointment/create?chatroomId=${chatroomId}`); // 채팅방 ID를 URL로 전달
+  };
+
   return (
     <Layout
       seoTitle={`${otherName} || 채팅`}
@@ -565,7 +581,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                 width={80}
                 height={80}
                 clsProps="rounded-md bg-gray-400"
-                imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.chatRoomOfSeller?.product?.image}/public`}
+                imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.chatRoomOfSeller?.product?.images[0]?.imageId}/public`}
                 imgName="사진"
               />
               <div className="flex flex-col space-y-1">
@@ -601,9 +617,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
           <div className="mt-2 flex flex-row justify-between">
             <div
               className="text-md cursor-pointer rounded-md border border-black p-1"
-              onClick={() => {
-                console.log("약속잡기가 클릭 되었습니다.");
-              }}
+              onClick={handleAppointmentClick}
             >
               약속잡기
             </div>
@@ -652,17 +666,31 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
           className="flex h-[calc(95vh-300px)] flex-col space-y-2 overflow-y-auto py-5 transition-all"
           id="chatBox"
         >
-          {data?.sellerChat?.map((message: any) => {
+          {data?.sellerChat?.map((message: any, index: number) => {
             //console.log("message: ", JSON.stringify(message, null, 2));
+            const currentDate = formatDate(message.createdAt);
+            const prevDate =
+              index > 0
+                ? formatDate(data.sellerChat[index - 1]?.createdAt)
+                : null;
+
+            const showDateDivider = currentDate !== prevDate; // 날짜가 바뀌면 Divider 표시
+
             return (
-              <Message
-                reversed={message.userId === user?.id}
-                key={message.id}
-                name={message.user.name}
-                message={message.chatMsg}
-                avatar={message.user.avatar}
-                date={message.createdAt}
-              />
+              <React.Fragment key={message.id}>
+                {showDateDivider && (
+                  <div className="my-2 text-center text-sm text-gray-500">
+                    {currentDate}
+                  </div>
+                )}
+                <Message
+                  reversed={message.userId === user?.id}
+                  name={message.user.name}
+                  message={message.chatMsg}
+                  avatar={message.user.avatar}
+                  date={message.createdAt}
+                />
+              </React.Fragment>
             );
           })}
           {!entry?.isIntersecting ? (

@@ -1,6 +1,7 @@
 import { cls } from "@libs/utils";
 import Image from "next/image";
 import ImgComponent from "@components/ImgComponent";
+import TimeFormat from "@components/TimeFormat";
 import RegDate from "@components/RegDate";
 import gravatar from "gravatar";
 
@@ -9,7 +10,7 @@ interface MessageProps {
   reversed?: boolean;
   name: string;
   avatar?: string | null;
-  date?: any;
+  date?: Date | string;
 }
 
 export default function Message({
@@ -26,7 +27,7 @@ export default function Message({
         reversed ? "flex-row-reverse space-x-2 space-x-reverse" : "space-x-2"
       )}
     >
-      <div className="">
+      <div className="flex-shrink-0">
         {avatar ? (
           <ImgComponent
             imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${avatar}/public`}
@@ -61,12 +62,13 @@ export default function Message({
             "flex w-full flex-row items-end justify-start"
           )}
         >
-          <div className="w-1/2 rounded-md border border-gray-300 p-2 text-sm text-gray-700">
+          <div className="w-1/2 p-2 text-sm text-gray-700 border border-gray-300 rounded-md">
             <p>{message}</p>
           </div>
           {date && (
             <div className={cls("w-fit", reversed ? "px-1" : "")}>
-              <RegDate className="text-xs" regDate={date} />
+              {/* <RegDate className="text-xs" regDate={date} /> */}
+              <TimeFormat date={date} className="text-xs text-gray-500" />
             </div>
           )}
         </div>

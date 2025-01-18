@@ -207,7 +207,7 @@ const Chats: NextPage = () => {
                   width={80}
                   height={80}
                   clsProps="rounded-md bg-gray-400"
-                  imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.chatRoomListRelatedProduct[0]?.product?.image}/public`}
+                  imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.chatRoomListRelatedProduct[0]?.product?.images?.[0]?.imageId}/public`}
                   imgName="사진"
                 />
                 <div className="flex flex-col space-y-1">

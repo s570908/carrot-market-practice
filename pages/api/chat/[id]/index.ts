@@ -52,7 +52,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
       product: {
         select: {
           price: true,
-          images: true,
+          images: {
+            select: {
+              id: true,
+              imageId: true,
+            },
+          },
           name: true,
           status: true,
         }
