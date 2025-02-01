@@ -1,4 +1,6 @@
+import DatePicker from "@components/DatePicker";
 import Layout from "@components/Layout";
+import TimePicker from "@components/TimePicker";
 import useUser from "@libs/client/useUser";
 import axios from "axios";
 import { useRouter } from "next/router";
@@ -9,7 +11,12 @@ const CreateAppointment = () => {
   const { user } = useUser();
   const router = useRouter();
   const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
+  const [time, setTime] = useState(() => {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, "0");
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+    return `${hours}:${minutes}`;
+  });
   const [place, setPlace] = useState("");
   const [alertTime, setAlertTime] = useState("30분 전");
 
@@ -57,26 +64,10 @@ const CreateAppointment = () => {
       <div className="flex h-screen flex-col bg-white p-4">
         <div className="mt-6 flex flex-col space-y-6">
           {/* 날짜 */}
-          <div className="flex items-center justify-between">
-            <span className="font-medium text-gray-700">날짜</span>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-2/3 rounded-md border border-gray-300 px-3 py-2 text-gray-700"
-            />
-          </div>
+          <DatePicker />
 
           {/* 시간 */}
-          <div className="flex items-center justify-between">
-            <span className="font-medium text-gray-700">시간</span>
-            <input
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              className="w-2/3 rounded-md border border-gray-300 px-3 py-2 text-gray-700"
-            />
-          </div>
+          <TimePicker selectedTime={time} onChange={setTime} />
 
           {/* 장소 */}
           <div className="flex items-center justify-between">

@@ -56,6 +56,7 @@ const ImgComponent = ({
             className={clsProps}
             alt={imgName}
             priority
+            // loading="lazy"
           />
         ) : (
           <Image
@@ -65,6 +66,7 @@ const ImgComponent = ({
             className={clsProps}
             alt={imgName}
             priority
+            // loading="lazy"
           />
         )}
       </div>

@@ -358,7 +358,7 @@ const ItemDetail: NextPage = () => {
     };
 
     if (true) {
-      console.log("event on");
+      // console.log("event on");
       // isProvider가 true일 때만 이벤트 리스너를 등록합니다.
       eventEmitter.on("buyerAction", handleBuyerAction);
     }
@@ -421,12 +421,13 @@ const ItemDetail: NextPage = () => {
 
   return (
     <Layout
-      seoTitle="댕댕마켓"
-      title="댕댕마켓"
+      seoTitle={data?.product?.name || "댕댕마켓"}
+      title={data?.product?.name || "댕댕마켓"}
       canGoBack
       backUrl={"back"}
       openModal
       userId={data?.product?.userId} // userId prop 전달
+      goHome
     >
       <div className="px-4 py-4">
         {/* 제품 이미지 슬라이더 */}
@@ -442,7 +443,6 @@ const ItemDetail: NextPage = () => {
           className="overflow-hidden rounded-lg shadow-lg"
         >
           {data?.product?.images?.map((image: ProductImage, index: number) => {
-            console.log("image.imageId: ", image.imageId);
             return (
               <SwiperSlide key={image.id || index}>
                 <ImgComponent

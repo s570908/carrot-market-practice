@@ -11,7 +11,7 @@ import { SWRConfig } from "swr";
 const queryClient = new QueryClient();
 
 function MyApp({ Component, pageProps }: AppProps) {
-  console.log("APP IS RUNNING");
+  // console.log("APP IS RUNNING");
 
   return (
     // <SWRConfig
@@ -52,7 +52,7 @@ function MyApp({ Component, pageProps }: AppProps) {
           fetcher: (url: string) => fetch(url).then((res) => res.json()),
         }}
       >
-        <div className="w-full max-w-xl mx-auto">
+        <div className="mx-auto w-full min-w-[360px] max-w-xl">
           <Component {...pageProps} />
           <ToastContainer
             position="top-center" // 알람 위치 지정

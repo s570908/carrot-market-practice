@@ -11,6 +11,7 @@ const nextConfig = {
       'picsum.photos'
     ],
   },
+  // fastRefresh: false,
 };
 
 module.exports = nextConfig;

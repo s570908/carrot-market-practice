@@ -7,6 +7,8 @@ import useSWR from "swr";
 import useUser from "@libs/client/useUser";
 import { IoEllipsisVerticalSharp } from "react-icons/io5";
 import Modal from "./Modal";
+import { useAwaitableModal } from "@libs/client/useAwaitableModal";
+import CustomDots from "./CustomDots";
 
 interface LayoutProps {
   title?: string;
@@ -19,6 +21,7 @@ interface LayoutProps {
   notice?: boolean;
   openModal?: boolean;
   userId?: number; // 제품 소유자의 ID를 받을 prop 추가
+  goHome?: boolean;
   [key: string]: any;
 }
 
@@ -44,15 +47,27 @@ export default function Layout({
   isProfile,
   notice,
   openModal,
-  userId, // userId prop 추가
+  userId,
+  goHome,
   ...rest
 }: LayoutProps) {
   const { user } = useUser();
+  const router = useRouter();
   const [isNew, setIsNew] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const handleIconClick = () => {
-    setIsModalOpen(true); // 모달을 열기
+  const { openModal: openModalDots, renderModal } = useAwaitableModal(
+    (modal, params) => {
+      const other = "게시물 삭제 및 수정";
+      return <CustomDots modal={modal} params={params} other={other} />;
+    }
+  );
+  const handleIconClick = async () => {
+    // setIsModalOpen(true); // 모달을 열기
+    console.log("3dot clicked!");
+    const params = { message: "나는 params야" };
+    const result = await openModalDots(params);
+    console.log("result: ", result);
   };
   const handleCloseModal = () => {
     setIsModalOpen(false); // 모달 닫기
@@ -61,13 +76,15 @@ export default function Layout({
   const handleDeleteClick = () => {
     setShowConfirm(true);
   };
-  const router = useRouter();
   const onClick = () => {
     if (backUrl === "back") {
       router.back();
     } else {
       router.push(backUrl);
     }
+  };
+  const handleHomeClick = () => {
+    router.push("/");
   };
   const { data } = useSWR<NewChatProps>(`/api/newchat`);
   useEffect(() => {
@@ -83,256 +100,276 @@ export default function Layout({
   const isOwner = user?.id === userId;
 
   return (
-    <div>
-      <Head>
-        <title>{titleHead}</title>
-      </Head>
-      <div
-        {...rest}
-        className="fixed top-0 z-10 flex h-12 w-full max-w-xl items-center justify-center border-b bg-white px-10 text-lg font-medium text-gray-800"
-      >
-        {canGoBack ? (
-          <button onClick={onClick} className="absolute left-4 z-[2]">
-            <svg
-              className="h-6 w-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
+    <>
+      {renderModal()}
+      <div>
+        <Head>
+          <title>{titleHead}</title>
+        </Head>
+        <div
+          {...rest}
+          className="fixed top-0 z-10 flex h-12 w-full max-w-xl items-center justify-center border-b bg-white px-10 text-lg font-medium text-gray-800"
+        >
+          {canGoBack ? (
+            <button onClick={onClick} className="absolute left-4 z-[2]">
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M15 19l-7-7 7-7"
+                ></path>
+              </svg>
+            </button>
+          ) : null}
+          {goHome && (
+            <button
+              onClick={handleHomeClick}
+              className="absolute left-4 z-[2] ml-10"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M15 19l-7-7 7-7"
-              ></path>
-            </svg>
-          </button>
-        ) : null}
-        {title ? (
-          <span className={cls(canGoBack ? "mx-auto" : "", "")}>{title}</span>
-        ) : null}
-        {notice ? (
-          <Link href="/blog">
-            <a className="absolute right-4 rounded-md border-2 bg-orange-500 p-1 text-sm text-white hover:bg-orange-600">
-              <span>공지사항</span>
-            </a>
-          </Link>
-        ) : null}
-        {openModal && isOwner ? (
-          <div className="">
-            <div>
-              <IoEllipsisVerticalSharp
-                onClick={handleIconClick}
-                className="cursor-pointer"
-              />
-            </div>
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                <polyline points="9 22 9 12 15 12 15 22" />
+              </svg>
+            </button>
+          )}
+          {title ? (
+            <span className={cls(canGoBack ? "mx-auto" : "", "")}>{title}</span>
+          ) : null}
+          {notice ? (
+            <Link href="/blog">
+              <a className="absolute right-4 rounded-md border-2 bg-orange-500 p-1 text-sm text-white hover:bg-orange-600">
+                <span>공지사항</span>
+              </a>
+            </Link>
+          ) : null}
+          {openModal && isOwner ? (
             <div className="">
-              {!showConfirm ? (
-                <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
-                  <div className="flex cursor-pointer flex-col items-center justify-center">
-                    <div
-                      className="mb-2"
-                      onClick={() => {
-                        router.push(`/products/${router?.query?.id}/edit`);
-                      }}
-                    >
-                      상품 게시 수정
-                    </div>
-                    <div onClick={handleDeleteClick}>삭제</div>
-                  </div>
-                </Modal>
-              ) : (
-                <Modal
-                  isOpen={isModalOpen}
-                  onClose={handleCloseModal}
-                  // style={{
-                  //   top: "50%",
-                  //   left: "50%",
-                  //   bottom: "auto",
-                  //   right: "auto",
-                  // }}
-                >
-                  <div className="flex flex-col items-center justify-center">
-                    <div className="mb-2"> 삭제하시겠습니까?</div>
-                    <div className="flex">
-                      <button
-                        className="mr-2 w-[70px] flex-1 rounded-md bg-gray-400"
-                        onClick={handleCloseModal}
-                      >
-                        취소
-                      </button>
-                      <button
-                        className="w-[70px] flex-1 rounded-md bg-orange-500"
+              <div>
+                <IoEllipsisVerticalSharp
+                  onClick={handleIconClick}
+                  className="cursor-pointer"
+                />
+              </div>
+              <div className="">
+                {!showConfirm ? (
+                  <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
+                    <div className="flex cursor-pointer flex-col items-center justify-center">
+                      <div
+                        className="mb-2"
                         onClick={() => {
-                          console.log("삭제를 클릭했습니다.");
+                          router.push(`/products/${router?.query?.id}/edit`);
                         }}
                       >
-                        확인
-                      </button>
+                        상품 게시 수정
+                      </div>
+                      <div onClick={handleDeleteClick}>삭제</div>
                     </div>
-                  </div>
-                </Modal>
-              )}
+                  </Modal>
+                ) : (
+                  <Modal
+                    isOpen={isModalOpen}
+                    onClose={handleCloseModal}
+                    // style={{
+                    //   top: "50%",
+                    //   left: "50%",
+                    //   bottom: "auto",
+                    //   right: "auto",
+                    // }}
+                  >
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="mb-2"> 삭제하시겠습니까?</div>
+                      <div className="flex">
+                        <button
+                          className="mr-2 w-[70px] flex-1 rounded-md bg-gray-400"
+                          onClick={handleCloseModal}
+                        >
+                          취소
+                        </button>
+                        <button
+                          className="w-[70px] flex-1 rounded-md bg-orange-500"
+                          onClick={() => {
+                            console.log("삭제를 클릭했습니다.");
+                          }}
+                        >
+                          확인
+                        </button>
+                      </div>
+                    </div>
+                  </Modal>
+                )}
+              </div>
             </div>
-          </div>
+          ) : null}
+        </div>
+        <div
+          className={cls(
+            "z-0 pt-12",
+            hasTabBar ? "pb-24" : "",
+            isProfile ? "pb-5 sm:pb-10" : ""
+          )}
+        >
+          {children}
+        </div>
+        {hasTabBar ? (
+          <nav className="fixed bottom-0 flex w-full max-w-xl justify-between border-t bg-white px-10 pb-5 pt-3 text-xs text-gray-700">
+            <Link href="/">
+              <a
+                className={cls(
+                  "flex flex-col items-center space-y-2 ",
+                  router.pathname === "/"
+                    ? "text-orange-500"
+                    : "transition-colors hover:text-gray-500"
+                )}
+              >
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                  ></path>
+                </svg>
+                <span>홈</span>
+              </a>
+            </Link>
+            <Link href="/community">
+              <a
+                className={cls(
+                  "flex flex-col items-center space-y-2 ",
+                  router.pathname === "/community"
+                    ? "text-orange-500"
+                    : "transition-colors hover:text-gray-500"
+                )}
+              >
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
+                  ></path>
+                </svg>
+                <span>동네생활</span>
+              </a>
+            </Link>
+            <Link href="/chats">
+              <a
+                className={cls(
+                  "flex flex-col items-center space-y-2",
+                  router.pathname === "/chats"
+                    ? "text-orange-500"
+                    : "transition-colors hover:text-gray-500"
+                )}
+              >
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  ></path>
+                </svg>
+                {isNew && router.pathname !== "/chats" ? (
+                  <div className="absolute left-[15.5rem] top-0 text-orange-500 sm:left-72">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+                    </svg>
+                  </div>
+                ) : null}
+                <span>채팅</span>
+              </a>
+            </Link>
+            <Link href="/stream">
+              <a
+                className={cls(
+                  "flex flex-col items-center space-y-2 ",
+                  router.pathname === "/stream"
+                    ? "text-orange-500"
+                    : "transition-colors hover:text-gray-500"
+                )}
+              >
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                  ></path>
+                </svg>
+                <span>라이브</span>
+              </a>
+            </Link>
+            <Link href="/profile">
+              <a
+                className={cls(
+                  "flex flex-col items-center space-y-2 ",
+                  router.pathname === "/profile"
+                    ? "text-orange-500"
+                    : "transition-colors hover:text-gray-500"
+                )}
+              >
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  ></path>
+                </svg>
+                <span>나의 댕댕마켓</span>
+              </a>
+            </Link>
+          </nav>
         ) : null}
       </div>
-      <div
-        className={cls(
-          "z-0 pt-12",
-          hasTabBar ? "pb-24" : "",
-          isProfile ? "pb-5 sm:pb-10" : ""
-        )}
-      >
-        {children}
-      </div>
-      {hasTabBar ? (
-        <nav className="fixed bottom-0 flex w-full max-w-xl justify-between border-t bg-white px-10 pb-5 pt-3 text-xs text-gray-700">
-          <Link href="/">
-            <a
-              className={cls(
-                "flex flex-col items-center space-y-2 ",
-                router.pathname === "/"
-                  ? "text-orange-500"
-                  : "transition-colors hover:text-gray-500"
-              )}
-            >
-              <svg
-                className="h-6 w-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-                ></path>
-              </svg>
-              <span>홈</span>
-            </a>
-          </Link>
-          <Link href="/community">
-            <a
-              className={cls(
-                "flex flex-col items-center space-y-2 ",
-                router.pathname === "/community"
-                  ? "text-orange-500"
-                  : "transition-colors hover:text-gray-500"
-              )}
-            >
-              <svg
-                className="h-6 w-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
-                ></path>
-              </svg>
-              <span>동네생활</span>
-            </a>
-          </Link>
-          <Link href="/chats">
-            <a
-              className={cls(
-                "flex flex-col items-center space-y-2",
-                router.pathname === "/chats"
-                  ? "text-orange-500"
-                  : "transition-colors hover:text-gray-500"
-              )}
-            >
-              <svg
-                className="h-6 w-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                ></path>
-              </svg>
-              {isNew && router.pathname !== "/chats" ? (
-                <div className="absolute left-[15.5rem] top-0 text-orange-500 sm:left-72">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
-                  </svg>
-                </div>
-              ) : null}
-              <span>채팅</span>
-            </a>
-          </Link>
-          <Link href="/stream">
-            <a
-              className={cls(
-                "flex flex-col items-center space-y-2 ",
-                router.pathname === "/stream"
-                  ? "text-orange-500"
-                  : "transition-colors hover:text-gray-500"
-              )}
-            >
-              <svg
-                className="h-6 w-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                ></path>
-              </svg>
-              <span>라이브</span>
-            </a>
-          </Link>
-          <Link href="/profile">
-            <a
-              className={cls(
-                "flex flex-col items-center space-y-2 ",
-                router.pathname === "/profile"
-                  ? "text-orange-500"
-                  : "transition-colors hover:text-gray-500"
-              )}
-            >
-              <svg
-                className="h-6 w-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                ></path>
-              </svg>
-              <span>나의 댕댕마켓</span>
-            </a>
-          </Link>
-        </nav>
-      ) : null}
-    </div>
+    </>
   );
 }

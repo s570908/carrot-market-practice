@@ -21,6 +21,7 @@ import React, {
   useRef,
   useState,
   useMemo,
+  useCallback,
 } from "react";
 import { useIntersectionObserver } from "@libs/client/useIntersectionObserver";
 import { FiChevronsDown } from "react-icons/fi";
@@ -34,6 +35,7 @@ import io, { Socket } from "socket.io-client";
 import { useMutation, useQuery, useQueryClient } from "react-query";
 import axios from "axios";
 import dayjs from "dayjs";
+import { debounce } from "lodash";
 
 type Option = {
   value: string;
@@ -94,8 +96,11 @@ interface ChatDetailProps {
 
 const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   // console.log("chatRoomData: ", chatRoomData);
-
   const [newMessageSubmitted, setNewMessageSubmitted] = useState(false);
+  const [currentVisibleDate, setCurrentVisibleDate] = useState<string | null>(
+    null
+  );
+  const [isScrolling, setIsScrolling] = useState(false);
   const { user } = useUser();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -134,6 +139,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     }
   );
 
+  const MemoizedMessage = React.memo(Message);
+
   const otherId =
     data?.chatRoomOfSeller?.buyerId === user?.id
       ? data?.chatRoomOfSeller?.seller?.id
@@ -156,6 +163,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   const isProvider = data?.chatRoomOfSeller?.sellerId === user?.id;
   const isConsumer = data?.chatRoomOfSeller?.buyerId === user?.id;
+
+  const isSellingAndConsumer = selling && isConsumer;
+  const isSellingAndProvider = selling && isProvider;
 
   // const { data: reservationData, mutate: reservationMutate } =
   //   useSWR<ReservationResponse>(
@@ -230,7 +240,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   const scrollToBottom = (
     elementRef: MutableRefObject<HTMLDivElement | null>
   ) => {
-    if (elementRef) {
+    if (elementRef && elementRef.current) {
       elementRef.current!?.scrollIntoView({
         behavior: "smooth",
         block: "end",
@@ -238,6 +248,10 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       });
     }
   };
+
+  // Intersection Observer 설정
+  const dateObserverRef = useRef<IntersectionObserver | null>(null);
+  const dateRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const { register, handleSubmit, reset } = useForm<ChatFormResponse>();
   //// api server를 통해서 chatRoom에 chat data를 보내기
@@ -389,6 +403,104 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   //   chatBox.scrollTop = chatBox.scrollHeight + 20;
   // }, [data?.ok, sendChatData, mutate]);
   // ref: https://velog.io/@lumpenop/TIL-nextron-React-%EC%B1%84%ED%8C%85%EC%B0%BD-%EA%B5%AC%ED%98%84-%EC%9E%85%EB%A0%A5-%EC%8B%9C-%EC%B1%84%ED%8C%85%EC%B0%BD-%EC%95%84%EB%9E%98%EB%A1%9C-%EC%8A%A4%ED%81%AC%EB%A1%A4-220724
+
+  // Sticky 날짜 표시 관련 애니메이션 효과
+  useEffect(() => {
+    if (isScrolling && currentVisibleDate) {
+      const timeout = setTimeout(() => {
+        setIsScrolling(false);
+      }, 300); // 스크롤 멈춘 뒤 300ms 후에 상태 초기화
+      return () => clearTimeout(timeout);
+    }
+  }, [isScrolling, currentVisibleDate]);
+
+  const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  const debouncedSetScrolling = useMemo(
+    () =>
+      debounce((value: boolean) => {
+        setIsScrolling(value);
+      }, 150),
+    [setIsScrolling]
+  );
+
+  const debouncedDateUpdate = useMemo(
+    () =>
+      debounce((date: string) => {
+        setCurrentVisibleDate(date);
+        setIsScrolling(true);
+
+        if (scrollTimeout.current) {
+          clearTimeout(scrollTimeout.current);
+        }
+
+        scrollTimeout.current = setTimeout(() => {
+          setIsScrolling(false);
+        }, 800);
+      }, 100),
+    [setCurrentVisibleDate, setIsScrolling, scrollTimeout]
+  );
+
+  useEffect(() => {
+    const chatBox = document.getElementById("chatBox");
+    if (!chatBox) return;
+
+    dateObserverRef.current = new IntersectionObserver(
+      (entries) => {
+        const visibleEntries = entries.filter((entry) => entry.isIntersecting);
+
+        if (visibleEntries.length > 0) {
+          const topEntry = visibleEntries.reduce((prev, current) => {
+            return prev.boundingClientRect.y < current.boundingClientRect.y
+              ? prev
+              : current;
+          });
+
+          const date = topEntry.target.getAttribute("data-date");
+          if (date && date !== currentVisibleDate) {
+            debouncedDateUpdate(date);
+          }
+        }
+      },
+      {
+        root: chatBox,
+        threshold: 0,
+        rootMargin: "-10% 0px -10% 0px",
+      }
+    );
+
+    // 모든 날짜 구분선 요소들을 관찰 대상으로 등록
+    dateRefs.current.forEach((element) => {
+      if (dateObserverRef.current) {
+        dateObserverRef.current.observe(element);
+      }
+    });
+
+    return () => {
+      if (dateObserverRef.current) {
+        dateObserverRef.current.disconnect();
+      }
+      if (scrollTimeout.current) {
+        clearTimeout(scrollTimeout.current);
+      }
+      debouncedDateUpdate.cancel();
+      debouncedSetScrolling.cancel();
+    };
+  }, [currentVisibleDate, debouncedDateUpdate, debouncedSetScrolling]);
+
+  // 디바운스된 스크롤 핸들러
+  const handleScroll = useCallback(() => {
+    debouncedSetScrolling(true);
+  }, [debouncedSetScrolling]);
+
+  // cleanup 시 타이머 정리
+  useEffect(() => {
+    return () => {
+      if (scrollTimeout.current) {
+        clearTimeout(scrollTimeout.current);
+      }
+    };
+  }, []);
 
   const isScrollToBottom = newMessageSubmitted === true;
   useEffect(() => {
@@ -554,6 +666,17 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     return dayjs(date).format("YYYY년 MM월 DD일");
   };
 
+  // 스티키 헤더용 포맷 함수
+  const formatDateWithDay = (date: string | null) => {
+    if (!date) return "";
+
+    const days = ["일", "월", "화", "수", "목", "금", "토"];
+    const dateObj = dayjs(date);
+    const dayOfWeek = days[dateObj.day()];
+
+    return `${dateObj.format("YYYY. MM. DD")}. ${dayOfWeek}`;
+  };
+
   const handleAppointmentClick = () => {
     const chatroomId = router.query.id; // 현재 채팅방방 ID
     router.push(`/appointment/create?chatroomId=${chatroomId}`); // 채팅방 ID를 URL로 전달
@@ -621,14 +744,36 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
             >
               약속잡기
             </div>
-            <div
-              className="text-md cursor-pointer rounded-md border border-black p-1"
-              onClick={() => {
-                console.log("송금요청이 클릭 되었습니다.");
-              }}
-            >
-              송금요청
-            </div>
+            {isSellingAndConsumer && (
+              <div
+                className="text-md cursor-pointer rounded-md border border-black p-1"
+                onClick={() => {
+                  console.log("당근페이가 클릭되었습니다.");
+                }}
+              >
+                당근페이
+              </div>
+            )}
+            {isSellingAndProvider && (
+              <div
+                className="text-md cursor-pointer rounded-md border border-black p-1"
+                onClick={() => {
+                  console.log("송금요청이 클릭되었습니다.");
+                }}
+              >
+                송금요청
+              </div>
+            )}
+            {isSellingAndConsumer && (
+              <div
+                className="text-md cursor-pointer rounded-md border border-black p-1"
+                onClick={() => {
+                  console.log("물품추가가 클릭되었습니다.");
+                }}
+              >
+                물품추가
+              </div>
+            )}
             <button
               className={`text-md cursor-pointer rounded-md border p-1 ${
                 reserved || selling || reviewWritableData?.ok === false
@@ -665,7 +810,21 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         <div
           className="flex h-[calc(95vh-300px)] flex-col space-y-2 overflow-y-auto py-5 transition-all"
           id="chatBox"
+          onScroll={handleScroll}
+          // onScroll={debouncedHandleScroll} // 디바운싱 적용
         >
+          {/* Sticky 날짜 헤더 - 투명 배경과 애니메이션 적용 */}
+          {currentVisibleDate && (
+            <div className="sticky top-4 z-10 w-full">
+              <div
+                className={`mx-auto w-fit rounded-full bg-black/70 px-4 py-1.5 
+                text-center text-sm text-white transition-opacity duration-200 ease-out
+                ${isScrolling ? "opacity-100" : "opacity-0"}`}
+              >
+                {formatDateWithDay(currentVisibleDate)}
+              </div>
+            </div>
+          )}
           {data?.sellerChat?.map((message: any, index: number) => {
             //console.log("message: ", JSON.stringify(message, null, 2));
             const currentDate = formatDate(message.createdAt);
@@ -679,11 +838,17 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
             return (
               <React.Fragment key={message.id}>
                 {showDateDivider && (
-                  <div className="my-2 text-center text-sm text-gray-500">
+                  <div
+                    ref={(el) => {
+                      if (el) dateRefs.current.set(message.createdAt, el); // 날짜별 DOM 요소 저장
+                    }}
+                    data-date={message.createdAt}
+                    className="my-2 text-center text-sm text-gray-500"
+                  >
                     {currentDate}
                   </div>
                 )}
-                <Message
+                <MemoizedMessage
                   reversed={message.userId === user?.id}
                   name={message.user.name}
                   message={message.chatMsg}

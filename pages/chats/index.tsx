@@ -179,6 +179,21 @@ const Chats: NextPage = () => {
     return true; // filterOption이 설정되지 않은 경우도 모든 채팅방을 보여줍니다.
   });
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString("ko-KR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      hour12: true, // 12시간제(오전/오후) 사용
+    });
+  };
+
+  // Added data existence check
+  if (!data) return <div>Loading...</div>;
+
   return (
     <Layout
       seoTitle="채팅목록"
@@ -186,15 +201,8 @@ const Chats: NextPage = () => {
       hasTabBar={!productId}
       canGoBack={!!productId}
       backUrl="back"
-      chatRoom
+      // chatRoom
     >
-      <div className="absolute right-[200px] top-[8.5px] z-30">
-        <RadioButtonGroup
-          options={buttonOptions}
-          selectedOption={selectedOption}
-          onChange={handleOptionChange}
-        />
-      </div>
       <div className="divide-y-[1px]">
         {productId ? (
           <div className="w-full max-w-xl border-b border-gray-200 bg-red-200 p-4">
@@ -236,6 +244,15 @@ const Chats: NextPage = () => {
             </div>
           </div>
         ) : null}
+        {chatRooms?.length > 0 && (
+          <div className="flex items-center justify-between px-4 py-4">
+            <RadioButtonGroup
+              options={buttonOptions}
+              selectedOption={selectedOption}
+              onChange={handleOptionChange}
+            />
+          </div>
+        )}
         {filteredChatRooms?.length === 0 ? (
           <div className="flex h-20 items-center justify-center">
             채팅방이 없습니다
@@ -287,7 +304,8 @@ const Chats: NextPage = () => {
                                 {chatRoom.recentMsg?.chatMsg}
                               </div>
                             </div>
-                            {data.unreadCountsPerRoom[chatRoom.id] !== 0 ? (
+                            {data.unreadCountsPerRoom[chatRoom.id] !== 0 &&
+                            chatRoom.recentMsg?.userId !== user?.id ? (
                               <div className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500">
                                 <div className="text-sm text-white">
                                   {data.unreadCountsPerRoom[chatRoom.id]}
@@ -296,7 +314,8 @@ const Chats: NextPage = () => {
                             ) : null}
                           </div>
                           <div className="text-sm text-gray-400">
-                            최신 메세지 시간: {chatRoom.recentMsg?.updatedAt}
+                            최신 메세지 시간:{" "}
+                            {formatDate(chatRoom.recentMsg?.updatedAt)}
                           </div>
                         </div>
                       </div>

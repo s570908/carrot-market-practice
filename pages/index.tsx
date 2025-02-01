@@ -157,7 +157,6 @@ const Home: NextPage = () => {
             const reserved = product?.status === Status.Reserved;
             const sold = product?.status === Status.Sold;
             let status: Status = Status.Registered;
-            console.log("product: ", JSON.stringify(product, null, 2));
 
             if (reserved) {
               status = Status.Reserved;
@@ -172,7 +171,7 @@ const Home: NextPage = () => {
                 title={product.name}
                 price={product.price}
                 hearts={product._count?.favs}
-                photo={product?.images[0]?.imageId}
+                photo={product?.images?.[0]?.imageId ?? ""}
                 isLike={product.favs
                   .map((uid: User) => (uid.userId === user?.id ? true : false))
                   .includes(true)}

@@ -16,6 +16,9 @@ interface ItemProps {
   status?: Status;
 }
 
+const defaultImageUrl =
+  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="%23E5E7EB"><rect width="100%" height="100%" fill="%23E5E7EB"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%236B7280">No Image</text></svg>';
+
 const Item = ({
   title,
   price,
@@ -27,8 +30,6 @@ const Item = ({
   date,
   status,
 }: ItemProps) => {
-  console.error("photo should be given");
-  // console.log("productId: ,", id);
   return (
     <Link href={`/products/${id}`}>
       <a className="flex cursor-pointer justify-between px-4 pt-5">
@@ -37,7 +38,11 @@ const Item = ({
             width={80}
             height={80}
             clsProps="rounded-md bg-gray-400"
-            imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${photo}/public`}
+            imgAdd={
+              photo
+                ? `https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${photo}/public`
+                : defaultImageUrl
+            }
             imgName={title}
           />
           <div className="flex flex-col pt-2">
