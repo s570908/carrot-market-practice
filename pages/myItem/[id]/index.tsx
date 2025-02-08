@@ -11,7 +11,6 @@ import useUser from "@libs/client/useUser";
 import ImgComponent from "@components/ImgComponent";
 import { Suspense, useEffect, useState } from "react";
 import RegDate from "@components/RegDate";
-import { Skeleton } from "@mui/material";
 import gravatar from "gravatar";
 import Dropdown from "@components/Dropdown";
 import { IoEllipsisVerticalSharp } from "react-icons/io5";
@@ -22,14 +21,20 @@ interface ProductWithReview extends Review {
   createdBy: User;
 }
 
+interface ProductWithImage extends Product {
+  image: string;
+}
+
 interface ProductWithUser extends Product {
   user: User;
   productReviews: ProductWithReview[];
+  relatedProducts: ProductWithImage[];
 }
+
 interface ItemDetailResponse {
   ok: boolean;
   product: ProductWithUser;
-  relatedProducts: Product[];
+  relatedProducts: ProductWithImage[];
   isLike: boolean;
 }
 

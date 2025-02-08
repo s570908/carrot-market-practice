@@ -64,7 +64,7 @@ const CreateAppointment = () => {
       <div className="flex h-screen flex-col bg-white p-4">
         <div className="mt-6 flex flex-col space-y-6">
           {/* 날짜 */}
-          <DatePicker />
+          <DatePicker value={date} onChange={(newDate) => setDate(newDate)} />
 
           {/* 시간 */}
           <TimePicker selectedTime={time} onChange={setTime} />

@@ -6,7 +6,7 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import {
   ChatRoom,
-  Product,
+  Product as PrismaProduct,
   ProductImage,
   Reservation,
   Review,
@@ -19,7 +19,7 @@ import useUser from "@libs/client/useUser";
 import ImgComponent from "@components/ImgComponent";
 import { Suspense, useEffect, useRef } from "react";
 import RegDate from "@components/RegDate";
-import { Skeleton } from "@mui/material";
+// import { Skeleton } from "@mui/material";
 import gravatar from "gravatar";
 // import EventEmitter from "eventemitter3";
 import { useState } from "react";
@@ -38,15 +38,25 @@ interface ProductWithReview extends Review {
   createdBy: User;
 }
 
-interface ProductWithUser extends Product {
+interface ProductWithUser extends PrismaProduct {
   user: User;
   productReviews: ProductWithReview[];
   images: ProductImage[];
 }
+
+interface LocalProduct {
+  id: number;
+  name: string;
+  price: number;
+  description: string;
+  userId: number;
+  status: Status;
+  images: ProductImage[]; // Add this line to include images property
+}
 interface ItemDetailResponse {
   ok: boolean;
   product: ProductWithUser;
-  relatedProducts: Product[];
+  relatedProducts: LocalProduct[];
   isLike: boolean;
 }
 
@@ -425,7 +435,7 @@ const ItemDetail: NextPage = () => {
       title={data?.product?.name || "댕댕마켓"}
       canGoBack
       backUrl={"back"}
-      openModal
+      openDots
       userId={data?.product?.userId} // userId prop 전달
       goHome
     >

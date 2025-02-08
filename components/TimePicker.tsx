@@ -7,9 +7,15 @@ interface TimePickerProps {
 
 function TimePicker({ selectedTime, onChange }: TimePickerProps) {
   const [showModal, setShowModal] = useState(false);
-  const [isEditingHour, setIsEditingHour] = useState(true);
-  const [isEditingMinute, setIsEditingMinute] = useState(false);
+  type EditMode = "hour" | "minute";
+  const [editMode, setEditMode] = useState<EditMode>("hour");
+  // const [isEditingHour, setIsEditingHour] = useState(true);
+  // const [isEditingMinute, setIsEditingMinute] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  // 드래그 시작점 좌표 저장을 위한 상태 추가
+  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(
+    null
+  );
   const svgRef = useRef<HTMLDivElement>(null);
 
   const [tempTime, setTempTime] = useState(() => {
@@ -23,9 +29,35 @@ function TimePicker({ selectedTime, onChange }: TimePickerProps) {
     };
   });
 
+  const handleHourClick = useCallback(
+    (value: number) => {
+      if (editMode !== "hour") return;
+
+      setTempTime((prevTime) => {
+        const isPM = prevTime.hour >= 12;
+        let newHour;
+
+        if (value === 12) {
+          newHour = isPM ? 12 : 0;
+        } else {
+          newHour = isPM ? value + 12 : value;
+        }
+
+        return {
+          ...prevTime,
+          hour: newHour,
+        };
+      });
+
+      // 단일 setState 호출로 모드 전환
+      setEditMode("minute");
+    },
+    [editMode]
+  );
+
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
-      if (!isDragging) return;
+      if (!isDragging || !svgRef.current) return;
 
       const svg = svgRef.current;
       if (!svg) return;
@@ -39,7 +71,7 @@ function TimePicker({ selectedTime, onChange }: TimePickerProps) {
       const angle = (Math.atan2(x, -y) * 180) / Math.PI;
       const normalizedAngle = (angle + 360) % 360;
 
-      if (isEditingHour) {
+      if (editMode === "hour") {
         const hour = Math.round(normalizedAngle / 30) % 12;
         const currentPeriod = tempTime.hour >= 12;
         const newHour = currentPeriod
@@ -49,23 +81,59 @@ function TimePicker({ selectedTime, onChange }: TimePickerProps) {
           : hour === 0
           ? 0
           : hour;
-        setTempTime((prev) => ({ ...prev, hour: newHour }));
+
+        // 현재 시간과 다를 때만 업데이트
+        if (newHour !== tempTime.hour) {
+          setTempTime((prev) => ({ ...prev, hour: newHour }));
+        }
       } else {
         const minute = Math.round(normalizedAngle / 6) % 60;
-        setTempTime((prev) => ({ ...prev, minute }));
+        // 현재 분과 다를 때만 업데이트
+        if (minute !== tempTime.minute) {
+          setTempTime((prev) => ({ ...prev, minute }));
+        }
       }
     },
-    [isDragging, isEditingHour, tempTime.hour]
+    [isDragging, editMode, tempTime.hour, tempTime.minute]
   );
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    setDragStart({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
     setIsDragging(true);
     handleMouseMove(e as unknown as MouseEvent);
   };
 
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false);
-  }, []);
+  const handleMouseUp = useCallback(
+    (e: MouseEvent) => {
+      if (dragStart) {
+        const dragDistance = Math.sqrt(
+          Math.pow(e.clientX - dragStart.x, 2) +
+            Math.pow(e.clientY - dragStart.y, 2)
+        );
+
+        // 드래그 거리가 작으면 클릭으로 처리
+        if (dragDistance < 5) {
+          setIsDragging(false);
+          setDragStart(null);
+          return;
+        }
+      }
+
+      setIsDragging(false);
+      setDragStart(null);
+      // 시간 선택 모드에서 드래그가 끝났을 때 분 선택 모드로 전환
+      if (editMode === "hour") {
+        setEditMode("minute");
+      }
+    },
+    [editMode, dragStart]
+  );
 
   useEffect(() => {
     if (isDragging) {
@@ -78,21 +146,16 @@ function TimePicker({ selectedTime, onChange }: TimePickerProps) {
     }
   }, [isDragging, handleMouseMove, handleMouseUp]);
 
+  useEffect(() => {
+    console.log("tempTime updated:", tempTime);
+  }, [tempTime]);
+
   const formatDisplayTime = (hour: number, minute: number): string => {
     const period = hour >= 12 ? "오후" : "오전";
     const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
     return `${period} ${String(displayHour).padStart(2, "0")}시 ${String(
       minute
     ).padStart(2, "0")}분`;
-  };
-
-  const getHandRotation = (isHour = true): number => {
-    if (isHour) {
-      const hour = tempTime.hour % 12;
-      const minute = tempTime.minute;
-      return hour * 30 + minute * 0.5;
-    }
-    return tempTime.minute * 6;
   };
 
   return (
@@ -123,14 +186,11 @@ function TimePicker({ selectedTime, onChange }: TimePickerProps) {
                 <div className="flex h-full w-full items-center justify-between gap-1">
                   <span
                     className={`flex h-full flex-1 cursor-pointer items-center justify-center rounded px-4 text-4xl font-medium transition-colors ${
-                      isEditingHour
+                      editMode === "hour"
                         ? "bg-orange-100 text-orange-500"
                         : "bg-gray-100 text-gray-900"
                     }`}
-                    onClick={() => {
-                      setIsEditingHour(true);
-                      setIsEditingMinute(false);
-                    }}
+                    onClick={() => setEditMode("hour")}
                   >
                     {String(
                       tempTime.hour > 12
@@ -143,14 +203,11 @@ function TimePicker({ selectedTime, onChange }: TimePickerProps) {
                   <span className="text-4xl">:</span>
                   <span
                     className={`flex h-full flex-1 cursor-pointer items-center justify-center rounded px-4 text-4xl font-medium transition-colors ${
-                      isEditingMinute
+                      editMode === "minute"
                         ? "bg-orange-100 text-orange-500"
                         : "bg-gray-100 text-gray-900"
                     }`}
-                    onClick={() => {
-                      setIsEditingHour(false);
-                      setIsEditingMinute(true);
-                    }}
+                    onClick={() => setEditMode("minute")}
                   >
                     {String(tempTime.minute).padStart(2, "0")}
                   </span>
@@ -200,160 +257,159 @@ function TimePicker({ selectedTime, onChange }: TimePickerProps) {
               ref={svgRef}
             >
               <svg className="h-full w-full" viewBox="0 0 100 100">
+                {/* 배경 원 */}
                 <circle
                   cx="50"
                   cy="50"
                   r="45"
-                  className={
-                    isEditingHour || isEditingMinute
-                      ? "fill-orange-50"
-                      : "fill-slate-50"
-                  }
+                  className="fill-gray-50"
                   stroke="#E2E8F0"
                   strokeWidth="1"
                 />
 
-                {/* Numbers */}
-                {[...Array(isEditingHour ? 12 : 60)].map((_, i) => {
-                  const value = isEditingHour ? i + 1 : i * 5;
-                  const angle =
-                    (value * (isEditingHour ? 30 : 6) * Math.PI) / 180;
-                  const x = 50 + 35 * Math.sin(angle);
-                  const y = 50 - 35 * Math.cos(angle);
-                  const isSelected = isEditingHour
-                    ? (tempTime.hour % 12 || 12) === value
-                    : Math.abs(tempTime.minute - value) < 3;
+                {editMode === "hour" ? (
+                  // 시간 선택 모드 (1-12)
+                  [...Array(12)].map((_, i) => {
+                    const value = i + 1;
+                    const angle = (value * 30 * Math.PI) / 180;
+                    const x = 50 + 35 * Math.sin(angle);
+                    const y = 50 - 35 * Math.cos(angle);
+                    const currentHour12 = tempTime.hour % 12 || 12;
+                    const isSelected = currentHour12 === value;
 
-                  return (
-                    <g
-                      key={value}
-                      onClick={() => {
-                        if (isEditingHour) {
-                          const currentPeriod = tempTime.hour >= 12;
-                          const newHour = currentPeriod
-                            ? value === 12
-                              ? 12
-                              : value + 12
-                            : value === 12
-                            ? 0
-                            : value;
-                          setTempTime((prev) => ({ ...prev, hour: newHour }));
-                        } else {
-                          setTempTime((prev) => ({ ...prev, minute: value }));
-                        }
-                      }}
-                    >
-                      <circle
-                        cx={x}
-                        cy={y}
-                        r="4"
-                        fill="transparent"
+                    return (
+                      <g
+                        key={value}
+                        onClick={(e) => {
+                          // 드래그 중이면 클릭 이벤트 무시
+                          if (isDragging) return;
+
+                          e.stopPropagation();
+                          handleHourClick(value);
+                        }}
                         className="cursor-pointer"
-                      />
-                      <text
-                        x={x}
-                        y={y}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                        fontSize="6"
-                        fill={isSelected ? "#F97316" : "#64748B"}
-                        className="pointer-events-none select-none"
                       >
-                        {isEditingHour ? value : String(value).padStart(2, "0")}
-                      </text>
-                    </g>
-                  );
-                })}
+                        <circle
+                          cx={x}
+                          cy={y}
+                          r="10"
+                          className="fill-transparent"
+                        />
+                        {isSelected && (
+                          <circle
+                            cx={x}
+                            cy={y}
+                            r="6"
+                            className="fill-orange-500"
+                          />
+                        )}
+                        <text
+                          x={x}
+                          y={y}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          fontSize={isSelected ? "5" : "4"}
+                          fill={isSelected ? "#FFFFFF" : "#64748B"}
+                          className="pointer-events-none select-none"
+                        >
+                          {value}
+                        </text>
+                      </g>
+                    );
+                  })
+                ) : (
+                  // 분 선택 모드 (0-55, 5분 단위)
+                  <>
+                    {/* 선택된 분에 대한 원형 표시 - 모든 분에 대해 적용 */}
+                    {(() => {
+                      const angle = (tempTime.minute * 6 * Math.PI) / 180;
+                      const x = 50 + 35 * Math.sin(angle);
+                      const y = 50 - 35 * Math.cos(angle);
 
-                {/* Tick marks */}
-                {[...Array(60)].map((_, i) => {
-                  const angle = (i * 6 * Math.PI) / 180;
-                  const outerRadius = 42;
-                  const innerRadius = i % 5 === 0 ? 38 : 40;
-                  const x1 = 50 + outerRadius * Math.sin(angle);
-                  const y1 = 50 - outerRadius * Math.cos(angle);
-                  const x2 = 50 + innerRadius * Math.sin(angle);
-                  const y2 = 50 - innerRadius * Math.cos(angle);
-                  return (
-                    <line
-                      key={i}
-                      x1={x1}
-                      y1={y1}
-                      x2={x2}
-                      y2={y2}
-                      stroke="#CBD5E1"
-                      strokeWidth="0.5"
-                    />
-                  );
-                })}
+                      return (
+                        <circle
+                          cx={x}
+                          cy={y}
+                          r="6"
+                          className="fill-orange-500"
+                        />
+                      );
+                    })()}
+                    {[...Array(12)].map((_, i) => {
+                      const value = i * 5;
+                      const angle = (value * 6 * Math.PI) / 180;
+                      const x = 50 + 35 * Math.sin(angle);
+                      const y = 50 - 35 * Math.cos(angle);
+                      const isSelected = tempTime.minute === value;
 
-                {/* Selected position circle */}
-                <circle
-                  cx={
-                    50 +
-                    30 *
-                      Math.sin(
-                        ((isEditingHour
-                          ? (tempTime.hour % 12) * 30
-                          : tempTime.minute * 6) *
-                          Math.PI) /
-                          180
-                      )
-                  }
-                  cy={
-                    50 -
-                    30 *
-                      Math.cos(
-                        ((isEditingHour
-                          ? (tempTime.hour % 12) * 30
-                          : tempTime.minute * 6) *
-                          Math.PI) /
-                          180
-                      )
-                  }
-                  r="4"
-                  fill="#F97316"
-                />
+                      return (
+                        <g
+                          key={value}
+                          onClick={(e) => {
+                            if (editMode === "minute") {
+                              e.stopPropagation(); // 이벤트 버블링 방지 추가
+                              // 분 선택 모드일 때만 분 값 변경
+                              setTempTime((prev) => ({
+                                ...prev,
+                                minute: value,
+                              }));
+                            }
+                          }}
+                        >
+                          <text
+                            x={x}
+                            y={y}
+                            textAnchor="middle"
+                            dominantBaseline="middle"
+                            fontSize={isSelected ? "5" : "4"}
+                            fill={isSelected ? "#FFFFFF" : "#64748B"}
+                            className="select-none"
+                          >
+                            {String(value).padStart(2, "0")}
+                          </text>
+                        </g>
+                      );
+                    })}
+                  </>
+                )}
 
-                {/* Hour hand */}
-                <line
-                  x1="50"
-                  y1="50"
-                  x2="50"
-                  y2="30"
-                  stroke={isEditingHour ? "#F97316" : "#94A3B8"}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  transform={`rotate(${getHandRotation(true)}, 50, 50)`}
-                  onClick={() => {
-                    setIsEditingHour(true);
-                    setIsEditingMinute(false);
-                  }}
-                  className="cursor-pointer"
-                />
+                {/* 시계 바늘 - 현재 편집 모드의 바늘만 표시 */}
+                {editMode === "hour" ? (
+                  // 시 선택 모드일 때는 시침만 표시
+                  <line
+                    x1="50"
+                    y1="50"
+                    x2="50"
+                    y2="25"
+                    stroke="#F97316"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    transform={`rotate(${(tempTime.hour % 12) * 30}, 50, 50)`} // 분에 따른 추가 각도 제거
+                    onClick={() => setEditMode("hour")}
+                    className="cursor-pointer"
+                  />
+                ) : (
+                  // 분 선택 모드일 때는 분침만 표시
+                  <line
+                    x1="50"
+                    y1="50"
+                    x2="50"
+                    y2="25"
+                    stroke="#F97316"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    transform={`rotate(${tempTime.minute * 6}, 50, 50)`}
+                    onClick={() => setEditMode("minute")}
+                    className="cursor-pointer"
+                  />
+                )}
 
-                {/* Minute hand */}
-                <line
-                  x1="50"
-                  y1="50"
-                  x2="50"
-                  y2="25"
-                  stroke={isEditingMinute ? "#F97316" : "#94A3B8"}
-                  strokeWidth="1"
-                  strokeLinecap="round"
-                  transform={`rotate(${getHandRotation(false)}, 50, 50)`}
-                  onClick={() => {
-                    setIsEditingHour(false);
-                    setIsEditingMinute(true);
-                  }}
-                  className="cursor-pointer"
-                />
-
-                <circle cx="50" cy="50" r="1.5" fill="#F97316" />
+                {/* 중심점 */}
+                <circle cx="50" cy="50" r="2" className="fill-orange-500" />
               </svg>
             </div>
 
-            <div className="flex justify-between border-t p-4">
+            <div className="flex justify-between p-4">
               <button
                 onClick={() => setShowModal(false)}
                 className="text-sm font-medium text-orange-500"

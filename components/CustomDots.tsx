@@ -27,7 +27,7 @@ const CustomDots: React.FC<CustomDotsProps> = ({ modal, params, other }) => {
           onClick={() => {
             // handleDeleteClick();
             console.log("삭제 clicked!");
-            modal.closeWithResult({ message: "rejected" });
+            modal.closeWithResult({ message: "삭제 선택됨" });
             // modal.closeWithError({ message: "rejected" });
           }}
         >

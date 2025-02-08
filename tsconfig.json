@@ -20,6 +20,6 @@
       "@components/*": ["components/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "pages/index.tsx.Ssr"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "pages/index.tsx.Ssr", "components/Modal.tsx.org", "pages/myItem/[id]/index.tsx"],
   "exclude": ["node_modules"]
 }

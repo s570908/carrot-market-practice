@@ -16,6 +16,7 @@ import axios from "axios";
 
 interface ProductWithUser extends Product {
   user: User;
+  image: string; // Add the image property
 }
 
 interface UserResponse extends User {
@@ -129,7 +130,7 @@ const Review: NextPage = () => {
             clsProps="object-scale-down"
             imgName={data?.product?.name}
           />
-          <div className="flex items-center py-3 space-x-3 border-t border-b cursor-pointer">
+          <div className="flex cursor-pointer items-center space-x-3 border-b border-t py-3">
             {dataOther?.other?.avatar ? (
               <ImgComponent
                 imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.product?.user?.avatar}/public`}
@@ -139,7 +140,7 @@ const Review: NextPage = () => {
                 imgName={dataOther?.other?.name}
               />
             ) : (
-              <div className="w-12 h-12 rounded-full bg-slate-300" />
+              <div className="h-12 w-12 rounded-full bg-slate-300" />
             )}
             <div>
               <p className="text-sm font-medium text-gray-700">
@@ -152,18 +153,18 @@ const Review: NextPage = () => {
               </Link>
             </div>
           </div>
-          <div className="flex flex-col items-start py-3 space-x-3 border-t border-b">
+          <div className="flex flex-col items-start space-x-3 border-b border-t py-3">
             <h1 className="text-3xl font-bold text-gray-900">
               {data ? data?.product?.name : "Now Loading..."}
             </h1>
-            <span className="block mt-3 text-3xl text-gray-900">
+            <span className="mt-3 block text-3xl text-gray-900">
               ￦{data ? data?.product?.price : "Now Loading..."}
             </span>
           </div>
-          <form className="p-4 space-y-4" onSubmit={handleSubmit(onValid)}>
+          <form className="space-y-4 p-4" onSubmit={handleSubmit(onValid)}>
             <div className="flex flex-col items-start justify-start">
               <span className="text-sm font-bold">몇 점짜리 물건인고?</span>
-              <div className="flex flex-row-reverse items-center justify-around my-2">
+              <div className="my-2 flex flex-row-reverse items-center justify-around">
                 {[5, 4, 3, 2, 1].map((val, key) => (
                   <>
                     <input
@@ -173,16 +174,16 @@ const Review: NextPage = () => {
                       value={val}
                       checked={val === starScore}
                       id={`score${val}`}
-                      className="hidden peer"
+                      className="peer hidden"
                       name="score"
                     />
                     <label
                       htmlFor={`score${val}`}
                       onClick={(e) => setStarScore(val)}
-                      className="text-gray-300 cursor-pointer peer-checked:text-orange-400 peer-hover:text-orange-300"
+                      className="cursor-pointer text-gray-300 peer-checked:text-orange-400 peer-hover:text-orange-300"
                     >
                       <svg
-                        className="w-5 h-5"
+                        className="h-5 w-5"
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 20 20"
                         fill="currentColor"

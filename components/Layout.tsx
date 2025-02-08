@@ -6,9 +6,9 @@ import Head from "next/head";
 import useSWR from "swr";
 import useUser from "@libs/client/useUser";
 import { IoEllipsisVerticalSharp } from "react-icons/io5";
-import Modal from "./Modal";
 import { useAwaitableModal } from "@libs/client/useAwaitableModal";
-import CustomDots from "./CustomDots";
+import PostOptionsModal from "./modals/PostOptionsModal";
+import DeleteConfirmModal from "./modals/DeleteConfirmModal";
 
 interface LayoutProps {
   title?: string;
@@ -19,7 +19,7 @@ interface LayoutProps {
   seoTitle: string;
   isProfile?: boolean;
   notice?: boolean;
-  openModal?: boolean;
+  openDots?: boolean;
   userId?: number; // 제품 소유자의 ID를 받을 prop 추가
   goHome?: boolean;
   [key: string]: any;
@@ -46,7 +46,7 @@ export default function Layout({
   seoTitle,
   isProfile,
   notice,
-  openModal,
+  openDots,
   userId,
   goHome,
   ...rest
@@ -56,25 +56,48 @@ export default function Layout({
   const [isNew, setIsNew] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const { openModal: openModalDots, renderModal } = useAwaitableModal(
-    (modal, params) => {
-      const other = "게시물 삭제 및 수정";
-      return <CustomDots modal={modal} params={params} other={other} />;
-    }
-  );
-  const handleIconClick = async () => {
+  const {
+    openModal: openPostOptionsModal,
+    renderModal: renderPostOptionsModal,
+  } = useAwaitableModal((modal, params) => (
+    <PostOptionsModal
+      postId={params.postId}
+      onEdit={() => router.push(`/products/${params.postId}/edit`)}
+      onClose={(result) => modal.closeWithResult(result)}
+    />
+  ));
+  const { openModal: openDeleteModal, renderModal: renderDeleteModal } =
+    useAwaitableModal((modal) => (
+      <DeleteConfirmModal
+        onClose={(result) =>
+          result === "backdrop_click" || result === "삭제 취소됨"
+            ? modal.closeWithError(result)
+            : modal.closeWithResult(result)
+        }
+      />
+    ));
+  const handlePostOptionsClick = async () => {
     // setIsModalOpen(true); // 모달을 열기
-    console.log("3dot clicked!");
-    const params = { message: "나는 params야" };
-    const result = await openModalDots(params);
-    console.log("result: ", result);
+    try {
+      const result = await openPostOptionsModal({ postId: router.query.id });
+      console.log("선택된 옵션:", result);
+
+      if (result === "삭제") {
+        handleDeleteClick(); // 삭제 확인 모달 열기
+      }
+    } catch (error) {
+      console.log("모달 취소됨:", error);
+    }
   };
-  const handleCloseModal = () => {
-    setIsModalOpen(false); // 모달 닫기
-    setShowConfirm(false);
-  };
-  const handleDeleteClick = () => {
-    setShowConfirm(true);
+  const handleDeleteClick = async () => {
+    // setShowConfirm(true);
+    try {
+      const result = await openDeleteModal({});
+      console.log("게시글 삭제 완료:", result);
+      // 실제 삭제 로직 추가 가능
+    } catch (error) {
+      console.log("삭제 취소됨:", error);
+    }
   };
   const onClick = () => {
     if (backUrl === "back") {
@@ -101,14 +124,15 @@ export default function Layout({
 
   return (
     <>
-      {renderModal()}
+      {renderPostOptionsModal()}
+      {renderDeleteModal()}
       <div>
         <Head>
           <title>{titleHead}</title>
         </Head>
         <div
           {...rest}
-          className="fixed top-0 z-10 flex h-12 w-full max-w-xl items-center justify-center border-b bg-white px-10 text-lg font-medium text-gray-800"
+          className="fixed top-0 flex h-12 w-full max-w-xl items-center justify-center border-b bg-white px-10 text-lg font-medium text-gray-800"
         >
           {canGoBack ? (
             <button onClick={onClick} className="absolute left-4 z-[2]">
@@ -155,62 +179,14 @@ export default function Layout({
               </a>
             </Link>
           ) : null}
-          {openModal && isOwner ? (
-            <div className="">
-              <div>
-                <IoEllipsisVerticalSharp
-                  onClick={handleIconClick}
-                  className="cursor-pointer"
-                />
-              </div>
-              <div className="">
-                {!showConfirm ? (
-                  <Modal isOpen={isModalOpen} onClose={handleCloseModal}>
-                    <div className="flex cursor-pointer flex-col items-center justify-center">
-                      <div
-                        className="mb-2"
-                        onClick={() => {
-                          router.push(`/products/${router?.query?.id}/edit`);
-                        }}
-                      >
-                        상품 게시 수정
-                      </div>
-                      <div onClick={handleDeleteClick}>삭제</div>
-                    </div>
-                  </Modal>
-                ) : (
-                  <Modal
-                    isOpen={isModalOpen}
-                    onClose={handleCloseModal}
-                    // style={{
-                    //   top: "50%",
-                    //   left: "50%",
-                    //   bottom: "auto",
-                    //   right: "auto",
-                    // }}
-                  >
-                    <div className="flex flex-col items-center justify-center">
-                      <div className="mb-2"> 삭제하시겠습니까?</div>
-                      <div className="flex">
-                        <button
-                          className="mr-2 w-[70px] flex-1 rounded-md bg-gray-400"
-                          onClick={handleCloseModal}
-                        >
-                          취소
-                        </button>
-                        <button
-                          className="w-[70px] flex-1 rounded-md bg-orange-500"
-                          onClick={() => {
-                            console.log("삭제를 클릭했습니다.");
-                          }}
-                        >
-                          확인
-                        </button>
-                      </div>
-                    </div>
-                  </Modal>
-                )}
-              </div>
+          {openDots && isOwner ? (
+            <div className="absolute right-4">
+              <button
+                onClick={handlePostOptionsClick}
+                className="cursor-pointer rounded-full p-2 hover:bg-gray-100"
+              >
+                <IoEllipsisVerticalSharp className="h-6 w-6" />
+              </button>
             </div>
           ) : null}
         </div>
