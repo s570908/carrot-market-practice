@@ -18,10 +18,7 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
     // const limit = 10;
     const products = await client.product.findMany({
       where: {
-        OR: [
-          { status: Status.Registered },
-          { status: Status.Reserved },
-        ],
+        OR: [{ status: Status.Registered }, { status: Status.Reserved }],
       },
       include: {
         _count: {
@@ -52,10 +49,7 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
     });
     const nextProducts = await client.product.findMany({
       where: {
-        OR: [
-          { status: Status.Registered },
-          { status: Status.Reserved },
-        ],
+        OR: [{ status: Status.Registered }, { status: Status.Reserved }],
       },
       include: {
         _count: {

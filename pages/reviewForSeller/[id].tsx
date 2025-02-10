@@ -1,59 +1,31 @@
 import type { NextPage } from "next";
 import Layout from "@components/Layout";
 import useUser from "@libs/client/useUser";
-import useSWR from "swr";
 import { useRouter } from "next/router";
-import Button from "@components/Button";
-import { Product, Review, User } from "@prisma/client";
-import { cls } from "@libs/utils";
+import { cls, parseId } from "@libs/utils";
 import Link from "next/link";
 import ImgComponent from "@components/ImgComponent";
-import useMutation from "@libs/client/useMutation";
 import { useEffect } from "react";
 import gravatar from "gravatar";
-import { useQuery } from "react-query";
-import axios from "axios";
-
-interface ProductScore extends Product {
-  productReviews: Review[];
-}
-
-interface ProfileWithReview extends User {
-  sales: [
-    {
-      product: ProductScore;
-    }
-  ];
-}
-
-interface ProfileResponse {
-  ok: boolean;
-  other: ProfileWithReview;
-}
+import { useMutation, useQuery } from "react-query";
+import { ProfileResponse } from "apiLibs/atypes";
+import { handleLoadingAndError } from "@components/LoadingError";
 
 const ReviewForSellerDetail: NextPage = () => {
   const { user } = useUser();
   const router = useRouter();
-
-  // const { data } = useSWR<ProfileResponse>(
-  //   router.query.id ? `/api/users/other/${router.query.id}` : null
-  //   // other 상대방
-  // );
-
-  const fetchProfile = async (id: string) => {
-    const { data } = await axios.get<ProfileResponse>(`/api/users/other/${id}`);
-    return data;
-  };
+  const id = parseId(router.query.id);
 
   const {
     data: profileData,
     isLoading,
+    isError,
     error,
   } = useQuery<ProfileResponse>(
-    ["profile", router?.query?.id], // 쿼리 키, id가 변할 때마다 새로 요청
-    () => fetchProfile(router?.query?.id as string), // id가 있을 때만 요청
+    ["profile", id], // 쿼리 키, id가 변할 때마다 새로 요청
+    () => getProfile(id!), // id가 있을 때만 요청
     {
-      enabled: !!router?.query?.id, // id가 존재할 때만 쿼리 실행
+      enabled: !!id, // id가 존재할 때만 쿼리 실행
     }
   );
 
@@ -63,29 +35,33 @@ const ReviewForSellerDetail: NextPage = () => {
     (sale) => sale?.product?.productReviews?.length > 0
   );
 
-  const [
-    talkToSeller,
-    { loading: talkToSellerLoading, data: talkToSellerData },
-  ] = useMutation(`/api/chat`);
+  // const {
+  //   mutate: talkToSeller,
+  //   isLoading: isLoadingTalkToSeller,
+  //   data: talkToSellerData,
+  // } = useMutation(`/api/chat`);
 
-  useEffect(() => {
-    if (talkToSellerData && talkToSellerData.ok) {
-      talkToSellerData.chatRoomList
-        ? router.push(`/chats/${talkToSellerData.chatRoomList.id}`)
-        : router.push(`/chats/${talkToSellerData.createChat.id}`);
-    }
-  }, [router, talkToSellerData]);
+  // useEffect(() => {
+  //   if (talkToSellerData && talkToSellerData.ok) {
+  //     talkToSellerData.chatRoomList
+  //       ? router.push(`/chats/${talkToSellerData.chatRoomList.id}`)
+  //       : router.push(`/chats/${talkToSellerData.createChat.id}`);
+  //   }
+  // }, [router, talkToSellerData]);
 
-  if (!router.query.id) {
-    console.log("Logical error: router.query.id should be given but not.");
-    return null;
-  }
+  // if (!router.query.id) {
+  //   console.log("Logical error: router.query.id should be given but not.");
+  //   return null;
+  // }
 
   //   const onChatClick = () => {
   //     console.log("onChatClick clicked.");
   //     if (talkToSellerLoading) return;
   //     talkToSeller({ buyerId: user?.id, sellerId: +router.query.id! });
   //   };
+
+  const loadingOrError = handleLoadingAndError(isLoading, isError, error);
+  if (loadingOrError) return loadingOrError;
 
   return (
     <Layout
@@ -95,8 +71,8 @@ const ReviewForSellerDetail: NextPage = () => {
       backUrl="back"
       isProfile={true}
     >
-      <div className="px-4 py-4 space-y-4">
-        <div className="flex items-center pb-4 mt-4 space-x-3 border-b">
+      <div className="space-y-4 px-4 py-4">
+        <div className="mt-4 flex items-center space-x-3 border-b pb-4">
           {profileData?.other?.avatar ? (
             <ImgComponent
               width={48}
@@ -108,9 +84,7 @@ const ReviewForSellerDetail: NextPage = () => {
           ) : (
             <ImgComponent
               imgAdd={`https:${gravatar.url(
-                profileData?.other?.email
-                  ? profileData?.other?.email
-                  : "anonymous@email.com",
+                profileData?.other?.email ? profileData?.other?.email : "anonymous@email.com",
                 {
                   s: "48px",
                   d: "retro",
@@ -134,7 +108,7 @@ const ReviewForSellerDetail: NextPage = () => {
         </div> */}
         {salesWithReview?.map((sale, idx) => (
           <Link key={idx} href={`/products/${sale?.product?.id}`}>
-            <a className="flex flex-col pb-2 mb-2 border-b cursor-pointer">
+            <a className="mb-2 flex cursor-pointer flex-col border-b pb-2">
               <div className="flex items-center space-x-4">
                 <ImgComponent
                   width={60}
@@ -143,9 +117,7 @@ const ReviewForSellerDetail: NextPage = () => {
                   imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${sale?.product?.image}/public`}
                 />
                 <div className="pt-2">
-                  <h3 className="text-sm font-medium text-gray-900">
-                    {`${sale?.product?.name}`}
-                  </h3>
+                  <h3 className="text-sm font-medium text-gray-900">{`${sale?.product?.name}`}</h3>
                   <div className="flex items-center space-x-2">
                     {/* 여기에 flex와 space-x-2를 추가하여 요소들 사이에 적당한 간격을 줍니다. */}
                     <span className="flex items-center font-medium text-gray-900">
@@ -180,9 +152,7 @@ const ReviewForSellerDetail: NextPage = () => {
               </div>
               <div className="mt-1 text-sm font-normal text-gray-800">
                 {sale?.product?.productReviews[0]?.updatedAt
-                  ? new Date(
-                      sale.product.productReviews[0].updatedAt
-                    ).toISOString()
+                  ? new Date(sale.product.productReviews[0].updatedAt).toISOString()
                   : "날짜 정보 없음"}
               </div>
             </a>
@@ -193,3 +163,6 @@ const ReviewForSellerDetail: NextPage = () => {
   );
 };
 export default ReviewForSellerDetail;
+function getProfile(arg0: number): ProfileResponse | Promise<ProfileResponse> {
+  throw new Error("Function not implemented.");
+}

@@ -1,7 +1,6 @@
 import type { GetStaticProps, NextPage } from "next";
 import Button from "@components/Button";
 import Layout from "@components/Layout";
-import useSWR, { mutate, useSWRConfig } from "swr";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import {
@@ -21,7 +20,6 @@ import { Suspense, useEffect, useRef } from "react";
 import RegDate from "@components/RegDate";
 // import { Skeleton } from "@mui/material";
 import gravatar from "gravatar";
-// import EventEmitter from "eventemitter3";
 import { useState } from "react";
 import eventEmitter from "@libs/eventEmitter";
 import Dropdown from "@components/Dropdown";
@@ -77,189 +75,161 @@ interface Payload {
 }
 
 const ItemDetail: NextPage = () => {
-  const { user, isLoading } = useUser();
-  const swiperRef = useRef<SwiperCore | null>(null); // SwiperCore 타입 지정
+  const { user } = useUser();
   const router = useRouter();
   const [swiperInstance, setSwiperInstance] = useState(null);
   const [notification, setNotification] = useState("");
   const [chatRoomCount, setChatRoomCount] = useState(0);
   const queryClient = useQueryClient();
-  // const { mutate: unboundMutate } = useSWRConfig();
-  // const { data, mutate: boundMutate } = useSWR<ItemDetailResponse>(
-  //   router.query.id ? `/api/products/${router.query.id}` : null
-  // );
-  const { data, refetch } = useQuery<ItemDetailResponse>(
-    ["product", router?.query?.id],
-    () =>
-      axios.get(`/api/products/${router?.query?.id}`).then((res) => res.data),
+  const id = parseId(router.query.id);
+
+  const { data, refetch, isLoading, isError, error } = useQuery(
+    ["product", id],
+    () => getProduct(id!),
     {
-      enabled: !!router?.query?.id,
+      enabled: !!id,
     }
   );
-  // const { data: reservationData, mutate: reservationMutate } =
-  //   useSWR<ReservationResponse>(
-  //     router.query.id ? `/api/products/${router.query.id}/reservation` : null
-  //   );
-  const { data: reservationData, refetch: reservationMutate } =
-    useQuery<ReservationResponse>(
-      ["reservation", router?.query?.id], // 쿼리 키 (id에 따라 쿼리가 달라짐)
-      () =>
-        axios
-          .get(`/api/products/${router?.query?.id}/reservation`)
-          .then((res) => res.data),
-      {
-        enabled: !!router?.query?.id, // query.id가 있을 때만 쿼리가 활성화됨
+
+  const {
+    data: reservationData,
+    //refetch: refetchReservation,
+    isLoading: isLoadingReservation,
+    isError: isErrorReservation,
+    error: errorReservation,
+  } = useQuery(
+    ["reservation", id], // 쿼리 키 (id에 따라 쿼리가 달라짐)
+    () => getReservation(id!),
+    {
+      enabled: !!id, // query.id가 있을 때만 쿼리가 활성화됨
+    }
+  );
+
+  console.log("reservationData: ", reservationData);
+
+  const {
+    data: chatRoomData,
+    error: errorChatRoom,
+    isLoading: isLoadingChatRoom,
+    isError: isErrorChatRoom,
+    refetch: refetchChatRoom,
+  } = useQuery(
+    ["chatRoomList", id], // 쿼리 키 (productId에 따라 달라짐)
+    () => getChatRoomsByProduct(id!),
+    {
+      enabled: !!id, // query.id가 있을 때만 쿼리 실행
+      onSuccess: (data) => {
+        console.log("/api/chatRoomList/product--queryId:", id);
+        console.log("/api/chatRoomList/product--data:", JSON.stringify(data, null, 2));
+
+        console.log(
+          "/api/chatRoomList/product--data.chatRoomListWithUnreadCount: ",
+          data.chatRoomListWithUnreadCount
+        );
+      },
+    }
+  );
+
+  const {
+    mutate: toggleFavMutate,
+    error: errorFav,
+    isLoading: isLoadingFav,
+    isError: isErrorFav,
+  } = useMutation(writeToggleFav, {
+    // mutation이 발생하기 전에 호출되어 optimistic UI 처리
+    onMutate: async () => {
+      // 현재 쿼리를 취소하여 새로운 데이터가 들어오기 전에 중복되지 않게 함
+      await queryClient.cancelQueries(["product", id]);
+
+      // 캐시에서 현재 데이터를 가져옴
+      const previousData = queryClient.getQueryData<ItemDetailResponse>(["product", id]);
+
+      // optimistic하게 데이터를 업데이트
+      if (previousData) {
+        queryClient.setQueryData(["product", id], {
+          ...previousData,
+          isLike: !previousData.isLike,
+        });
       }
-    );
 
-  // const url = router.query.id ? `/api/chat?productId=${router.query.id}` : "/api/chat";
-  // const { data: dataChatRoom } = useSWR(
-  //   `/api/chat?productId=${router.query.id}`
-  // ); // SWR을 사용하여 채팅방 목록을 불러옵니다, 제품 ID에 따라 필터링
+      // 만약 에러가 발생했을 경우를 대비해 이전 데이터를 반환
+      return { previousData };
+    },
+    // mutation 중 에러가 발생하면 optimistic 업데이트를 롤백
+    onError: (error, variables, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(["product", id], context.previousData);
+      }
+    },
+    // 서버 요청이 완료되면 (성공 또는 실패) 데이터를 무효화하여 최신 상태로 업데이트
+    onSettled: () => {
+      queryClient.invalidateQueries(["product", id]);
+    },
+  });
 
-  // const { data: chatRoomData, error } = useSWR(
-  //   `/api/chat?productId=${router.query.id}`
-  // );
-  const { data: chatRoomData, error } = useQuery(
-    ["chatRoom", router?.query?.id], // 쿼리 키 (productId에 따라 달라짐)
-    () =>
-      axios
-        .get(`/api/chat?productId=${router?.query?.id}`)
-        .then((res) => res.data),
-    {
-      enabled: !!router?.query?.id, // query.id가 있을 때만 쿼리 실행
-    }
-  );
-
-  // const [toggleFav] = useMutation(`/api/products/${router.query.id}/fav`);
-  const toggleFavMutation = useMutation(
-    () => axios.post(`/api/products/${router.query.id}/fav`),
-    {
-      // mutation이 발생하기 전에 호출되어 optimistic UI 처리
-      onMutate: async () => {
-        // 현재 쿼리를 취소하여 새로운 데이터가 들어오기 전에 중복되지 않게 함
-        await queryClient.cancelQueries(["product", router.query.id]);
-
-        // 캐시에서 현재 데이터를 가져옴
-        const previousData = queryClient.getQueryData<ItemDetailResponse>([
-          "product",
-          router.query.id,
-        ]);
-
-        // optimistic하게 데이터를 업데이트
-        if (previousData) {
-          queryClient.setQueryData(["product", router.query.id], {
-            ...previousData,
-            isLike: !previousData.isLike,
-          });
-        }
-
-        // 만약 에러가 발생했을 경우를 대비해 이전 데이터를 반환
-        return { previousData };
-      },
-      // mutation 중 에러가 발생하면 optimistic 업데이트를 롤백
-      onError: (error, variables, context) => {
-        if (context?.previousData) {
-          queryClient.setQueryData(
-            ["product", router.query.id],
-            context.previousData
-          );
-        }
-      },
-      // 서버 요청이 완료되면 (성공 또는 실패) 데이터를 무효화하여 최신 상태로 업데이트
-      onSettled: () => {
-        queryClient.invalidateQueries(["product", router.query.id]);
-      },
-    }
-  );
-
-  const toggleFav = () => {
-    toggleFavMutation.mutate();
-  };
-
-  // const [
-  //   talkToSeller,
-  //   { loading: talkToSellerLoading, data: talkToSellerData },
-  // ] = useMutation(`/api/chat/`);
   const {
     mutate: talkToSeller,
-    isLoading: talkToSellerLoading,
+    isLoading: isLoadingTalkToSeller,
+    isError: isErrorTalkToSeller,
+    error: errorTalkToSeller,
     data: talkToSellerData,
-  } = useMutation(
-    (chatData: { buyerId: number; sellerId: number; productId: number }) =>
-      axios.post(`/api/chat/`, chatData), // POST 요청
-    {
-      onSuccess: (data) => {
-        console.log("Chat initialized successfully", data);
-        // 성공 시 처리할 로직
-      },
-      onError: (error) => {
-        console.error("Error initializing chat", error);
-        // 에러 시 처리할 로직
-      },
-    }
-  );
+  } = useMutation(writeChatRoom, {
+    onSuccess: (data) => {
+      console.log("Chat initialized successfully", data);
+      // 성공 시 처리할 로직
+    },
+    onError: (error) => {
+      console.error("Error initializing chat", error);
+      // 에러 시 처리할 로직
+    },
+  });
 
   const handleChat = (buyerId: number, sellerId: number, productId: number) => {
     talkToSeller({ buyerId, sellerId, productId });
   };
 
-  // const [buyItem, { loading: buyItemLoading, data: buyItemData }] = useMutation(
-  //   `/api/products/${
-  //     router.query.id
-  //   }?seller=${data?.product?.userId.toString()}`
-  // );
-  const isProvider = data?.product?.userId === user?.id;
-  const isConsumer = data?.product?.userId !== user?.id;
   const onFavClick = () => {
     if (!data) return;
-    // boundMutate((prev) => prev && { ...prev, isLike: !prev.isLike }, false);
-    // unboundMutate("/api/users/me", (prev: any) => ({ ok: !prev.ok }), false);
-    toggleFav();
+    toggleFavMutate(id!);
   };
-  const onChatRoomList = async () => {
+  const onChatRoomList = () => {
+    //console.log("onChatRoomList--chatRoomData: ", chatRoomData);
+
     // 1. 해당 chatRoom을 찾는다.
-    //    해당 chatRoom을 찾는 방법: productId, 로그인한 user가 product.provider인 chatRoom을 모두 찾는다.
+    //    해당 chatRoom을 찾는 방법: productId, 로그인한 user가 product.provider(product의 seller)인 chatRoom을 모두 찾는다.
     // 2. 해당 chatRoom이 없으면 toast message를 띄운다.
-    // 3. 해당 chatRoom이 있으면 해당 chatRoom목록 페이지로 이동한다.
-    console.log("=============router.query.id: ", router.query.id);
-    const res = await axios({
-      method: "GET",
-      url: `/api/chat?productId=${router.query.id}`,
-    });
-    if (res.data) {
-      // setList((prev) => [...prev, { ...res.data[0] }]); //리스트 추가
-      // preventRef.current = true;
-      console.log("===========res.data: ", res.data);
-      // setChatRoomCount(res.data.chatRoomListRelatedProduct.length);
-      if (res.data.chatRoomListRelatedProduct.length === 0) {
-        toast.success("대화 중인 채팅방이 없습니다.");
-      } else {
-        router.push(`/chats?productId=${router.query.id}`);
-      }
-    } else {
-      console.log(res); //에러
+    // 3. 해당 chatRoom이 한개이상 있으면 해당 chatRoom목록 페이지로 이동한다.
+    // 4. 해당 chatRoom이 한개 있으면 그 chatRoom으로 이동한다.
+
+    // Check if chatRoomData is available from useQuery
+    if (
+      !chatRoomData ||
+      !chatRoomData.chatRoomListWithUnreadCount ||
+      chatRoomData.chatRoomListWithUnreadCount.length === 0
+    ) {
+      toast.success("대화 중인 채팅방이 없습니다.");
+      return;
     }
 
-    const productId = router.query.id;
-    // router.push 메서드를 사용하여 쿼리 파라미터와 함께 URL로 이동합니다.
-    // router.push({
-    //   pathname: "/chats",
-    //   query: { productId }, // 쿼리 파라미터로 제품 ID를 전달합니다.
-    // });
+    const chatRooms = chatRoomData.chatRoomListWithUnreadCount;
+    console.log("chatRooms: ", chatRooms);
+
+    if (chatRooms.length === 1) {
+      // If there's only one chat room, navigate directly to it
+      router.push(`/chats/${chatRooms[0].id}`);
+    } else {
+      // If there are multiple chat rooms, navigate to the chat room list page
+      toast.success("채팅방이 여러개입니다. 채팅방 목록으로 이동합니다.");
+      router.push(`/chats?productId=${id}`);
+    }
   };
+
   const onChatClick = () => {
     console.log("onChatClick clicked.");
-    if (talkToSellerLoading) return;
+    if (isLoadingTalkToSeller) return;
     //// login user가 buyer이고 product를 upload한 사람이 seller이다.
     // talkToSeller({ buyerId: user?.id, sellerId: data?.product.userId });
     // handleChat(user?.id, data?.product?.userId);
-    console.log(
-      "buyerId, sellerId, productId: ",
-      user?.id,
-      data?.product?.userId,
-      data?.product?.id
-    );
     if (user?.id && data?.product?.userId && data?.product?.id) {
       // talkToSeller({
       //   buyerId: user?.id,
@@ -316,48 +286,17 @@ const ItemDetail: NextPage = () => {
   }, [swiperInstance, router.events]);
 
   useEffect(() => {
-    if (talkToSellerData?.data && talkToSellerData?.data?.ok) {
-      talkToSellerData?.data?.chatRoom
-        ? router.push({
-            pathname: `/chats/${talkToSellerData?.data?.chatRoom?.id}`,
-            // query: {
-            //   buyerId: user?.id,
-            //   sellerId: data?.product.userId,
-            //   productId: data?.product.id,
-            // },
-          })
-        : router.push({
-            pathname: `/chats/${talkToSellerData?.data?.createChatRoom?.id}`,
-            // query: { productId: data?.product.id },
-          });
+    if (talkToSellerData && talkToSellerData.chatRoom) {
+      router.push({
+        pathname: `/chats/${talkToSellerData.chatRoom.id}`,
+        // query: {
+        //   buyerId: user?.id,
+        //   sellerId: data?.product.userId,
+        //   productId: data?.product.id,
+        // },
+      });
     }
   }, [router, talkToSellerData]);
-
-  //   useEffect(() => {
-  //     // const payload = {
-  //     //   buyerId: user?.id,
-  //     //   itemId: data?.product.id,
-  //     //   eventName: 'intentToBuy'
-  //     // };
-  //     // eventEmitter.emit('buyerAction', payload);
-  //     const handleBuyerAction = (payload: Payload) => {
-  //       // Check if the event indicates intention to buy
-  //       if (payload.eventName === 'intentToBuy') {
-  //         // Process the buyer's intention
-  //         const sellerNotification = `Buyer ${payload?.buyerId} wants to buy item ${payload?.itemId}`;
-  //         setNotification(sellerNotification);
-
-  //         // Optionally, you can also send notifications to external services (e.g., through WebSocket, HTTP request)
-  //       }
-  //     };
-  // if (data?.product?.userId === user?.id)
-  //     eventEmitter.on('buyerAction', handleBuyerAction);
-
-  //     return () => {
-  //       if (data?.product?.userId === user?.id)
-  //       eventEmitter.off('buyerAction', handleBuyerAction);
-  //     };
-  //   }, []);
 
   useEffect(() => {
     // 이벤트를 처리할 콜백 함수 정의
@@ -381,25 +320,37 @@ const ItemDetail: NextPage = () => {
     };
   }); // isProvider가 변경될 때마다 이펙트를 다시 실행합니다.
 
+  // Update chatRoomCount whenever chatRoomData changes
   useEffect(() => {
-    const fetchChatRooms = async () => {
-      // 페이지 로드 시 productId를 기반으로 API 요청을 보냅니다.
-      const productId = router.query.id;
-      if (productId) {
-        try {
-          const response = await axios.get(`/api/chat?productId=${productId}`);
-          const chatRooms = response.data.chatRoomListRelatedProduct;
-          // 채팅방 목록의 개수를 상태로 설정합니다.
-          setChatRoomCount(chatRooms.length);
-        } catch (error) {
-          console.error("Failed to fetch chat rooms", error);
-          // 에러 처리, 예를 들어 토스트 메시지를 표시할 수 있습니다.
-        }
-      }
-    };
+    if (chatRoomData?.chatRoomListWithUnreadCount) {
+      setChatRoomCount(chatRoomData.chatRoomListWithUnreadCount.length);
+    }
+  }, [chatRoomData]);
 
-    fetchChatRooms();
-  }, [router.query.id]);
+  // Handle error state
+  useEffect(() => {
+    if (error) {
+      console.error("Failed to fetch chat rooms", error);
+      // Add toast notifications or UI error feedback here if needed
+    }
+  }, [error]);
+
+  const onChatRoom = () => {
+    console.log("Clicked");
+    router.push(`/chats/${chatRoom?.[0].id}`);
+  };
+
+  const isLoadingAny =
+    isLoading || isLoadingReservation || isLoadingChatRoom || isLoadingFav || isLoadingTalkToSeller;
+  const isErrorAny =
+    isError || isErrorReservation || isErrorChatRoom || isErrorFav || isErrorTalkToSeller;
+  const errorAny = error || errorReservation || errorChatRoom || errorFav || errorTalkToSeller;
+
+  const loadingOrError = handleLoadingAndError(isLoadingAny, isErrorAny, errorAny);
+  if (loadingOrError) return loadingOrError;
+
+  const isProvider = data?.product?.userId === user?.id;
+  const isConsumer = data?.product?.userId !== user?.id;
 
   const reserved = data?.product?.status === Status.Reserved ? true : false;
   const sold = data?.product?.status === Status.Sold ? true : false;
@@ -412,22 +363,14 @@ const ItemDetail: NextPage = () => {
 
   const reservationUserName = reservationData?.reserve?.user?.name;
 
-  const queryId = Array.isArray(router.query.id)
-    ? router.query.id[0]
-    : router.query.id;
-  const productId = queryId ? parseInt(queryId, 10) : null;
-
-  const chatRoom = chatRoomData?.chatRoomListRelatedProduct?.filter(
-    (chatRoom: ChatRoom) =>
-      chatRoom.productId === productId &&
-      chatRoom.sellerId === user?.id &&
-      chatRoom.buyerId === reservationData?.reserve?.user?.id
+  const chatRoom = chatRoomData?.chatRoomListWithUnreadCount?.filter(
+    (chatRoom) =>
+      chatRoom.product.id === id &&
+      chatRoom.seller.id === user?.id &&
+      chatRoom.buyer.id === reservationData?.reserve?.user?.id
   );
 
-  const onChatRoom = () => {
-    console.log("Clicked");
-    router.push(`/chats/${chatRoom[0].id}`);
-  };
+  console.log("chatRoomCount: ", chatRoomCount);
 
   return (
     <Layout
@@ -488,13 +431,10 @@ const ItemDetail: NextPage = () => {
             ) : (
               // <div className="w-12 h-12 rounded-full bg-slate-300" />
               <ImgComponent
-                imgAdd={`https:${gravatar.url(
-                  user?.email ? user?.email : "anonymous@email.com",
-                  {
-                    s: "48px",
-                    d: "retro",
-                  }
-                )}`}
+                imgAdd={`https:${gravatar.url(user?.email ? user?.email : "anonymous@email.com", {
+                  s: "48px",
+                  d: "retro",
+                })}`}
                 width={48}
                 height={48}
                 clsProps="rounded-full"
@@ -509,10 +449,7 @@ const ItemDetail: NextPage = () => {
                 <div className="flex items-center">
                   {Array.from({ length: 5 }, (_, index) => {
                     const rating = 4.7; // 예시로 4.68을 사용
-                    const fillPercentage = Math.max(
-                      0,
-                      Math.min(100, (rating - index) * 100)
-                    );
+                    const fillPercentage = Math.max(0, Math.min(100, (rating - index) * 100));
 
                     return (
                       <div
@@ -561,9 +498,7 @@ const ItemDetail: NextPage = () => {
                     : `/reviewForSeller/${data?.product?.user?.id}`
                 }
               >
-                <a className="text-xs font-medium text-gray-500">
-                  판매자에 대한 후기 보기&rarr;
-                </a>
+                <a className="text-xs font-medium text-gray-500">판매자에 대한 후기 보기&rarr;</a>
               </Link>
             </div>
           </div>
@@ -603,9 +538,7 @@ const ItemDetail: NextPage = () => {
             <div className="my-3">
               <div className="border-t py-3 text-xl font-bold">
                 {/*@ts-ignore*/}
-                {data?.product?.productReviews?.length > 0
-                  ? "Review"
-                  : "Description"}
+                {data?.product?.productReviews?.length > 0 ? "Review" : "Description"}
               </div>
               {/*@ts-ignore*/}
               {data?.product?.productReviews?.length > 0 ? (
@@ -626,9 +559,7 @@ const ItemDetail: NextPage = () => {
                       ) : (
                         <div className="h-12 w-12 rounded-full bg-slate-500" />
                       )}
-                      <span className="font-medium text-gray-900">
-                        {review?.createdBy.name}
-                      </span>
+                      <span className="font-medium text-gray-900">{review?.createdBy.name}</span>
                     </div>
                     <div className="flex flex-row items-center justify-evenly space-x-20">
                       <div className="flex flex-col items-start">
@@ -638,9 +569,7 @@ const ItemDetail: NextPage = () => {
                               key={star}
                               className={cls(
                                 "h-5 w-5",
-                                review.score >= star
-                                  ? "text-yellow-400"
-                                  : "text-gray-300"
+                                review.score >= star ? "text-yellow-400" : "text-gray-300"
                               )}
                               xmlns="http://www.w3.org/2000/svg"
                               viewBox="0 0 20 20"
@@ -651,9 +580,7 @@ const ItemDetail: NextPage = () => {
                             </svg>
                           ))}
                         </div>
-                        <p className="my-2 text-lg text-gray-700">
-                          {review.review}
-                        </p>
+                        <p className="my-2 text-lg text-gray-700">{review.review}</p>
                       </div>
                       <span className="font-medium text-gray-900">
                         <RegDate regDate={review.createdAt} />
@@ -677,12 +604,12 @@ const ItemDetail: NextPage = () => {
                 <Button
                   onClick={onChatRoomList}
                   large
-                  // text="대화 중인 채팅방"
                   text={
                     chatRoomCount > 0
-                      ? `대화 중인 채팅방 ${chatRoomCount}`
-                      : "대화 중인 채팅방"
+                      ? `대화 중인 채팅방: ${chatRoomCount}개`
+                      : "대화 중인 채팅방이 없습니다."
                   }
+                  disabled={chatRoomCount <= 0}
                 />
               ) : (
                 <>

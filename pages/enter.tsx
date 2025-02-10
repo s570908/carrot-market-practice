@@ -70,7 +70,7 @@ const Enter: NextPage = () => {
     //console.log("tokenData: ", tokenData);
     if (tokenData?.ok) window.location.href = "/";
     //router.push("/");
-  }, [tokenData]);
+  }, [tokenData?.ok]);
 
   return (
     <div className="mt-16 px-4 ">

@@ -44,11 +44,7 @@ const ImgComponent = ({
 }: ImgComponentProps) => {
   return (
     <div>
-      <div
-        className={cls(
-          isLayout ? `relative ${layoutHeight}` : "flex items-center"
-        )}
-      >
+      <div className={cls(isLayout ? `relative ${layoutHeight}` : "flex items-center")}>
         {isLayout ? (
           <Image
             src={`${imgAdd}`}
@@ -65,8 +61,7 @@ const ImgComponent = ({
             height={height}
             className={clsProps}
             alt={imgName}
-            priority
-            // loading="lazy"
+            priority // 로딩 우선순위를 높이기 위해 priority 속성 추가
           />
         )}
       </div>

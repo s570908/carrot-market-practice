@@ -5,7 +5,7 @@ import "../styles/globals.css";
 import type { AppProps } from "next/app";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { SWRConfig } from "swr";
+//import { SWRConfig } from "swr";
 
 // QueryClient 생성
 const queryClient = new QueryClient();
@@ -47,12 +47,7 @@ function MyApp({ Component, pageProps }: AppProps) {
     // </div>
 
     <QueryClientProvider client={queryClient}>
-      <SWRConfig
-        value={{
-          fetcher: (url: string) => fetch(url).then((res) => res.json()),
-        }}
-      >
-        <div className="mx-auto w-full min-w-[360px] max-w-xl">
+        <div className="w-full max-w-xl mx-auto">
           <Component {...pageProps} />
           <ToastContainer
             position="top-center" // 알람 위치 지정
@@ -67,7 +62,6 @@ function MyApp({ Component, pageProps }: AppProps) {
             // limit={1} // 알람 개수 제한
           />
         </div>
-      </SWRConfig>
       <ReactQueryDevtools initialIsOpen={false} position="bottom-right" />
     </QueryClientProvider>
   );

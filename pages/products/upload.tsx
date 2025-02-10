@@ -17,7 +17,7 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css"; // Swiper 기본 스타일
 import "swiper/css/navigation"; // 네비게이션 스타일
 import { Navigation } from "swiper/modules";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+//import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import {
   arrayMove,
   horizontalListSortingStrategy,
@@ -346,7 +346,7 @@ const Upload: NextPage = () => {
   useEffect(() => {
     if (data?.ok) {
       // 업로드가 잘 되었다면 ....
-      router.push(`/products/${data.products.id}`);
+      router.replace(`/products/${data.products.id}`);
     }
   }, [data, router]);
   const photo = watch("photo");

@@ -2,7 +2,7 @@ import axios from "axios";
 import { GetStaticPaths, GetStaticProps } from "next";
 import { ParsedUrlQuery } from "querystring";
 import { Book } from ".";
-import dayjs from "dayjs";
+import dayjs from "@libs/dayjs";
 
 type GetSpecificBookResponse = {
   data: Book;

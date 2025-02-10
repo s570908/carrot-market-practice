@@ -2,85 +2,161 @@ import { NextApiRequest, NextApiResponse } from "next";
 import withHandler, { ResponseType } from "@libs/server/withHandler";
 import client from "@libs/client/client";
 import { withApiSession } from "@libs/server/withSession";
+import { MessageData, NextApiResponseServerIo } from "types/types";
 
-async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) {
-  const {
-    query: { id }, // chatroom id
-    session: { user }, // login user
-  } = req;
-  if (!id) {
-    return res.status(404).end({ error: "request query is not given." });
-  }
-  const allChatMessages = await client.sellerChat.findMany({
-    where: {
-      chatRoomId: +id, // chatroom 은 seller 와 one to one 이다. 즉 seller 에 대해서 하나의 chatroom이 형성된다.
-    },
-    include: {
-      user: {
-        // chat message를 보내는 사람
-        select: {
-          name: true,
-          avatar: true,
-        },
-      },
-    },
-  });
-  //console.log("api.chat.[id].index---sellerChat: ", JSON.stringify(sellerChat, null, 2));
-  // const newChatCount = allChatMessages.filter(chat => chat.isNew === true).length;
+const worksapce = "market";
 
-  const chatRoomOfSeller = await client.chatRoom.findUnique({
-    where: {
-      id: +id,
-    },
-    include: {
-      buyer: {
-        select: {
-          id: true,
-          name: true,
-          avatar: true,
-          writtenReviews: true
-        },
+async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
+  if (req.method === "GET") {
+    const {
+      query: { id }, // chatroom id
+      session: { user }, // login user
+    } = req;
+    if (!id) {
+      return res.status(404).end({ error: "request query is not given." });
+    }
+    if (!user) {
+      return res.status(404).end({ error: "request user is not given." });
+    }
+    const allChatMessages = await client.sellerChat.findMany({
+      where: {
+        chatRoomId: +id, // chatroom 은 buyer가 product에 대하여 생성한다. 즉, chatroom은 buyer와 product에 대하여 unique하다.
       },
-      seller: {
-        select: {
-          id: true,
-          name: true,
-          avatar: true,
-          writtenReviews: true
-        },
-      },
-      product: {
-        select: {
-          price: true,
-          images: {
-            select: {
-              id: true,
-              imageId: true,
-            },
+      include: {
+        user: {
+          // chat message를 보내는 사람
+          select: {
+            name: true,
+            avatar: true,
           },
-          name: true,
-          status: true,
-        }
+        },
       },
-    },
-  });
-  // chatRoomOfSeller?.buyerId
-  // chatRoomOfSeller?.sellerId
-  // 가져온 상대방의 메세지 모두는 이미 읽은 것으로 결정한다.
-  const yourId = user?.id === chatRoomOfSeller?.buyerId ? chatRoomOfSeller?.sellerId : chatRoomOfSeller?.buyerId 
-  await client.sellerChat.updateMany({ // DB의 모든 chatMessage를 update함
-    where: {
-      AND: [{ chatRoomId: +id }, { userId: yourId }],
-    },
-    data: {
-      isNew: false, // 상대방이 작성한 메세지를 내가 읽었으면 false로 만든다. 초기에는 true로 되어 있다. 
-    },
-  });
-  if (chatRoomOfSeller?.buyerId !== user?.id && chatRoomOfSeller?.sellerId !== user?.id) {
-    res.json({ ok: false, error: "접근 권한이 없습니다." });
-  } else {
-    res.json({ ok: true, sellerChat: allChatMessages, chatRoomOfSeller });
+    });
+
+    const chatRoomOfSeller = await client.chatRoom.findUnique({
+      where: {
+        id: +id,
+      },
+      include: {
+        buyer: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+            writtenReviews: true,
+          },
+        },
+        seller: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+            writtenReviews: true,
+          },
+        },
+        product: {
+          select: {
+            price: true,
+            image: true,
+            name: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    if (allChatMessages.length > 0) {
+      const sellerChatId = allChatMessages[allChatMessages.length - 1].id;
+
+      // 가져온 메세지 모두는 이것을 가져온 사용자가 이미 읽은 것으로 결정한다.
+      // 가장 최근 메시지를 가장 마지막으로 읽은 메시지로 처리
+      const result = await client.lastReadMessage.upsert({
+        where: { userId_chatRoomId: { userId: user?.id, chatRoomId: +id } },
+        create: { userId: user?.id, chatRoomId: +id, sellerChatId: sellerChatId },
+        update: { sellerChatId: sellerChatId },
+      });
+
+      const channel = `/ws-${worksapce}-${id}`;
+
+      res?.socket?.server?.io
+        ?.of(`ws-${worksapce}`)
+        .to(channel)
+        .emit("chats-lastReadMessage", result);
+      console.log("Check if you listened chats-lastReadMessage event");
+    }
+
+    if (chatRoomOfSeller?.buyerId !== user?.id && chatRoomOfSeller?.sellerId !== user?.id) {
+      res.json({ ok: false, error: "접근 권한이 없습니다." });
+    } else {
+      res.json({ ok: true, sellerChat: allChatMessages, chatRoomOfSeller });
+    }
+  }
+  if (req.method === "POST") {
+    //async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
+    const {
+      query: { id },
+      body,
+      session: { user },
+    } = req;
+    if (!id) {
+      return res.status(404).end({ error: "request query is not given." });
+    }
+    if (!user) {
+      return res.status(404).end({ error: "request user is not given." });
+    }
+    const sellerChat = await client.sellerChat.create({
+      data: {
+        chatMsg: body.chatMsg,
+        chatRoom: {
+          connect: {
+            id: +id,
+          },
+        },
+        // chat message를 만드는 사람은 항상 로그인 user다.
+        user: {
+          connect: {
+            id: user?.id,
+          },
+        },
+        isNew: true, //// 이 chat message는 상대방이 읽지 않았으므로 true, 추후 지운다.
+      },
+    });
+
+    const message: MessageData = {
+      id: sellerChat.id,
+      chatMsg: sellerChat.chatMsg,
+      user: { id: user?.id },
+      createdAt: sellerChat.createdAt,
+      channelId: +id,
+    };
+
+    const channel = `/ws-${worksapce}-${id}`;
+
+    // dispatch to channel "message"
+    //*******************************************중요!!!!
+    // Workspace를 사용하는 io일 경우에는 of(`ws-${worksapce}`) 이 부분이 매우 중요함. 반드시 사용해야함.
+    //****************************************************
+    res?.socket?.server?.io?.of(`ws-${worksapce}`).to(channel).emit("message", message);
+    console.log(
+      `workspace: ${worksapce}의 channel: ${channel}로 message: ${message}를 이벤트로 전송하였다.`
+    );
+
+    // 가장 최신 메시지 recentMsg를 서버에 보내야 한다.
+    // 필요하지 않을 수도 있다. 추후 체크요망. 필요한 것 같다.
+    // EachChatRoom.tsx에서...
+    // message socket event를 받고, message.channelId와 EachChatRoom의 chatRoom id 가 일치하면
+    // client.chatRoom을 reftech하도록 만듣다. useQuery를 이용한다.
+    const updatedChatRoom = await client.chatRoom.update({
+      where: { id: +id },
+      data: {
+        recentMsg: {
+          connect: { id: sellerChat.id },
+        },
+      },
+    });
+
+    res.json({ ok: true, sellerChat });
   }
 }
 
-export default withApiSession(withHandler({ methods: ["GET"], handler }));
+export default withApiSession(withHandler({ methods: ["GET", "POST"], handler, isPrivate: true }));

@@ -1,12 +1,9 @@
-import useSWR from "swr";
 import client from "libs/client/client";
 import Loading from "@components/Loading";
-// import useMutation from "libs/client/useMutation";
 import DeleteButton from "@components/delete-button";
 import StreamMessage from "@components/stream-message";
 import FloatingButton from "@components/FloatingButton";
 import RecordedVideoItem from "@components/items/recorded-video-item";
-import { Stream, User } from "@prisma/client";
 import { useForm } from "react-hook-form";
 import {
   DetailedHTMLProps,
@@ -19,104 +16,41 @@ import {
 } from "react";
 import { RiVideoAddFill } from "react-icons/ri";
 import { NextRouter, useRouter } from "next/router";
-import {
-  GetStaticPaths,
-  GetStaticProps,
-  GetStaticPropsContext,
-  NextPage,
-} from "next";
+import { GetStaticPaths, GetStaticProps, GetStaticPropsContext, NextPage } from "next";
 import useUser from "@libs/client/useUser";
 import Layout from "@components/Layout";
-import { ResponseType } from "@libs/server/withHandler";
 import Message from "@components/Message";
 import { useIntersectionObserver } from "@libs/client/useIntersectionObserver";
 import { FiChevronsDown } from "react-icons/fi";
-import { cls } from "@libs/utils";
-import axios from "axios";
+import { cls, parseId } from "@libs/utils";
+//import axios from "axios";
 import { useMutation, useQuery, useQueryClient } from "react-query";
+import {
+  ApiResponseType,
+  LifecycleResult,
+  MessageData,
+  StreamDetailFormData,
+  StreamDetailResult,
+  StreamMessageResponse,
+  ViewsResult,
+} from "apiLibs/atypes";
+import {
+  deleteStream,
+  getLifecycle,
+  getStreamDetail,
+  getViews,
+  writeStreamMessage,
+} from "apiLibs/streams";
+import { videoClient } from "apiLibs/aclient";
+import { handleLoadingAndError } from "@components/LoadingError";
 
-interface StreamDetailFormData {
-  message: string;
-}
-
-interface RecordedVideo {
-  uid: string;
-  meta: { name: string };
-  preview: string;
-  liveInput: string;
-  thumbnail: string;
-  thumbnailTimestampPct: number;
-  allowedOrigins: any[];
-  size: number;
-  input: { width: number; height: number };
-  playback: { hls: string; dash: string };
-  status: {
-    state: string;
-    pctComplete: string;
-    errorReasonCode: string;
-    errorReasonText: string;
-  };
-  creator: any;
-  duration: number;
-  maxDurationSeconds: any;
-  maxSizeBytes: any;
-  modified: string;
-  readyToStream: boolean;
-  requireSignedURLs: boolean;
-  uploadExpiry: any;
-  watermark: any;
-  created: string;
-  uploaded: string;
-}
-
-interface RecordedVideos {
-  success: boolean;
-  errors: any[];
-  messages: any[];
-  result: RecordedVideo[];
-}
-
-interface StreamMessage {
-  message: string;
-  id: number;
-  user: {
-    avatar?: string;
-    id: number;
-    name: string;
-  };
-}
-interface StreamWithMessages extends Stream {
-  messages: StreamMessage[];
-  user: User; // 없애야 할 것 같다. 중복!
-}
-
-interface StreamDetailResult extends ResponseType {
-  stream?: StreamWithMessages;
-  recordedVideos?: RecordedVideos;
-}
-
-interface ViewsResult {
-  liveViewers: number;
-}
-
-interface LifecycleResult {
-  isInput: boolean;
-  live: boolean;
-  status: string;
-  videoUID: string | null;
-}
-
-const StreamDetail: NextPage<StreamDetailResult> = ({
-  stream,
-  recordedVideos,
-}) => {
+const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) => {
   const { user } = useUser();
   const router: NextRouter = useRouter();
   const [showStreamInfo, setShowStreamInfo] = useState(false);
   const [newMessageSubmitted, setNewMessageSubmitted] = useState(false);
   const queryClient = useQueryClient();
   const scrollRef = useRef<HTMLDivElement>(null);
-
   const entry = useIntersectionObserver(scrollRef, {
     root: null,
     rootMargin: "0%",
@@ -124,30 +58,22 @@ const StreamDetail: NextPage<StreamDetailResult> = ({
     freezeOnceVisible: false, // 계속하여 감지하겠다.
   });
 
+  const id = parseId(router.query.id);
+
   console.log("Entry.isIntersecting: ", entry?.isIntersecting);
 
-  // const [streamMessageAddMutation, { loading: streamMessageAddLoading }] =
-  //   useMutation(`/api/streams/${router.query.id}/messages`);
-
-  const addStreamMessage = async (messageData: any) => {
-    const { data } = await axios.post(
-      `/api/streams/${router.query.id}/messages`,
-      messageData
-    );
-    return data;
-  };
+  // const addStreamMessage = async (messageData: MessageData) => {
+  //   const { data } = await axios.post<StreamMessageResponse>(`/api/streams/${router.query.id}/messages`, messageData);
+  //   return data;
+  // };
 
   const {
-    mutate: streamMessageAddMutation,
-    isLoading: streamMessageAddLoading,
+    mutate: streamMessageAdd,
+    isLoading: isLoadingStreamMessageAdd,
+    isError: isErrorStreamMessageAdd,
+    error: errorStreamMessageAdd,
   } = useMutation(
-    async ({ message }: { message: string }) => {
-      const { data } = await axios.post(
-        `/api/streams/${router.query.id}/messages`,
-        { message }
-      );
-      return data;
-    },
+    async (messageData: MessageData) => writeStreamMessage({ id: id!, messageData }),
     {
       onMutate: async ({ message }) => {
         // 새로운 메시지를 바로 추가하는 낙관적 업데이트
@@ -161,10 +87,7 @@ const StreamDetail: NextPage<StreamDetailResult> = ({
 
         // 이전 데이터 백업
         await queryClient.cancelQueries(["stream", router.query.id]);
-        const previousData = queryClient.getQueryData([
-          "stream",
-          router.query.id,
-        ]);
+        const previousData = queryClient.getQueryData(["stream", router.query.id]);
 
         // 업데이트된 메시지 리스트로 바로 반영
         queryClient.setQueryData(["stream", router.query.id], (old: any) => {
@@ -185,10 +108,7 @@ const StreamDetail: NextPage<StreamDetailResult> = ({
       onError: (error, _, context) => {
         // 오류 발생 시 이전 데이터로 복구
         if (context?.previousData) {
-          queryClient.setQueryData(
-            ["stream", router.query.id],
-            context.previousData
-          );
+          queryClient.setQueryData(["stream", router.query.id], context.previousData);
         }
         console.error("Failed to add message:", error);
       },
@@ -199,21 +119,18 @@ const StreamDetail: NextPage<StreamDetailResult> = ({
     }
   );
 
-  // const [
-  //   streamDeleteMutation,
-  //   { data: streamDeleteData, loading: streamDeleteLoading },
-  // ] = useMutation<any>(`/api/streams/${router.query.id}/delete`);
-
-  const deleteStream = async (id: string) => {
-    const { data } = await axios.delete(`/api/streams/${id}/delete`);
-    return data;
-  };
+  // const deleteStream = async (id: string) => {
+  //   const { data } = await axios.delete(`/api/streams/${id}/delete`);
+  //   return data;
+  // };
 
   const {
-    mutate: streamDeleteMutation,
+    mutate: streamDelete,
     data: streamDeleteData,
-    isLoading: streamDeleteLoading,
-  } = useMutation((id: string) => deleteStream(id), {
+    isLoading: isLoadingStreamDelete,
+    isError: isErrorStreamDelete,
+    error: errorStreamDelete,
+  } = useMutation(deleteStream, {
     onSuccess: () => {
       console.log("Stream deleted successfully");
       queryClient.invalidateQueries("streams"); // 'streams' 데이터를 다시 불러오기 위해 쿼리 무효화
@@ -223,95 +140,66 @@ const StreamDetail: NextPage<StreamDetailResult> = ({
     },
   });
 
-  const { register, handleSubmit, getValues, reset } =
-    useForm<StreamDetailFormData>({
-      defaultValues: { message: "" },
-    });
+  const { register, handleSubmit, getValues, reset } = useForm<StreamDetailFormData>({
+    defaultValues: { message: "" },
+  });
 
   // const { data, mutate } = useSWR<ResponseType>(
   //   router.query.id ? `/api/streams/${router.query.id}` : null,
   //   { refreshInterval: 1000 }
   // );
 
-  const fetchStream = async (id: number) => {
-    const { data } = await axios.get<ResponseType>(`/api/streams/${id}`);
-    return data;
-  };
+  // const fetchStream = async (id: number) => {
+  //   const { data } = await axios.get<ApiResponseType>(`/api/streams/${id}`);
+  //   return data;
+  // };
 
-  const { data: streamData } = useQuery<ResponseType>(
-    ["stream", router?.query?.id], // 쿼리 키 설정
-    () =>
-      fetchStream(
-        Number(
-          Array.isArray(router?.query?.id)
-            ? router.query.id[0]
-            : router?.query?.id
-        )
-      ), // id를 안전하게 number로 변환
+  const {
+    data: streamData,
+    isLoading,
+    isError,
+    error,
+  } = useQuery(
+    ["stream", id], // 쿼리 키 설정
+    () => getStreamDetail(id!), // id를 안전하게 number로 변환
     {
-      enabled: !!router?.query?.id, // id가 존재할 때만 쿼리 실행
+      enabled: !!id, // id가 존재할 때만 쿼리 실행
       // refetchInterval: 1000, // 1초마다 데이터 리프레시
     }
   );
 
-  // console.log(
-  //   "strem/[id]/index.tsx---/api/streams/${router.query.id} data: ",
-  //   JSON.stringify(data, null, 2)
-  // );
+  // const fetchViews = async (cloudflareId: string) => {
+  //   const { data } = await videoClient.get<ViewsResult>(`/${cloudflareId}/views`);
+  //   return data;
+  // };
 
-  // const { data: viewsData } = useSWR<ViewsResult>(
-  //   streamData?.stream?.cloudflareId
-  //     ? `https://videodelivery.net/${streamData?.stream?.cloudflareId}/views`
-  //     : null,
-  //   {
-  //     refreshInterval: 1000,
-  //   }
-  // );
-
-  const fetchViews = async (cloudflareId: string) => {
-    const { data } = await axios.get<ViewsResult>(
-      `https://videodelivery.net/${cloudflareId}/views`
-    );
-    return data;
-  };
-
-  const { data: viewsData } = useQuery<ViewsResult>(
+  const {
+    data: viewsData,
+    isLoading: isLoadingViews,
+    isError: isErrorViews,
+    error: errorViews,
+  } = useQuery<ViewsResult>(
     ["views", streamData?.stream?.cloudflareId], // 쿼리 키로 cloudflareId를 사용
-    () => fetchViews(streamData?.stream?.cloudflareId as string), // 데이터를 가져오는 함수
+    () => getViews(streamData?.stream?.cloudflareId!), // 데이터를 가져오는 함수
     {
       enabled: !!streamData?.stream?.cloudflareId, // cloudflareId가 존재할 때만 쿼리 실행
       // refetchInterval: 1000, // 1초마다 데이터 리프레시
     }
   );
 
-  // console.log(
-  //   "strem/[id]/index.tsx---https://videodelivery.net/${data?.stream?.cloudflareId}/views viewsData: ",
-  //   JSON.stringify(viewsData, null, 2)
-  // );
-
-  // const { data: lifecycleData } = useSWR<LifecycleResult>(
-  //   streamData?.stream?.cloudflareId
-  //     ? `https://videodelivery.net/${streamData?.stream?.cloudflareId}/lifecycle`
-  //     : null,
-  //   {
-  //     refreshInterval: 1000,
-  //   }
-  // );
-
-  const fetchLifecycle = async (cloudflareId: string) => {
-    const { data } = await axios.get<LifecycleResult>(
-      `https://videodelivery.net/${cloudflareId}/lifecycle`
-    );
-    return data;
-  };
+  // const fetchLifecycle = async (cloudflareId: string) => {
+  //   const { data } = await videoClient.get<LifecycleResult>(`/${cloudflareId}/lifecycle`);
+  //   return data;
+  // };
 
   const {
     data: lifecycleData,
-    isLoading,
-    error,
+    isLoading: isLoadingLifecycle,
+    isError: isErrorLifecycle,
+    error: errorLifecycle,
   } = useQuery<LifecycleResult>(
     ["lifecycle", streamData?.stream?.cloudflareId], // 쿼리 키로 cloudflareId를 사용
-    () => fetchLifecycle(streamData?.stream?.cloudflareId as string), // 데이터를 가져오는 함수
+    () => getLifecycle(streamData?.stream?.cloudflareId!), // 데이터를 가져오는 함수
     {
       enabled: !!streamData?.stream?.cloudflareId, // cloudflareId가 존재할 때만 쿼리 실행
       // refetchInterval: 1000, // 1초마다 데이터 리프레시
@@ -324,45 +212,26 @@ const StreamDetail: NextPage<StreamDetailResult> = ({
   // );
 
   const onValid = async () => {
-    if (streamMessageAddLoading === true) {
+    if (isLoadingStreamMessageAdd === true) {
       return;
     }
 
     const { message } = getValues();
-    // const newMessage = {
-    //   id: Date.now(),
-    //   message: message,
-    //   user: {
-    //     ...user,
-    //   },
-    // };
-
-    // mutate((prev) => {
-    //   if (prev && prev.stream) {
-    //     return {
-    //       ...prev,
-    //       stream: {
-    //         ...prev.stream,
-    //         messages: [...prev.stream?.messages, newMessage],
-    //       },
-    //     };
-    //   }
-    // }, false);
 
     setNewMessageSubmitted(true);
 
-    streamMessageAddMutation({ message });
+    streamMessageAdd({ message });
     reset();
   };
 
   const handleDeleteStream = async () => {
-    if (streamDeleteLoading === true) {
+    if (isLoadingStreamDelete === true) {
       return;
     }
     if (typeof router.query.id === "string") {
-      streamDeleteMutation(router.query.id); // id를 문자열로 전달
+      streamDelete(router.query.id); // id를 문자열로 전달
     } else if (Array.isArray(router.query.id)) {
-      streamDeleteMutation(router.query.id[0]); // id가 배열일 경우 첫 번째 요소 사용
+      streamDelete(router.query.id[0]); // id가 배열일 경우 첫 번째 요소 사용
     } else {
       console.error("Invalid stream ID");
     }
@@ -384,9 +253,7 @@ const StreamDetail: NextPage<StreamDetailResult> = ({
     }
   }, [streamData, router]);
 
-  const scrollToBottom = (
-    elementRef: MutableRefObject<HTMLDivElement | null>
-  ) => {
+  const scrollToBottom = (elementRef: MutableRefObject<HTMLDivElement | null>) => {
     if (elementRef) {
       elementRef.current!.scrollIntoView({
         behavior: "smooth",
@@ -409,27 +276,40 @@ const StreamDetail: NextPage<StreamDetailResult> = ({
     setNewMessageSubmitted(false);
   }, [isScrollToBottom]);
 
+  const isLoadingAny =
+    isLoading ||
+    isLoadingStreamMessageAdd ||
+    isLoadingStreamDelete ||
+    isLoadingViews ||
+    isLoadingLifecycle;
+  const isErrorAny =
+    isError || isErrorStreamMessageAdd || isErrorStreamDelete || isErrorViews || isErrorLifecycle;
+  const errorAny =
+    error || errorStreamMessageAdd || errorStreamDelete || errorViews || errorLifecycle;
+  const loadingOrError = handleLoadingAndError(isLoadingAny, isErrorAny, errorAny);
+  if (loadingOrError) return loadingOrError;
+
   return (
     <Layout
-      seoTitle={`${streamData?.stream.name} || 라이브`}
-      title={`${streamData?.stream.user.name}의 라이브`}
+      seoTitle={`${streamData?.stream?.name} || 라이브`}
+      title={`${streamData?.stream?.user.name}의 라이브`}
       canGoBack
       backUrl={"/stream"}
     >
       <div className="wrapper">
         <div className="mx-auto h-full max-w-[700px] pb-8 pt-8">
           <div>
-            <div className="w-full border rounded-lg aspect-video">
+            <div className="aspect-video w-full rounded-lg border">
               {streamData?.stream?.cloudflareId ? (
                 <iframe
                   src={`https://iframe.videodelivery.net/${streamData?.stream?.cloudflareId}?preload=true&poster=https://iframe.videodelivery.net/${streamData?.stream?.cloudflareId}/thumbnails/thumbnail.jpg?time=2s`}
                   allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
                   allowFullScreen={true}
-                  className="w-full h-full rounded-lg"
+                  className="h-full w-full rounded-lg"
                 ></iframe>
               ) : (
-                <div className="w-full h-full rounded-lg bg-gray-50">
-                  <div className="flex items-center justify-center h-full">
+                <div className="h-full w-full rounded-lg bg-gray-50">
+                  <div className="flex h-full items-center justify-center">
                     <Loading color="orange" size={36} />
                   </div>
                 </div>
@@ -441,9 +321,7 @@ const StreamDetail: NextPage<StreamDetailResult> = ({
                 {stream?.name}
               </h1>
               {lifecycleData?.live === false ? (
-                <p className="mt-1.5 text-base text-gray-800">
-                  {stream?.description}
-                </p>
+                <p className="mt-1.5 text-base text-gray-800">{stream?.description}</p>
               ) : null}
               {lifecycleData?.live === true ? (
                 <p className="mt-1.5 text-[14px] text-gray-600">
@@ -451,11 +329,11 @@ const StreamDetail: NextPage<StreamDetailResult> = ({
                 </p>
               ) : null}
               {streamData?.stream?.userId === user?.id ? (
-                <div className="absolute top-0 right-0 w-full">
+                <div className="absolute right-0 top-0 w-full">
                   <DeleteButton
                     onClick={handleDeleteStream}
                     text="스트림 삭제"
-                    loading={streamDeleteLoading}
+                    loading={isLoadingStreamDelete}
                   />
                   <button
                     onClick={handleToggleStreamInfo}
@@ -471,24 +349,20 @@ const StreamDetail: NextPage<StreamDetailResult> = ({
 
           {/* 스트림 정보 보기 */}
           {showStreamInfo === true ? (
-            <div className="flex flex-col px-5 py-5 mb-2 space-y-4 bg-gray-100 rounded-md">
+            <div className="mb-2 flex flex-col space-y-4 rounded-md bg-gray-100 px-5 py-5">
               <div>
                 <p className="text-[14px] font-semibold">서버 URL</p>
-                <span className="text-[14px]">
-                  {streamData?.stream?.cloudflareUrl}
-                </span>
+                <span className="text-[14px]">{streamData?.stream?.cloudflareUrl}</span>
               </div>
               <div>
                 <p className="text-[14px] font-semibold">스트림 키</p>
-                <span className="text-[14px]">
-                  {streamData?.stream?.cloudflareKey}
-                </span>
+                <span className="text-[14px]">{streamData?.stream?.cloudflareKey}</span>
               </div>
             </div>
           ) : null}
 
-          <div className="relative border border-gray-100 rounded-lg">
-            <div id="msg" className="flex-col overflow-y-scroll h-80">
+          <div className="relative rounded-lg border border-gray-100">
+            <div id="msg" className="h-80 flex-col overflow-y-scroll">
               {streamData?.stream?.messages ? (
                 <>
                   {streamData?.stream?.messages.map((message: any) => (
@@ -504,7 +378,7 @@ const StreamDetail: NextPage<StreamDetailResult> = ({
                   ))}
                 </>
               ) : (
-                <div className="flex items-center justify-center h-full">
+                <div className="flex h-full items-center justify-center">
                   <Loading color="orange" size={36} />
                 </div>
               )}
@@ -523,18 +397,13 @@ const StreamDetail: NextPage<StreamDetailResult> = ({
                 </button>
               ) : null}
             </div>
-            <form
-              onSubmit={handleSubmit(onValid)}
-              className="w-full px-1 py-1 mt-10 border-t"
-            >
-              <div className="relative w-full px-2 py-2 bg-white rounded-md outline-none">
+            <form onSubmit={handleSubmit(onValid)} className="mt-10 w-full border-t px-1 py-1">
+              <div className="relative w-full rounded-md bg-white px-2 py-2 outline-none">
                 <input
                   {...register("message", { required: true, maxLength: 80 })}
                   maxLength={80}
                   placeholder={
-                    user === undefined
-                      ? "로그인 후 이용가능합니다."
-                      : "메세지를 입력해주세요."
+                    user === undefined ? "로그인 후 이용가능합니다." : "메세지를 입력해주세요."
                   }
                   className="w-full text-[15px] outline-none placeholder:text-gray-300"
                 />
@@ -543,7 +412,7 @@ const StreamDetail: NextPage<StreamDetailResult> = ({
                   type="submit"
                   className="absolute bottom-1 right-0.5 flex h-8 items-end rounded-md bg-orange-400 px-4 py-1.5 text-sm text-white hover:bg-orange-500"
                 >
-                  {streamMessageAddLoading === true ? (
+                  {isLoadingStreamMessageAdd === true ? (
                     <div>
                       <Loading color="" size={12} />
                     </div>
@@ -573,11 +442,7 @@ const StreamDetail: NextPage<StreamDetailResult> = ({
             </div>
           ) : null}
         </div>
-        <FloatingButton
-          href={user ? "/streams/create" : "/login"}
-          isGroup={true}
-          yPosition="top-5"
-        >
+        <FloatingButton href={user ? "/streams/create" : "/login"} isGroup={true} yPosition="top-5">
           <RiVideoAddFill />
         </FloatingButton>
       </div>
@@ -592,13 +457,8 @@ export const getStaticPaths: GetStaticPaths = () => {
   };
 };
 
-export const getStaticProps: GetStaticProps = async (
-  context: GetStaticPropsContext
-) => {
-  console.log(
-    "stream/[id].index.tsx-getStaticProps--context?.params?.id: ",
-    context?.params?.id
-  );
+export const getStaticProps: GetStaticProps = async (context: GetStaticPropsContext) => {
+  console.log("stream/[id].index.tsx-getStaticProps--context?.params?.id: ", context?.params?.id);
 
   if (!context?.params?.id) {
     return {

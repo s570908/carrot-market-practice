@@ -1,3 +1,4 @@
+import { Fav } from "@prisma/client";
 import { useEffect, useState } from "react";
 
 export const cls = (...classnames: string[]) => {
@@ -11,6 +12,19 @@ export async function delay(ms: number | undefined) {
       resolve();
     }, ms);
   });
+}
+
+export const sortByRecentMsgDate = (
+  a: { recentMsg: { updatedAt: string | number | Date } },
+  b: { recentMsg: { updatedAt: string | number | Date } }
+) => {
+  const dateA = new Date(a.recentMsg?.updatedAt).getTime();
+  const dateB = new Date(b.recentMsg?.updatedAt).getTime();
+  return dateB - dateA;
+};
+
+export function isLikedByUser(favs: Fav[], userId: string | number) {
+  return favs.map((uid) => (uid.userId === userId ? true : false)).includes(true);
 }
 
 export function usePromise<I, T>(promise: (arg: I) => Promise<T>, arg: I) {
@@ -40,3 +54,13 @@ export function usePromise<I, T>(promise: (arg: I) => Promise<T>, arg: I) {
   }
   return _result;
 }
+
+export const parseId = (id: string | string[] | undefined): number | undefined => {
+  if (Array.isArray(id)) {
+    return parseInt(id[0], 10);
+  }
+  if (id) {
+    return parseInt(id, 10);
+  }
+  return undefined;
+};

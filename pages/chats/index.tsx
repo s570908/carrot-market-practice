@@ -1,62 +1,24 @@
-// import Layout from "@components/Layout";
-// import type { NextPage } from "next";
-// import Link from "next/link";
-
-// const Write: NextPage = () => {
-//   return (
-//     <Layout title="채팅" hasTabBar>
-//       <div className="divide-y-[1px] py-3">
-//         {[...Array(5)].map((_, i) => (
-//           <Link href={`chats/${i}`} key={i}>
-//             <a className="flex items-center px-3 py-2 mb-3 space-x-3 ">
-//               <div className="w-12 h-12 rounded-full bg-slate-300" />
-//               <div>
-//                 <p className="text-gray-700">Steve Jebs</p>
-//                 <p className="text-sm text-gray-500">See you tomorrow in the corner at 2pm</p>
-//               </div>
-//             </a>
-//           </Link>
-//         ))}
-//       </div>
-//     </Layout>
-//   );
-// };
-
-// export default Write;
-
 import type { NextPage } from "next";
-import Link from "next/link";
 import Layout from "@components/Layout";
 import useUser from "@libs/client/useUser";
-import useSWR from "swr";
 import ImgComponent from "@components/ImgComponent";
-import {
-  ChatRoom,
-  Reservation,
-  SellerChat,
-  Status,
-  User,
-} from "@prisma/client";
+import { ChatRoom, Reservation, SellerChat, Status, User } from "@prisma/client";
 import { useEffect, useState } from "react";
-import gravatar from "gravatar";
 import { useRouter } from "next/router";
 import axios from "axios";
-import { fetchChatRooms } from "@libs/server/fetchChatRooms";
-import Dropdown from "@components/Dropdown";
 import RadioButtonGroup from "@components/RadioGroupButton";
 import { useQuery } from "react-query";
-
-interface ChatRoomWithUser extends ChatRoom {
-  buyer: User;
-  seller: User;
-  recentMsg: SellerChat;
-  reservation?: Reservation;
-}
-
-interface ChatRoomResponse {
-  ok: boolean;
-  chatRoomList: ChatRoomWithUser[];
-}
+import useSocket from "@libs/client/useSocket";
+import EachChatRoom from "@components/EachChatRoom";
+import { parseId } from "@libs/utils";
+import { getChatRoomsByKey, getChatRoomsByProduct } from "apiLibs/chatRooms";
+import {
+  ChatRoomByProduct,
+  ChatRoomsByKeyResponse,
+  ChatRoomsByProductResponse,
+  ChatRoomType,
+} from "apiLibs/atypes";
+import { handleLoadingAndError } from "@components/LoadingError";
 
 interface ReservationWithUser extends Reservation {
   user: User;
@@ -71,30 +33,42 @@ interface ReservationResponse {
 const Chats: NextPage = () => {
   const router = useRouter();
   const { productId } = router.query; // URL에서 productId 쿼리 파라미터를 추출
-  // console.log("productId: ", productId);
-  const { user } = useUser();
-  const fetchChats = async (url: string) => {
-    const response = await axios.get(url);
-    return response.data;
-  };
+  if (!productId) console.log("Chats---productId: ", productId, " (not given)");
+  else {
+    console.log("Chats---productId: ", productId);
+  }
+
+  const [socket, disconnectSocket] = useSocket("market");
+  const [onlineUsers, setOnlineUsers] = useState<number[]>([]); // Array to store online users
+
+  const [shouldRefetch, setShouldRefetch] = useState(false);
+
   // URL을 조건부로 설정
-  const url = productId ? `/api/chat?productId=${productId}` : "/api/chat";
-  // const { data } = useSWR("/api/chats", {
-  //   refreshInterval: 1000,
-  // }); // SWR을 사용하여 채팅방 목록을 불러옵니다, 제품 ID에 따라 필터링
-  // const { data, error } = useSWR(url);
-  const { data, error, isLoading, isError } = useQuery(
-    ["chats", productId], // 쿼리 키: productId가 있으면 달라짐
-    () => fetchChats(url), // 데이터를 가져오는 함수
+  // productId 가 주어지지 않으면 나와 관련된 모든 chat room 목록을 가져온다.
+  const url = productId ? `/api/chatRoomList/product/${productId}` : "/api/chatRoomList";
+
+  const {
+    data,
+    error,
+    isLoading,
+    isError,
+    refetch: refetchChats,
+  } = useQuery(
+    ["chatRoomList", productId || ""], // 쿼리 키: productId가 있으면 달라짐
+    () =>
+      productId
+        ? getChatRoomsByProduct(parseId(productId)!)
+        : (getChatRoomsByKey(ChatRoomType.All) as Promise<
+            ChatRoomsByProductResponse | ChatRoomsByKeyResponse
+          >), // 타입 강제 변환
     {
       // refetchInterval: 1000, // 1초마다 데이터를 다시 가져오는 옵션
       enabled: !!url, // URL이 유효할 때만 쿼리 실행
+      onSuccess: (data) => {
+        console.log("chatRoomList Fetched data and url: ", data, url); // 데이터가 성공적으로 가져와졌을 때 콘솔에 로그 출력
+      },
     }
   );
-
-  const chatRooms = productId
-    ? data?.chatRoomListRelatedProduct
-    : data?.chatRoomList;
 
   async function fetchAndAddReservationData(chatRoomList: ChatRoom[]) {
     try {
@@ -115,26 +89,6 @@ const Chats: NextPage = () => {
       throw error;
     }
   }
-
-  const [recentMessageShown, setRecentMessageShown] = useState("");
-
-  // console.log("Chats---data:", JSON.stringify(data, null, 2));
-  // useEffect(() => {
-  //   if (data && data.ok) {
-  //     data.chatRoomList.map((room: any) => {
-  //       if (!room.recentMsgId) {
-  //         fetch(`/api/chat?roomId=${room.id}`, {
-  //           method: "DELETE",
-  //           headers: {
-  //             "Content-Type": "application/json",
-  //           },
-  //         });
-  //       }
-  //     });
-  //   }
-  // }, [data]);
-
-  // console.log("chats---login user: ", JSON.stringify(user, null, 2));
 
   const handleClick = () => {
     console.log("chatRoomList Product Detail clicked");
@@ -165,19 +119,82 @@ const Chats: NextPage = () => {
     setSelectedOption(value); // Update the selected value in state
   };
 
-  const filteredChatRooms = chatRooms?.filter((chatRoom: any) => {
-    const filterOption = selectedOption;
-    if (filterOption === "판매중") {
-      return chatRoom.product.status === "Registered";
-    } else if (filterOption === "예약중") {
-      return chatRoom.product.status === "Reserved";
-    } else if (filterOption === "거래완료") {
-      return chatRoom.product.status === "Sold";
-    } else if (filterOption === "전체") {
-      return true; // 모든 채팅방을 필터링 없이 보여줍니다.
-    }
-    return true; // filterOption이 설정되지 않은 경우도 모든 채팅방을 보여줍니다.
-  });
+  useEffect(() => {
+    const handleRouteChange = () => {
+      console.log("Chats Page--routeChangeComplete 실행됨");
+      setShouldRefetch(true);
+    };
+
+    router.events.on("routeChangeComplete", handleRouteChange);
+
+    return () => {
+      router.events.off("routeChangeComplete", handleRouteChange);
+    };
+  }, [router.events]);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    // Listen for the 'onlineList' event from the server
+    const handleOnlineList = (users: number[]) => {
+      console.log("onlineList event received. onlineList: ", users);
+      setOnlineUsers(users); // Update online users list
+    };
+    const handleOnRoomList = (rooms: string[]) => {
+      console.log(`Rooms for socket ${socket.id}:`, rooms);
+    };
+
+    const handleOnChats = (chats: string) => {
+      console.log("chats: ", chats);
+      refetchChats();
+    };
+
+    socket.on("onlineList", handleOnlineList);
+    socket.on("roomList", handleOnRoomList);
+    socket.on("chats", handleOnChats);
+
+    // Request online list on component mount
+    socket.emit("requestOnlineList");
+    socket.emit("requestRoomList");
+
+    // Cleanup the event listener when the component is unmounted or socket changes
+    return () => {
+      socket.off("onlineList", handleOnlineList);
+      socket.off("roomList", handleOnRoomList);
+      socket.off("chats", handleOnChats);
+    };
+  }, [refetchChats, socket]); // Add 'socket' as a dependency to ensure it updates when the socket changes
+
+  const isLoadingAny = isLoading;
+  const isErrorAny = isError;
+  const errorAny = error;
+  const loadingOrError = handleLoadingAndError(isLoadingAny, isErrorAny, errorAny);
+  if (loadingOrError) return loadingOrError;
+
+  const chatRooms: ChatRoomByProduct[] = productId
+    ? (data! as ChatRoomsByProductResponse).chatRoomListWithUnreadCount
+    : (data! as ChatRoomsByKeyResponse).sellerChatRoomList;
+
+  const filteredChatRooms = chatRooms
+    .filter((chatRoom: any) => {
+      const filterOption = selectedOption;
+      if (filterOption === "판매중") {
+        return chatRoom.product.status === "Registered";
+      } else if (filterOption === "예약중") {
+        return chatRoom.product.status === "Reserved";
+      } else if (filterOption === "거래완료") {
+        return chatRoom.product.status === "Sold";
+      } else if (filterOption === "전체") {
+        return true; // 모든 채팅방을 필터링 없이 보여줍니다.
+      }
+      return true; // filterOption이 설정되지 않은 경우도 모든 채팅방을 보여줍니다.
+    })
+    ?.filter((chatRoom: any) => chatRoom.recentMsg?.updatedAt !== undefined)
+    ?.sort((a: any, b: any) => {
+      const dateA = new Date(a.recentMsg.updatedAt).getTime();
+      const dateB = new Date(b.recentMsg.updatedAt).getTime();
+      return dateB - dateA;
+    }); // 최신 메시지 순으로 정렬
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -201,44 +218,33 @@ const Chats: NextPage = () => {
       hasTabBar={!productId}
       canGoBack={!!productId}
       backUrl="back"
-      // chatRoom
     >
       <div className="divide-y-[1px]">
         {productId ? (
-          <div className="w-full max-w-xl border-b border-gray-200 bg-red-200 p-4">
-            <div
-              className="flex cursor-pointer items-center"
-              onClick={handleClick}
-            >
+          <div className="w-full max-w-xl p-4 bg-red-200 border-b border-gray-200">
+            <div className="flex items-center cursor-pointer" onClick={handleClick}>
               <div className="flex items-center space-x-4">
                 <ImgComponent
                   width={80}
                   height={80}
                   clsProps="rounded-md bg-gray-400"
                   imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.chatRoomListRelatedProduct[0]?.product?.images?.[0]?.imageId}/public`}
+                  // imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${chatRooms[0].product?.image}/public`}
                   imgName="사진"
                 />
                 <div className="flex flex-col space-y-1">
                   <div className="flex flex-row items-center space-x-2">
                     <div className="text-gray-900">
-                      {data?.chatRoomListRelatedProduct[0]?.product?.status ===
-                      Status.Reserved
+                      {chatRooms[0].product?.status === Status.Reserved
                         ? "예약중"
-                        : data?.chatRoomListRelatedProduct[0]?.product
-                            ?.status === Status.Sold
+                        : chatRooms[0].product?.status === Status.Sold
                         ? "거래완료"
                         : "판매중"}
                     </div>
-                    <div className="text-gray-900">
-                      {data?.chatRoomListRelatedProduct[0]?.product?.name}
-                    </div>
+                    <div className="text-gray-900">{chatRooms[0].product?.name}</div>
                   </div>
-                  <span className="text-gray-900">
-                    ￦{data?.chatRoomListRelatedProduct[0]?.product?.price}
-                  </span>
-                  <div className="text-gray-900">
-                    {data?.chatRoomListRelatedProduct[0]?.seller?.name}
-                  </div>
+                  <span className="text-gray-900">￦{chatRooms[0].product?.price}</span>
+                  <div className="text-gray-900">{chatRooms[0].seller?.name}</div>
                 </div>
               </div>
             </div>
@@ -254,76 +260,18 @@ const Chats: NextPage = () => {
           </div>
         )}
         {filteredChatRooms?.length === 0 ? (
-          <div className="flex h-20 items-center justify-center">
-            채팅방이 없습니다
-          </div>
+          <div className="flex items-center justify-center h-20">채팅방이 없습니다</div>
         ) : (
-          filteredChatRooms
-            ?.sort((a: any, b: any) => {
-              const dateA = new Date(a.recentMsg?.updatedAt).getTime();
-              const dateB = new Date(b.recentMsg?.updatedAt).getTime();
-              return dateB - dateA;
-            })
-            .map((chatRoom: any) => {
-              // 로그인 유저가 채팅방에서 구매자인지 여부
-              const isBuyer = chatRoom?.buyerId === user?.id;
-              return (
-                <Link href={`/chats/${chatRoom.id}`} key={chatRoom.id}>
-                  <a className="flex cursor-pointer items-center space-x-3 px-4 py-3">
-                    <div className="">
-                      <ImgComponent
-                        imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${chatRoom?.product?.images?.[0]?.imageId}/public`}
-                        width={72}
-                        height={72}
-                        imgName={chatRoom?.product?.name}
-                      />
-                    </div>
-                    <div className="flex w-full flex-col space-y-1">
-                      <div className="flex flex-row space-x-2">
-                        <div className="text-md">{chatRoom?.product?.name}</div>
-                        <div className="text-md">{`${chatRoom?.product?.price}원`}</div>
-                      </div>
-                      <div className="flex w-full flex-row items-center space-x-2">
-                        <div className="relative w-10/12 space-y-1">
-                          <div className="flex flex-row space-x-2">
-                            <p className="text-gray-700">
-                              {chatRoom.buyerId === user?.id
-                                ? `판매자: ${chatRoom.seller.name}`
-                                : `구매자: ${chatRoom.buyer.name}`}
-                            </p>
-                          </div>
-                          <div className="flex flex-row items-center justify-between">
-                            <div className="flex flex-row items-center space-x-2">
-                              <div className="whitespace-nowrap rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
-                                {chatRoom.recentMsg?.userId ===
-                                chatRoom.seller.id
-                                  ? chatRoom.seller.name
-                                  : chatRoom.buyer.name}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {chatRoom.recentMsg?.chatMsg}
-                              </div>
-                            </div>
-                            {data.unreadCountsPerRoom[chatRoom.id] !== 0 &&
-                            chatRoom.recentMsg?.userId !== user?.id ? (
-                              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500">
-                                <div className="text-sm text-white">
-                                  {data.unreadCountsPerRoom[chatRoom.id]}
-                                </div>
-                              </div>
-                            ) : null}
-                          </div>
-                          <div className="text-sm text-gray-400">
-                            최신 메세지 시간:{" "}
-                            {formatDate(chatRoom.recentMsg?.updatedAt)}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </a>
-                </Link>
-              );
-            })
+          filteredChatRooms.map((chatRoom: any) => {
+            return (
+              <EachChatRoom
+                key={chatRoom.id}
+                chatRoomId={chatRoom.id}
+                onlineUsers={onlineUsers}
+                shouldRefetch={shouldRefetch}
+              />
+            );
+          })
         )}
       </div>
     </Layout>

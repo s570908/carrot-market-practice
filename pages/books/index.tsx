@@ -1,6 +1,6 @@
 import axios from "axios";
 import Link from "next/link";
-import dayjs from "dayjs";
+import dayjs from "@libs/dayjs";
 import { useEffect, useState } from "react";
 
 export interface Book {

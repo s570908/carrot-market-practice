@@ -9,9 +9,13 @@ import { useRouter } from "next/router";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import PaginationButton from "@components/PaginationButton";
 import client from "@libs/client/client";
-import { ReserveResponse } from "./api/apiTypes";
 import { useInfiniteQuery, useQuery } from "react-query";
 import axios from "axios";
+import useSocket from "@libs/client/useSocket";
+import { ChatRoomType, ProductPaging, ProductWithFav, UserID } from "apiLibs/atypes";
+import { getChatRoomIDs } from "apiLibs/chatRooms";
+//import { SWRConfig } from "swr";
+import { getProductsPaging } from "apiLibs/products";
 
 export interface ProductWithCount extends Product {
   favs: Fav[];
@@ -35,26 +39,18 @@ const limitNumber = 3;
 
 const Home: NextPage = () => {
   const { user, isLoading } = useUser();
-  const router = useRouter();
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(limitNumber); // limit을 상태로 설정
+  const [limit, setLimit] = useState(10); // limit을 상태로 설정
   const observerElem = useRef(null);
+  const [socket, disconnect] = useSocket("market");
+  // console.log("Home socket: ", socket);
   // const { data } = useSWR<ProductsResponse>(`/api/products?page=${page}`);
   // ProductsResponse 타입에 맞는 데이터 요청 함수
   const fetchProducts = async (page: number, limit: number) => {
-    const response = await axios.get(
-      `/api/products?page=${page}&limit=${limit}`
-    );
+    const response = await axios.get(`/api/products?page=${page}&limit=${limit}`);
     return response.data;
   };
 
-  // const { data } = useQuery<ProductsResponse>(
-  //   ["products", page, limit], // 쿼리 키, 페이지 번호에 따라 쿼리가 다름
-  //   () => fetchProducts(page, limit), // 데이터를 가져오는 함수
-  //   {
-  //     keepPreviousData: true, // 페이지 이동 시 이전 데이터 유지 (선택 사항)
-  //   }
-  // );
+  const { data: channelData } = useQuery("chatRoomIDs", () => getChatRoomIDs(ChatRoomType.All));
 
   const {
     data,
@@ -65,7 +61,7 @@ const Home: NextPage = () => {
     isFetchingNextPage,
   } = useInfiniteQuery(
     ["products", limit], // 쿼리 키에 limit을 포함
-    ({ pageParam = 1 }) => fetchProducts(pageParam, limit),
+    ({ pageParam = 1 }) => getProductsPaging(pageParam, limit),
     {
       getNextPageParam: (lastPage, allPages) => {
         // 다음 페이지가 존재하면 다음 페이지 번호를 반환
@@ -104,26 +100,35 @@ const Home: NextPage = () => {
     };
   }, [fetchNextPage, hasNextPage, handleObserver]);
 
-  // const {
-  //   data: reserveData,
-  //   isLoading: reserveLoading,
-  //   mutate: reserveMutate,
-  // } = useSWR<ReserveResponse>(
-  //   router.query.id ? `/api/products/${router.query.id}/reservation` : null
-  // );
-  const onPrevBtn = () => {
-    router.push(`${router.pathname}?page=${page - 1}`);
-    setPage((prev) => prev - 1);
-  };
-  const onNextBtn = () => {
-    router.push(`${router.pathname}?page=${page + 1}`);
-    setPage((prev) => prev + 1);
-  };
+  // 로그인 user가 가입되어 있는 모든 chat room (channel) 목록을 가져온 후에 channels에 그 목록을 저장한다.
+  useEffect(() => {
+    const userData = user;
+    if (channelData?.ok && userData) {
+      console.info("로그인하자", socket);
+      console.log("channelData.sellerChatRoomList: ", channelData.sellerChatRoomList);
+      socket?.emit("login", {
+        id: userData?.id,
+        channels: channelData.sellerChatRoomList.map((v: any) => v.id),
+      });
+    }
+  }, [channelData?.ok, channelData?.sellerChatRoomList, socket, user]);
+
+  useEffect(() => {
+    if (socket) {
+      socket?.on("message", (message: any) => {
+        console.log("message received: ", message);
+      });
+    }
+
+    return () => {
+      socket?.off("message");
+    };
+  }, [socket]);
 
   //console.log("===data: ", data);
   return (
     <Layout seoTitle="Home" title="홈" hasTabBar notice>
-      <div className="flex flex-col space-y-5 divide-y px-4">
+      <div className="flex flex-col px-4 space-y-5 divide-y">
         {/* {data?.products?.map((product) => {
           const reserved = product?.status === Status.Reserved ? true : false;
           const sold = product?.status === Status.Sold ? true : false;
@@ -153,7 +158,7 @@ const Home: NextPage = () => {
           );
         })} */}
         {data?.pages.map((page) =>
-          page.products.map((product: ProductWithCount) => {
+          page.products.map((product: ProductPaging) => {
             const reserved = product?.status === Status.Reserved;
             const sold = product?.status === Status.Sold;
             let status: Status = Status.Registered;
@@ -173,23 +178,13 @@ const Home: NextPage = () => {
                 hearts={product._count?.favs}
                 photo={product?.images?.[0]?.imageId ?? ""}
                 isLike={product.favs
-                  .map((uid: User) => (uid.userId === user?.id ? true : false))
+                  .map((uid: UserID) => (uid.userId === user?.id ? true : false))
                   .includes(true)}
                 status={status}
               />
             );
           })
         )}
-        {/* <button
-          onClick={() => fetchNextPage()}
-          disabled={!hasNextPage || isFetchingNextPage}
-        >
-          {isFetchingNextPage
-            ? "Loading more..."
-            : hasNextPage
-            ? "Load More"
-            : "No more products"}
-        </button> */}
         {isLoading && <p>Loading...</p>}
       </div>
       {/* 사용자에게 limit을 조정할 수 있는 인터페이스 추가 */}
@@ -210,7 +205,7 @@ const Home: NextPage = () => {
         {isFetchingNextPage && hasNextPage ? "Loading..." : "No product left"}
       </div>
       {data ? (
-        <div className="group relative w-full">
+        <div className="relative w-full group">
           {/* <PaginationButton
             onClick={onPrevBtn}
             direction="prev"
@@ -258,7 +253,7 @@ const Home: NextPage = () => {
           </PaginationButton> */}
           <FloatingButton href="/products/upload" isGroup={true}>
             <svg
-              className="h-6 w-6"
+              className="w-6 h-6"
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"
@@ -279,7 +274,7 @@ const Home: NextPage = () => {
   );
 };
 
-const Page: NextPage<{ products: ProductWithCount[] }> = ({ products }) => {
+const Page: NextPage<{ products: ProductWithFav[] }> = ({ products }) => {
   return (
     <SWRConfig
       value={{
