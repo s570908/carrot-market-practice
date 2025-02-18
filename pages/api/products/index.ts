@@ -36,7 +36,8 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
             id: true,
           },
         },
-        images: { // ProductImage 모델의 이미지 데이터 포함
+        images: {
+          // ProductImage 모델의 이미지 데이터 포함
           select: {
             id: true,
             imageId: true,
@@ -45,7 +46,7 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
       },
       take: limitValue,
       skip: (+page - 1) * limitValue,
-      orderBy: { createdAt: "desc" },
+      orderBy: { updatedAt: "desc" },
     });
     const nextProducts = await client.product.findMany({
       where: {
@@ -67,7 +68,8 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
             id: true,
           },
         },
-        images: { // ProductImage 모델의 이미지 데이터 포함
+        images: {
+          // ProductImage 모델의 이미지 데이터 포함
           select: {
             id: true,
             imageId: true,
@@ -76,7 +78,7 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
       },
       take: limitValue,
       skip: (+page + 1 - 1) * limitValue,
-      orderBy: { createdAt: "desc" },
+      orderBy: { updatedAt: "desc" },
     });
     res.json({
       ok: true,
@@ -107,10 +109,10 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
       body: { name, price, description, images },
       session: { user },
     } = req;
-// images 데이터를 Prisma가 기대하는 형태로 변환
-const productImages = images.map((image: { imageId: string }) => ({
-  imageId: image.imageId, // ProductImage 모델의 필드 이름에 맞게 변경
-}));
+    // images 데이터를 Prisma가 기대하는 형태로 변환
+    const productImages = images.map((image: { imageId: string }) => ({
+      imageId: image.imageId, // ProductImage 모델의 필드 이름에 맞게 변경
+    }));
     const products = await client.product.create({
       data: {
         name,

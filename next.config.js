@@ -10,6 +10,8 @@ const nextConfig = {
       "iframe.videodelivery.net",
       "picsum.photos",
       "via.placeholder.com",
+      "pixabay.com",
+      "images.unsplash.com",
     ],
   },
   // fastRefresh: false,

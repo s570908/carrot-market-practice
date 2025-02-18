@@ -14,6 +14,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
     include: {
       product: {
         include: {
+          images: true,
           _count: {
             select: {
               favs: true,

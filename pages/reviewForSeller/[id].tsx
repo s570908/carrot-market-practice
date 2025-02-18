@@ -10,6 +10,11 @@ import gravatar from "gravatar";
 import { useMutation, useQuery } from "react-query";
 import { ProfileResponse } from "apiLibs/atypes";
 import { handleLoadingAndError } from "@components/LoadingError";
+import { getOther } from "apiLibs/users";
+import dayjs from "dayjs";
+import "dayjs/locale/ko"; // Import Korean locale
+
+dayjs.locale("ko"); // Set dayjs locale to Korean
 
 const ReviewForSellerDetail: NextPage = () => {
   const { user } = useUser();
@@ -23,7 +28,7 @@ const ReviewForSellerDetail: NextPage = () => {
     error,
   } = useQuery<ProfileResponse>(
     ["profile", id], // 쿼리 키, id가 변할 때마다 새로 요청
-    () => getProfile(id!), // id가 있을 때만 요청
+    () => getOther(id!), // id가 있을 때만 요청
     {
       enabled: !!id, // id가 존재할 때만 쿼리 실행
     }
@@ -110,12 +115,12 @@ const ReviewForSellerDetail: NextPage = () => {
           <Link key={idx} href={`/products/${sale?.product?.id}`}>
             <a className="mb-2 flex cursor-pointer flex-col border-b pb-2">
               <div className="flex items-center space-x-4">
-                <ImgComponent
+                {/* <ImgComponent
                   width={60}
                   height={60}
                   clsProps="rounded-md bg-gray-400"
-                  imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${sale?.product?.image}/public`}
-                />
+                  imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${sale?.product?.product?.image}/public`}
+                /> */}
                 <div className="pt-2">
                   <h3 className="text-sm font-medium text-gray-900">{`${sale?.product?.name}`}</h3>
                   <div className="flex items-center space-x-2">
@@ -152,7 +157,9 @@ const ReviewForSellerDetail: NextPage = () => {
               </div>
               <div className="mt-1 text-sm font-normal text-gray-800">
                 {sale?.product?.productReviews[0]?.updatedAt
-                  ? new Date(sale.product.productReviews[0].updatedAt).toISOString()
+                  ? dayjs(sale.product.productReviews[0].updatedAt).format(
+                      "YYYY년 MM월 DD일 A h:mm"
+                    )
                   : "날짜 정보 없음"}
               </div>
             </a>
@@ -163,6 +170,3 @@ const ReviewForSellerDetail: NextPage = () => {
   );
 };
 export default ReviewForSellerDetail;
-function getProfile(arg0: number): ProfileResponse | Promise<ProfileResponse> {
-  throw new Error("Function not implemented.");
-}

@@ -13,7 +13,7 @@ import {
   User,
 } from "@prisma/client";
 // import useMutation from "@libs/client/useMutation";
-import { cls } from "@libs/utils";
+import { cls, parseId } from "@libs/utils";
 import useUser from "@libs/client/useUser";
 import ImgComponent from "@components/ImgComponent";
 import { Suspense, useEffect, useRef } from "react";
@@ -31,16 +31,21 @@ import { Swiper as SwiperCore } from "swiper"; // SwiperCore 타입 가져오기
 import { Navigation } from "swiper/modules"; // 네비게이션 모듈
 import "swiper/css";
 import "swiper/css/navigation";
+import { getProduct, getReservation, writeToggleFav } from "apiLibs/products";
+import { getChatRoomsByProduct, writeChatRoom } from "apiLibs/chatRooms";
+import { handleLoadingAndError } from "@components/LoadingError";
+import { ProductDetailResponse } from "apiLibs/atypes";
+import useSocket from "@libs/client/useSocket";
 
 interface ProductWithReview extends Review {
   createdBy: User;
 }
 
-interface ProductWithUser extends PrismaProduct {
-  user: User;
-  productReviews: ProductWithReview[];
-  images: ProductImage[];
-}
+// interface ProductWithUser extends PrismaProduct {
+//   user: User;
+//   productReviews: ProductWithReview[];
+//   images: ProductImage[];
+// }
 
 interface LocalProduct {
   id: number;
@@ -51,12 +56,12 @@ interface LocalProduct {
   status: Status;
   images: ProductImage[]; // Add this line to include images property
 }
-interface ItemDetailResponse {
-  ok: boolean;
-  product: ProductWithUser;
-  relatedProducts: LocalProduct[];
-  isLike: boolean;
-}
+// interface ItemDetailResponse {
+//   ok: boolean;
+//   product: ProductWithUser;
+//   relatedProducts: LocalProduct[];
+//   isLike: boolean;
+// }
 
 interface ReservationWithUser extends Reservation {
   user: User;
@@ -74,6 +79,8 @@ interface Payload {
   eventName: string;
 }
 
+const workspace = "market"; // 추후 다른 workspace를 추가하려면 로직을 개편해야 한다.
+
 const ItemDetail: NextPage = () => {
   const { user } = useUser();
   const router = useRouter();
@@ -82,8 +89,9 @@ const ItemDetail: NextPage = () => {
   const [chatRoomCount, setChatRoomCount] = useState(0);
   const queryClient = useQueryClient();
   const id = parseId(router.query.id);
+  const [socket, disconnectSocket] = useSocket(workspace);
 
-  const { data, refetch, isLoading, isError, error } = useQuery(
+  const { data, refetch, isLoading, isError, error } = useQuery<ProductDetailResponse>(
     ["product", id],
     () => getProduct(id!),
     {
@@ -105,7 +113,7 @@ const ItemDetail: NextPage = () => {
     }
   );
 
-  console.log("reservationData: ", reservationData);
+  //console.log("reservationData: ", reservationData);
 
   const {
     data: chatRoomData,
@@ -119,13 +127,12 @@ const ItemDetail: NextPage = () => {
     {
       enabled: !!id, // query.id가 있을 때만 쿼리 실행
       onSuccess: (data) => {
-        console.log("/api/chatRoomList/product--queryId:", id);
-        console.log("/api/chatRoomList/product--data:", JSON.stringify(data, null, 2));
-
-        console.log(
-          "/api/chatRoomList/product--data.chatRoomListWithUnreadCount: ",
-          data.chatRoomListWithUnreadCount
-        );
+        //console.log("/api/chatRoomList/product--queryId:", id);
+        //console.log("/api/chatRoomList/product--data:", JSON.stringify(data, null, 2));
+        // console.log(
+        //   "/api/chatRoomList/product--data.chatRoomListWithUnreadCount: ",
+        //   data.chatRoomListWithUnreadCount
+        // );
       },
     }
   );
@@ -142,7 +149,7 @@ const ItemDetail: NextPage = () => {
       await queryClient.cancelQueries(["product", id]);
 
       // 캐시에서 현재 데이터를 가져옴
-      const previousData = queryClient.getQueryData<ItemDetailResponse>(["product", id]);
+      const previousData = queryClient.getQueryData<ProductDetailResponse>(["product", id]);
 
       // optimistic하게 데이터를 업데이트
       if (previousData) {
@@ -176,11 +183,24 @@ const ItemDetail: NextPage = () => {
   } = useMutation(writeChatRoom, {
     onSuccess: (data) => {
       console.log("Chat initialized successfully", data);
-      // 성공 시 처리할 로직
+      //// 성공 시 처리할 로직
+      //// 만약 data.isNew가 true이면 새로 생성된 chatRoom이고, false이면 기존에 존재하는 chatRoom입니다.
+      // isNew가 true이면 새로운 chatRoom이 생성되었으므로, chatRoom을 생성한 후 chatRoom을 socket server에 송부한다.
+      //    event name은 'chatRoomCreated'로 한다. event payload는 {chatRoom: data.chatRoom}이다.
+      //    socket event를 송부하는 방법은 socket.emit('chatRoomCreated', {chatRoom: data.chatRoom})이다.
+      //    socket server는 이 socket event를 수신하고는 이 socket을 /ws-market-chatRoomId 채널에 join을 시켜준다.
+      // isNew가 false이면 아무일도 하지 않는다.
+      // if (!data.isNew) {
+      //   return;
+      // }
+      // if (data.isNew) {
+      //   if (socket) {
+      //     socket.emit("chatRoomCreated", { chatRoom: data.chatRoom });
+      //   }
+      // }
     },
     onError: (error) => {
       console.error("Error initializing chat", error);
-      // 에러 시 처리할 로직
     },
   });
 
@@ -299,6 +319,20 @@ const ItemDetail: NextPage = () => {
   }, [router, talkToSellerData]);
 
   useEffect(() => {
+    if (socket) {
+      socket.on("changeState", async (data) => {
+        console.log("changeState socket event received:", data);
+        await refetch();
+      });
+    }
+    return () => {
+      if (socket) {
+        socket.off("changeState");
+      }
+    };
+  }, [socket]);
+
+  useEffect(() => {
     // 이벤트를 처리할 콜백 함수 정의
     const handleBuyerAction = (payload: any) => {
       console.log("buyerAction 이벤트 발생:", payload);
@@ -411,14 +445,6 @@ const ItemDetail: NextPage = () => {
         </Swiper>
         {/* 기존 코드 유지 */}
         <div className="mb-8">
-          {/* <ImgComponent
-            isLayout={true}
-            layoutHeight="h-80"
-            imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.product?.image}/public`}
-            // imgAdd={`https://raw.githubusercontent.com/Real-Bird/pb/master/rose.jpg`}
-            clsProps="object-scale-down"
-            imgName={data?.product?.name}
-          /> */}
           <div className="flex cursor-pointer items-center space-x-3 border-b border-t py-3">
             {data?.product?.user?.avatar ? (
               <ImgComponent
@@ -452,10 +478,7 @@ const ItemDetail: NextPage = () => {
                     const fillPercentage = Math.max(0, Math.min(100, (rating - index) * 100));
 
                     return (
-                      <div
-                        key={index}
-                        className="relative inline-block h-6 w-6"
-                      >
+                      <div key={index} className="relative inline-block h-6 w-6">
                         {/* 회색 별 */}
                         <svg
                           viewBox="0 0 24 24"
@@ -508,13 +531,8 @@ const ItemDetail: NextPage = () => {
                 <div className="text-base">판매중</div>
               ) : reserved && isProvider ? (
                 <div className="flex flex-row items-center gap-3">
-                  <div className="text-base">
-                    {`${reservationUserName}가 예약중임`}
-                  </div>
-                  <button
-                    className="rounded-full bg-slate-200 p-2 text-sm"
-                    onClick={onChatRoom}
-                  >
+                  <div className="text-base">{`예약자: ${reservationUserName} `}</div>
+                  <button className="rounded-full bg-slate-200 p-2 text-sm" onClick={onChatRoom}>
                     예약자와의 채팅방으로 이동
                   </button>
                 </div>
@@ -542,52 +560,55 @@ const ItemDetail: NextPage = () => {
               </div>
               {/*@ts-ignore*/}
               {data?.product?.productReviews?.length > 0 ? (
-                data?.product?.productReviews.map((review) => (
-                  <div
-                    key={review.id}
-                    className="flex flex-row justify-items-start space-x-12"
-                  >
-                    <div className="flex flex-col items-center justify-center space-y-1">
-                      {review.createdBy?.avatar ? (
-                        <ImgComponent
-                          imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${review.createdBy?.avatar}/public`}
-                          width={48}
-                          height={48}
-                          clsProps="rounded-full"
-                          imgName={review.createdBy?.name}
-                        />
-                      ) : (
-                        <div className="h-12 w-12 rounded-full bg-slate-500" />
-                      )}
-                      <span className="font-medium text-gray-900">{review?.createdBy.name}</span>
-                    </div>
-                    <div className="flex flex-row items-center justify-evenly space-x-20">
-                      <div className="flex flex-col items-start">
-                        <div className="flex items-center">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <svg
-                              key={star}
-                              className={cls(
-                                "h-5 w-5",
-                                review.score >= star ? "text-yellow-400" : "text-gray-300"
-                              )}
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 20 20"
-                              fill="currentColor"
-                              aria-hidden="true"
-                            >
-                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                            </svg>
-                          ))}
+                <>
+                  {console.log("data?.product?.productReviews: ", data?.product?.productReviews)}
+                  {data?.product?.productReviews.map((review) => (
+                    <div key={review.id} className="flex flex-row justify-items-start space-x-12">
+                      {/* <div className="flex flex-col items-center justify-center space-y-1">
+                        {review.createdBy?.avatar ? (
+                          <ImgComponent
+                            imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${review.createdBy?.avatar}/public`}
+                            width={48}
+                            height={48}
+                            clsProps="rounded-full"
+                            imgName={review.createdBy?.name}
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-slate-500" />
+                        )}
+                        <span className="font-medium text-gray-900">{review?.createdBy.name}</span>
+                      </div> */}
+                      <div className="flex flex-row items-center justify-evenly space-x-20">
+                        <div className="mb-2 flex flex-col items-start">
+                          <div className="flex items-center">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <svg
+                                key={star}
+                                className={cls(
+                                  "h-5 w-5",
+                                  review.score >= star ? "text-yellow-400" : "text-gray-300"
+                                )}
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                                aria-hidden="true"
+                              >
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8-2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                              </svg>
+                            ))}
+                          </div>
+                          <p className="mt-2 text-lg text-gray-700">{review.review}</p>
+                          <span className="space-x-4 text-xs font-extralight text-gray-900">
+                            <RegDate regDate={review.createdAt} />
+                            <span className="font-medium text-gray-900">
+                              {review?.createdBy.name}
+                            </span>
+                          </span>
                         </div>
-                        <p className="my-2 text-lg text-gray-700">{review.review}</p>
                       </div>
-                      <span className="font-medium text-gray-900">
-                        <RegDate regDate={review.createdAt} />
-                      </span>
                     </div>
-                  </div>
-                ))
+                  ))}
+                </>
               ) : (
                 <p className="my-6 text-base text-gray-700">
                   {data ? data?.product?.description : "Now Loading..."}
@@ -679,12 +700,8 @@ const ItemDetail: NextPage = () => {
                         clsProps="mt-6 mb-4 bg-slate-300"
                         imgName={product.name}
                       />
-                      <h3 className="-mb-1 text-base text-gray-700">
-                        {product.name}
-                      </h3>
-                      <span className="text-xs font-medium text-gray-900">
-                        ￦{product.price}
-                      </span>
+                      <h3 className="-mb-1 text-base text-gray-700">{product.name}</h3>
+                      <span className="text-xs font-medium text-gray-900">￦{product.price}</span>
                     </a>
                   </Link>
                 );

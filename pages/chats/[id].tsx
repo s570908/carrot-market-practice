@@ -33,7 +33,8 @@ import {
   writeSellComplete,
   writeToggleReservation,
 } from "apiLibs/products";
-import { ChatFormResponse } from "apiLibs/atypes";
+import { ChatFormResponse, ProductWithImages } from "apiLibs/atypes";
+import { useAwaitableModal } from "@libs/client/useAwaitableModal";
 
 type Option = {
   value: string;
@@ -71,7 +72,7 @@ interface ReviewWritableResponse {
 interface ChatRoomWithDetails extends ChatRoom {
   buyer: User;
   seller: User;
-  product: Product;
+  product: ProductWithImages;
   // chats: ChatMessage[];
 }
 
@@ -84,9 +85,7 @@ const workspace = "market"; // 추후 다른 workspace를 추가하려면 로직
 const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   // console.log("chatRoomData: ", chatRoomData);
   const [newMessageSubmitted, setNewMessageSubmitted] = useState(false);
-  const [currentVisibleDate, setCurrentVisibleDate] = useState<string | null>(
-    null
-  );
+  const [currentVisibleDate, setCurrentVisibleDate] = useState<string | null>(null);
   const [isScrolling, setIsScrolling] = useState(false);
   const { user } = useUser();
   const queryClient = useQueryClient();
@@ -99,7 +98,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     isLoading,
     isError,
     error,
-    refetch, // 데이터를 수동으로 패칭할 수 있는 함수
+    refetch: refetchChat, // 데이터를 수동으로 패칭할 수 있는 함수
   } = useQuery(
     ["chat", id], // 쿼리 키
     // () => fetch(`/api/chat/${router.query.id}`).then((res) => res.json()), // 데이터 패칭 함수
@@ -111,6 +110,69 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       //   console.log("/api/chat/${router.query.id}--router.query.id:", router.query.id);
       //   console.log("/api/chat/${router.query.id}--data:", data);
       // },
+    }
+  );
+
+  // const { openModal: openReservedModal, renderModal: renderReservedModal } = useAwaitableModal(
+  //   (modal, params) => {
+  //     return (
+  //       <div className="fixed inset-0 z-50 flex items-center justify-center">
+  //         {/* backdrop */}
+  //         <div
+  //           className="fixed inset-0 bg-black bg-opacity-50"
+  //           //onClick={() => modal.closeWithError("backdrop_click")}
+  //         />
+  //         <div className="z-50">
+  //           <div className="p-4 bg-white rounded-lg w-96">
+  //             <h2 className="mb-4 text-xl font-bold">{params.name}과 예약 중입니다.</h2>
+  //             <button
+  //               className="px-4 py-2 text-white bg-blue-500 rounded-lg"
+  //               onClick={() => modal.closeWithResult("keep")}
+  //             >
+  //               예약유지
+  //             </button>
+  //             <button
+  //               className="px-4 py-2 ml-2 text-black bg-gray-200 rounded-lg"
+  //               onClick={() => modal.closeWithResult("cancel")}
+  //             >
+  //               예약취소
+  //             </button>
+  //           </div>
+  //         </div>
+  //       </div>
+  //     );
+  //   }
+  // );
+
+  const { openModal: openReservedModal, renderModal: renderReservedModal } = useAwaitableModal(
+    (modal, params) => {
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* backdrop */}
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50"
+            //onClick={() => modal.closeWithError("backdrop_click")}
+          />
+          <div className="z-50">
+            <div className="w-96 rounded-lg bg-white p-4 text-base font-normal">
+              <h4 className="mb-4">예약 중입니다. 예약자: {params.name} </h4>
+              <h4 className="mb-4">예약취소 후 판매중으로 변경하시겠습니까?</h4>
+              <button
+                className="rounded-lg bg-blue-500 px-4 py-2 text-white"
+                onClick={() => modal.closeWithResult("selling")}
+              >
+                변경
+              </button>
+              <button
+                className="ml-2 rounded-lg bg-gray-200 px-4 py-2 text-black"
+                onClick={() => modal.closeWithResult("keep")}
+              >
+                예약유지
+              </button>
+            </div>
+          </div>
+        </div>
+      );
     }
   );
 
@@ -128,10 +190,12 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   const reserved = data?.chatRoomOfSeller?.product?.status === Status.Reserved ? true : false;
   const sold = data?.chatRoomOfSeller?.product?.status === Status.Sold ? true : false;
+  const unregistered =
+    data?.chatRoomOfSeller?.product?.status === Status.Unregistered ? true : false;
   // selling은 Status.Registered와 동일하다.
-  const selling = !reserved && !sold;
-
-  const productStatus = (reserved && "예약중") || (sold && "거래완료") || "판매중";
+  const selling = !reserved && !sold && !unregistered;
+  const productStatus =
+    (reserved && "예약중") || (sold && "거래완료") || (selling && "판매중") || "미등록";
 
   const isProvider = data?.chatRoomOfSeller?.sellerId === user?.id;
   const isConsumer = data?.chatRoomOfSeller?.buyerId === user?.id;
@@ -139,13 +203,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   const isSellingAndConsumer = selling && isConsumer;
   const isSellingAndProvider = selling && isProvider;
-
-  // const { data: reservationData, mutate: reservationMutate } =
-  //   useSWR<ReservationResponse>(
-  //     router.query.id && data?.chatRoomOfSeller?.productId
-  //       ? `/api/products/${data?.chatRoomOfSeller?.productId}/reservation`
-  //       : null
-  //   );
 
   const fetchReservation = async (productId: string) => {
     const { data } = await axios.get(`/api/products/${productId}/reservation`);
@@ -161,6 +218,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   const {
     data: reservationData,
+    refetch: refetchReservation,
     isLoading: isLoadingReservation,
     isError: isErrorReservation,
     error: errorReservation,
@@ -170,6 +228,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   const {
     data: reviewWritableData,
+    refetch: refetchReviewWritable,
     isLoading: isLoadingReviewWritable,
     isError: isErrorReviewWritable,
     error: errorReviewWritable,
@@ -297,10 +356,13 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     isError: isErrorToggleReservation,
     error: errorToggleReservation,
   } = useMutation(writeToggleReservation, {
-    onSuccess: () => {
-      // 쿼리 무효화하여 최신 데이터로 갱신
-      queryClient.invalidateQueries("reservation");
-    },
+    // onSuccess: () => {
+    //   // 즉시 데이터를 다시 가져옵니다
+    //   console.log("refetch(): ");
+    //   refetchChat();
+    //   // 쿼리를 무효화하고, 해당 쿼리가 다시 접근될 때 데이터를 가져오도록 하고 싶을 때 사용됩니다.
+    //   // queryClient.invalidateQueries(["chat", id]);  // 쿼리를 무효화하고, 해당 쿼리가 다시 접근될 때 데이터를 가져오도록 하고 싶을 때 사용됩니다.
+    // },
   });
 
   // const sellComplete = async ({ productId, buyerId }: { productId: number; buyerId: number }) => {
@@ -316,9 +378,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     isError: isErrorSendSellComplete,
     error: errorSendSellComplete,
   } = useMutation(writeSellComplete, {
-    onSuccess: () => {
-      queryClient.invalidateQueries(["chat", id]); // 판매 완료 후 데이터 갱신
-    },
+    // onSuccess: () => {
+    //   queryClient.invalidateQueries(["chat", id]); // 판매 완료 후 데이터 갱신
+    // },
   });
 
   const onValid = (chatForm: ChatFormResponse) => {
@@ -359,27 +421,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     []
   );
 
-  const [connected, setConnected] = useState<boolean>(false);
-
-  useEffect(() => {
-    if (socket) {
-      socket?.on("message", (message: any) => {
-        // 해당 chatRoom에서만 refetch하도록...
-        if (router.query.id && message.channelId === +router.query.id) {
-          refetch();
-        }
-      });
-    }
-    return () => {
-      socket?.off("message");
-    };
-  }, [connected, refetch, router.query.id, socket]);
-
-  // 드롭다운에서 선택 변경 시 호출되는 함수
-  const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedValue(event.target.value);
-  };
-
   const [options, setOptions] = useState(initialOptions);
 
   useEffect(() => {
@@ -407,56 +448,167 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     setOptions(getUpdatedOptions(productStatus));
   }, [productStatus, initialOptions]);
 
-  // api server call is here
+  const [connected, setConnected] = useState<boolean>(false);
+
   useEffect(() => {
-    //console.log("selectedValue: ", selectedValue);
-    //console.log("reserved: ", reserved);
-    // console.log("sold: ", sold);
+    if (socket) {
+      socket.on("changeState", async (data) => {
+        console.log("changeState socket event received:", data);
+        await refetchChat();
+        await refetchReservation();
+        await refetchReviewWritable();
+      });
+    }
+    return () => {
+      if (socket) {
+        socket.off("changeState");
+      }
+    };
+  }, [socket]);
+
+  useEffect(() => {
+    if (socket) {
+      const roomName = `/ws-${workspace}-${id}`;
+      socket.emit("joinRoom", { room: roomName });
+      console.log(`Joined room: ${roomName}`);
+
+      socket.on("message", (message: any) => {
+        // 해당 chatRoom에서만 refetch하도록...
+        if (router.query.id && message.channelId === +router.query.id) {
+          refetchChat();
+        }
+      });
+    }
+    return () => {
+      if (socket) {
+        socket.off("message");
+      }
+    };
+  }, [socket, id, refetchChat, router.query.id]);
+
+  // 드롭다운에서 선택 변경 시 호출되는 함수
+  // const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+  //   //console.log("handleChange called --- event.target.value: ", event.target.value);
+  //   setSelectedValue(event.target.value); // 새로운 값으로 설정
+  // };
+
+  const handleChange = async (event: React.ChangeEvent<HTMLSelectElement>) => {
+    //console.log("handleChange--selling, reserved, sold: ", selling, reserved, sold);
+    const newValue = event.target.value;
+    //console.log("handleChange--newValue: ", newValue);
+
+    setSelectedValue(newValue);
+
     if (productId === undefined || buyerId === undefined) {
-      //console.error("Product ID or Buyer ID is undefined");
+      console.error("Product ID or Buyer ID is undefined");
       return;
     }
+
     if (selling) {
-      // 로그인 유저가 파는 사람이고 구매자가 예약 하겠다고 하면 예약중으로 변경한다.
-      if (selectedValue === "예약중") {
-        //console.log("api to do: 예약중");
-        toggleReservationMutate({
-          productId,
-          buyerId,
-        });
+      if (newValue === "예약중") {
+        console.log("selling 에서 예약중으로 변경");
+        toggleReservationMutate(
+          {
+            productId,
+            buyerId,
+          },
+          {
+            onSuccess: () => {
+              const stateObj = { productId, old: "판매중", new: "예약중" };
+              console.log("socket?.emit(changeState)--stateObj: ", stateObj);
+              socket?.emit("changeState", stateObj);
+            },
+          }
+        );
       }
-      // 로그인 유저가 파는 사람이고 구매자가 예약중이면 구매자의 예약을 제거하고 구매자에게 판매 완료한다.
-      if (selectedValue === "거래완료") {
-        //console.log("api to do: 거래완료");
-        sendSellComplete({
-          productId,
-          buyerId,
-        });
+      if (newValue === "거래완료") {
+        console.log("selling 에서 거래완료로 변경");
+        sendSellComplete(
+          {
+            productId,
+            buyerId,
+          },
+          {
+            onSuccess: () => {
+              const stateObj = { productId, old: "판매중", new: "거래완료" };
+              console.log("socket?.emit(changeState)--stateObj: ", stateObj);
+              socket?.emit("changeState", stateObj);
+            },
+          }
+        );
       }
     } else if (reserved) {
-      if (selectedValue === "판매중") {
-        // 로그인 유저가 파는 사람이고 구매자가 예약중인 상태에서 구매자의 예약을 취소한다.
-        //console.log("api to do: 예약중에서 판매중으로 바뀌도록 한다.");
-        toggleReservationMutate({
-          productId,
-          buyerId,
-        });
-      } else if (selectedValue === "거래완료") {
-        // 로그인 유저가 파는 사람이고 구매자가 예약중이면 구매자의 예약을 제거하고 구매자에게 판매 완료한다.
-        //console.log("api to do: 거래완료");
-        sendSellComplete({
-          productId,
-          buyerId,
-        });
-      } else if (selectedValue === "거래완료") {
-        // 거래 완료시 거래 완료 선택시 할일 없음
+      if (newValue === "판매중") {
+        console.log("reserved 에서 판매중으로 변경");
+        const result = await openReservedModal({ name: otherName });
+        console.log("openReservedModal--result: ", result);
+        if (result === "keep") {
+          console.log("모달에서 예약유지(keep)을 선택했습니다.");
+          setSelectedValue("");
+          return;
+        }
+        console.log("모달에서 변경(판매중)을 선택했습니다.");
+        toggleReservationMutate(
+          {
+            productId,
+            buyerId,
+          },
+          {
+            onSuccess: () => {
+              const stateObj = { productId, old: "예약중", new: "판매중" };
+              console.log("socket?.emit(changeState)--stateObj: ", stateObj);
+              socket?.emit("changeState", stateObj);
+            },
+          }
+        );
+      } else if (newValue === "거래완료") {
+        console.log("reserved 에서 거래완료로 변경");
+        sendSellComplete(
+          {
+            productId,
+            buyerId,
+          },
+          {
+            onSuccess: () => {
+              const stateObj = { productId, old: "예약중", new: "거래완료" };
+              console.log("socket?.emit(changeState)--stateObj: ", stateObj);
+              socket?.emit("changeState", stateObj);
+            },
+          }
+        );
+      }
+    } else if (sold) {
+      if (newValue === "거래완료") {
         console.log("할일 없음");
       }
     }
     setSelectedValue("");
-    // reservationMutate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedValue, reserved, sold, productId, buyerId]);
+  };
+
+  useEffect(() => {
+    const getUpdatedOptions = (pStatus: string) => {
+      if (pStatus === "판매중") {
+        return initialOptions.map((option: any) => ({
+          ...option,
+          active: option.value !== "판매중",
+        }));
+      }
+      if (pStatus === "예약중") {
+        return initialOptions.map((option: any) => ({
+          ...option,
+          active: option.value !== "예약중",
+        }));
+      }
+      if (pStatus === "거래완료") {
+        return initialOptions.map((option: any) => ({
+          ...option,
+          active: false,
+        }));
+      }
+      return initialOptions;
+    };
+    setOptions(getUpdatedOptions(productStatus));
+  }, [productStatus, initialOptions]);
 
   const chatUserId =
     data?.chatRoomOfSeller?.buyerId === user?.id
@@ -557,30 +709,30 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     }
   }
 
-  const isLoadingAny =
-    isLoading ||
-    isLoadingReservation ||
-    isLoadingReviewWritable ||
-    isLoadingSendChat ||
-    isLoadingToggleReservation ||
-    isLoadingSendSellComplete;
-  const isErrorAny =
-    isError ||
-    isErrorReservation ||
-    isErrorReviewWritable ||
-    isErrorSendChat ||
-    isErrorToggleReservation ||
-    isErrorSendSellComplete;
-  const errorAny =
-    error ||
-    errorReservation ||
-    errorReviewWritable ||
-    errorSendChat ||
-    errorToggleReservation ||
-    errorSendSellComplete;
+  // const isLoadingAny =
+  //   isLoading ||
+  //   isLoadingReservation ||
+  //   isLoadingReviewWritable ||
+  //   isLoadingSendChat ||
+  //   isLoadingToggleReservation ||
+  //   isLoadingSendSellComplete;
+  // const isErrorAny =
+  //   isError ||
+  //   isErrorReservation ||
+  //   isErrorReviewWritable ||
+  //   isErrorSendChat ||
+  //   isErrorToggleReservation ||
+  //   isErrorSendSellComplete;
+  // const errorAny =
+  //   error ||
+  //   errorReservation ||
+  //   errorReviewWritable ||
+  //   errorSendChat ||
+  //   errorToggleReservation ||
+  //   errorSendSellComplete;
 
-  const loadingOrError = handleLoadingAndError(isLoadingAny, isErrorAny, errorAny);
-  if (loadingOrError) return loadingOrError;
+  // const loadingOrError = handleLoadingAndError(isLoadingAny, isErrorAny, errorAny);
+  // if (loadingOrError) return loadingOrError;
 
   let lastMessageDate: string | null = null; // 마지막으로 표시된 날짜
 
@@ -604,200 +756,208 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     router.push(`/appointment/create?chatroomId=${chatroomId}`); // 채팅방 ID를 URL로 전달
   };
 
+  // console.log(
+  //   "user?.id === sellerUserId,selling,reserved: ",
+  //   user?.id === sellerUserId,
+  //   selling,
+  //   reserved
+  // );
+
   return (
-    <Layout
-      seoTitle={`${otherName} || 채팅`}
-      title={`${otherName}`}
-      canGoBack
-      // backUrl={"/chats"}
-      // backUrl={data?.chatRoomOfSeller?.buyerId === user?.id ? "/chats" : "back"}
-      backUrl={"back"}
-    >
-      <div className="relative h-full px-4 pb-12">
-        <div className="w-full max-w-xl p-4 bg-red-200 border-b border-gray-200">
-          <div
-            className="flex items-center cursor-pointer"
-            onClick={() => {
-              router.push(`/products/${productId}`);
-            }}
-          >
-            <div className="flex items-center space-x-4">
-              <ImgComponent
-                width={80}
-                height={80}
-                clsProps="rounded-md bg-gray-400"
-                imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.chatRoomOfSeller?.product?.images[0]?.imageId}/public`}
-                imgName="사진"
-              />
-              <div className="flex flex-col space-y-1">
-                <div className="flex flex-row items-center space-x-2">
-                  <div className="text-gray-900">{data?.chatRoomOfSeller?.product?.name}</div>
-                  <div>{productStatus}</div>
-                  <div className="">
-                    {/*로그인 유저가 판매자이고, 아직 안 팔렸고, 구매요청자(채팅상대자)가 예약자가 아니면  */}
-                    {!(
-                      user?.id !== sellerUserId ||
-                      sold ||
-                      (reserved && chatUserId !== reservationUserId)
-                    ) && (
-                      <Dropdown options={options} value={selectedValue} onChange={handleChange} />
-                    )}
+    <>
+      {renderReservedModal()}
+      <Layout
+        seoTitle={`${otherName} || 채팅`}
+        title={`${otherName}`}
+        canGoBack
+        // backUrl={"/chats"}
+        // backUrl={data?.chatRoomOfSeller?.buyerId === user?.id ? "/chats" : "back"}
+        backUrl={"back"}
+      >
+        <div className="relative h-full px-4 pb-12">
+          <div className="w-full max-w-xl border-b border-gray-200 bg-red-200 p-4">
+            <div
+              className="flex cursor-pointer items-center"
+              onClick={() => {
+                router.push(`/products/${productId}`);
+              }}
+            >
+              <div className="flex items-center space-x-4">
+                <ImgComponent
+                  width={80}
+                  height={80}
+                  clsProps="rounded-md bg-gray-400"
+                  imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${
+                    (data?.chatRoomOfSeller?.product as Product & { images: { imageId: string }[] })
+                      ?.images[0]?.imageId
+                  }/public`}
+                  imgName="사진"
+                />
+                <div className="flex flex-col space-y-1">
+                  <div className="flex flex-row items-center space-x-2">
+                    <div className="text-gray-900">{data?.chatRoomOfSeller?.product?.name}</div>
+                    <div>{productStatus}</div>
+                    <div className="">
+                      {/*로그인 유저가 판매자이고, selling | reserved 이면 drop down  */}
+                      {user?.id === sellerUserId && (selling || reserved) && (
+                        <Dropdown options={options} value={selectedValue} onChange={handleChange} />
+                      )}
+                    </div>
                   </div>
+                  <span className="text-gray-900">￦{data?.chatRoomOfSeller?.product?.price}</span>
+                  <div className="text-gray-900">{data?.chatRoomOfSeller?.seller?.name}</div>
                 </div>
-                <span className="text-gray-900">￦{data?.chatRoomOfSeller?.product?.price}</span>
-                <div className="text-gray-900">{data?.chatRoomOfSeller?.seller?.name}</div>
+              </div>
+            </div>
+            <div className="mt-2 flex flex-row justify-between">
+              <div
+                className="text-md cursor-pointer rounded-md border border-black p-1"
+                onClick={handleAppointmentClick}
+              >
+                약속잡기
+              </div>
+              {isSellingAndConsumer && (
+                <div
+                  className="text-md cursor-pointer rounded-md border border-black p-1"
+                  onClick={() => {
+                    console.log("당근페이가 클릭되었습니다.");
+                  }}
+                >
+                  당근페이
+                </div>
+              )}
+              {isSellingAndProvider && (
+                <div
+                  className="text-md cursor-pointer rounded-md border border-black p-1"
+                  onClick={() => {
+                    console.log("송금요청이 클릭되었습니다.");
+                  }}
+                >
+                  송금요청
+                </div>
+              )}
+              {isSellingAndConsumer && (
+                <div
+                  className="text-md cursor-pointer rounded-md border border-black p-1"
+                  onClick={() => {
+                    console.log("물품추가가 클릭되었습니다.");
+                  }}
+                >
+                  물품추가
+                </div>
+              )}
+              <button
+                className={`text-md cursor-pointer rounded-md border p-1 ${
+                  reserved || selling || reviewWritableData?.ok === false
+                    ? "cursor-not-allowed border-gray-400 opacity-50"
+                    : "border-black hover:bg-gray-100"
+                }`}
+                onClick={() => {
+                  router.push(
+                    `/products/${data?.chatRoomOfSeller?.productId}/review?otherId=${otherId}`
+                  );
+                }}
+                disabled={!sold || reviewWritableData?.ok === false}
+              >
+                {`${isProvider ? "판매" : "구매"} 후기 보내기`}
+              </button>
+              <div
+                className="text-md cursor-pointer rounded-md border border-black p-1"
+                onClick={() => {
+                  console.log("장소공유가 클릭 되었습니다.");
+                }}
+              >
+                장소공유
+              </div>
+              <div
+                className="text-md cursor-pointer rounded-md border border-black p-1"
+                onClick={() => {
+                  console.log("기타가 클릭 되었습니다.");
+                }}
+              >
+                기타
               </div>
             </div>
           </div>
-          <div className="flex flex-row justify-between mt-2">
-            <div
-              className="p-1 border border-black rounded-md cursor-pointer text-md"
-              onClick={handleAppointmentClick}
-            >
-              약속잡기
-            </div>
-            {isSellingAndConsumer && (
-              <div
-                className="p-1 border border-black rounded-md cursor-pointer text-md"
-                onClick={() => {
-                  console.log("당근페이가 클릭되었습니다.");
-                }}
-              >
-                당근페이
-              </div>
-            )}
-            {isSellingAndProvider && (
-              <div
-                className="p-1 border border-black rounded-md cursor-pointer text-md"
-                onClick={() => {
-                  console.log("송금요청이 클릭되었습니다.");
-                }}
-              >
-                송금요청
-              </div>
-            )}
-            {isSellingAndConsumer && (
-              <div
-                className="p-1 border border-black rounded-md cursor-pointer text-md"
-                onClick={() => {
-                  console.log("물품추가가 클릭되었습니다.");
-                }}
-              >
-                물품추가
-              </div>
-            )}
-            <button
-              className={`text-md cursor-pointer rounded-md border p-1 ${
-                reserved || selling || reviewWritableData?.ok === false
-                  ? "cursor-not-allowed border-gray-400 opacity-50"
-                  : "border-black hover:bg-gray-100"
-              }`}
-              onClick={() => {
-                router.push(
-                  `/products/${data?.chatRoomOfSeller?.productId}/review?otherId=${otherId}`
-                );
-              }}
-              disabled={!sold || reviewWritableData?.ok === false}
-            >
-              {`${isProvider ? "판매" : "구매"} 후기 보내기`}
-            </button>
-            <div
-              className="p-1 border border-black rounded-md cursor-pointer text-md"
-              onClick={() => {
-                console.log("장소공유가 클릭 되었습니다.");
-              }}
-            >
-              장소공유
-            </div>
-            <div
-              className="p-1 border border-black rounded-md cursor-pointer text-md"
-              onClick={() => {
-                console.log("기타가 클릭 되었습니다.");
-              }}
-            >
-              기타
-            </div>
-          </div>
-        </div>
-        <div
-          className="flex h-[calc(95vh-300px)] flex-col space-y-2 overflow-y-auto py-5 transition-all"
-          id="chatBox"
-          ref={chatBoxRef}
-        >
-          {/* Sticky 날짜 헤더 - 투명 배경과 애니메이션 적용 */}
-          {currentVisibleDate && (
-            <div className="sticky z-10 w-full top-4">
-              <div
-                className={`mx-auto w-fit rounded-full bg-black/70 px-4 py-1.5 
+          <div
+            className="flex h-[calc(95vh-300px)] flex-col space-y-2 overflow-y-auto py-5 transition-all"
+            id="chatBox"
+            ref={chatBoxRef}
+          >
+            {/* Sticky 날짜 헤더 - 투명 배경과 애니메이션 적용 */}
+            {currentVisibleDate && (
+              <div className="sticky top-4 z-10 w-full">
+                <div
+                  className={`mx-auto w-fit rounded-full bg-black/70 px-4 py-1.5 
                 text-center text-sm text-white transition-opacity duration-200 ease-out
                 ${isScrolling ? "opacity-100" : "opacity-0"}`}
-              >
-                {formatDateWithDay(currentVisibleDate)}
+                >
+                  {formatDateWithDay(currentVisibleDate)}
+                </div>
               </div>
-            </div>
-          )}
-          {data?.sellerChat?.map((message: any, index: number) => {
-            //console.log("message: ", JSON.stringify(message, null, 2));
-            const messageDate = dayjs(message.createdAt).format("YYYY-MM-DD"); // 메시지 날짜
-            const showDate = lastMessageDate !== messageDate; // 날짜를 표시할지 여부
-            lastMessageDate = messageDate; // 마지막 메시지 날짜 업데이트
-            return (
-              <div
-                key={message.id}
-                ref={(el) => {
-                  if (el) {
-                    messageRefs.current.set(message.id, {
-                      element: el,
-                      createdAt: message.createdAt,
-                    });
-                  } else {
-                    messageRefs.current.delete(message.id);
-                  }
-                }}
-                className="p-4 border-b border-gray-200"
-              >
-                {/* 날짜 툴팁 */}
-                {showTooltip && tooltipDate && (
-                  <div className="fixed z-20 px-4 py-2 text-sm text-white transform -translate-x-1/2 bg-gray-600 rounded-full left-1/2 top-2 bg-opacity-20">
-                    {tooltipDate}
-                  </div>
-                )}
-                {/* 날짜 변경 시 날짜 표시 */}
-                {showDate && (
-                  <div className="my-2 text-sm text-center text-white">
-                    <span className="px-4 bg-gray-400 rounded-full">
-                      {dayjs(message.createdAt).format("YYYY년 MM월 DD일 dddd")}
-                    </span>
-                  </div>
-                )}
-                <Message
-                  reversed={message.userId === user?.id}
+            )}
+            {data?.sellerChat?.map((message: any, index: number) => {
+              //console.log("message: ", JSON.stringify(message, null, 2));
+              const messageDate = dayjs(message.createdAt).format("YYYY-MM-DD"); // 메시지 날짜
+              const showDate = lastMessageDate !== messageDate; // 날짜를 표시할지 여부
+              lastMessageDate = messageDate; // 마지막 메시지 날짜 업데이트
+              return (
+                <div
                   key={message.id}
-                  name={message.user.name}
-                  message={message.chatMsg}
-                  avatar={message.user.avatar}
-                  date={message.createdAt}
-                />
-              </div>
-            );
-          })}
-          {!entry?.isIntersecting ? (
-            <button
-              onClick={() => {
-                scrollToBottom(scrollRef);
-              }}
-              className={cls(
-                "inline",
-                "absolute bottom-28 right-1 z-50 flex h-7 w-7 cursor-pointer items-center justify-center rounded-md bg-slate-700 "
-              )}
-            >
-              <FiChevronsDown className="text-xl text-gray-400" />
-            </button>
-          ) : null}
-          <div ref={scrollRef} style={{ height: "1px" }}></div>
-        </div>
-        <div>
-          {/* <form onSubmit={handleSubmit(onValid)} className="fixed inset-x-0 bottom-0 py-2 bg-white">
+                  ref={(el) => {
+                    if (el) {
+                      messageRefs.current.set(message.id, {
+                        element: el,
+                        createdAt: message.createdAt,
+                      });
+                    } else {
+                      messageRefs.current.delete(message.id);
+                    }
+                  }}
+                  className="border-b border-gray-200 p-4"
+                >
+                  {/* 날짜 툴팁 */}
+                  {showTooltip && tooltipDate && (
+                    <div className="fixed left-1/2 top-2 z-20 -translate-x-1/2 transform rounded-full bg-gray-600 bg-opacity-20 px-4 py-2 text-sm text-white">
+                      {tooltipDate}
+                    </div>
+                  )}
+                  {/* 날짜 변경 시 날짜 표시 */}
+                  {showDate && (
+                    <div className="my-2 text-center text-sm text-white">
+                      <span className="rounded-full bg-gray-400 px-4">
+                        {dayjs(message.createdAt).format("YYYY년 MM월 DD일 dddd")}
+                      </span>
+                    </div>
+                  )}
+                  <Message
+                    reversed={message.userId === user?.id}
+                    key={message.id}
+                    name={message.user.name}
+                    message={message.chatMsg}
+                    avatar={message.user.avatar}
+                    date={message.createdAt}
+                  />
+                </div>
+              );
+            })}
+            {!entry?.isIntersecting ? (
+              <button
+                onClick={() => {
+                  scrollToBottom(scrollRef);
+                }}
+                className={cls(
+                  "inline",
+                  "absolute bottom-28 right-1 z-50 flex h-7 w-7 cursor-pointer items-center justify-center rounded-md bg-slate-700 "
+                )}
+              >
+                <FiChevronsDown className="text-xl text-gray-400" />
+              </button>
+            ) : null}
+            <div ref={scrollRef} style={{ height: "1px" }}></div>
+          </div>
+          <div>
+            {/* <form onSubmit={handleSubmit(onValid)} className="fixed inset-x-0 bottom-0 py-2 bg-white">
             <div className="relative flex items-center w-full max-w-md pl-2 mx-auto">
               <input
                 {...register("chatMsg", { required: true })}
@@ -811,34 +971,35 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               </div>
             </div>
           </form> */}
-          <form onSubmit={handleSubmit(onValid)} className="w-full px-1 py-1 mt-10 border-t">
-            <div className="relative w-full px-2 py-2 bg-white rounded-md outline-none">
-              <input
-                {...register("chatMsg", { required: true, maxLength: 80 })}
-                maxLength={80}
-                placeholder={
-                  user === undefined ? "로그인 후 이용가능합니다." : "메세지를 입력해주세요."
-                }
-                className="w-full text-[15px] outline-none placeholder:text-gray-300"
-              />
-              <button
-                disabled={user === undefined}
-                type="submit"
-                className="absolute bottom-3 right-3 flex h-8 items-end rounded-md bg-orange-400 px-4 py-1.5 text-sm text-white hover:bg-orange-500"
-              >
-                {isLoadingSendChat === true ? (
-                  <div>
-                    <Loading color="" size={12} />
-                  </div>
-                ) : (
-                  "전송"
-                )}
-              </button>
-            </div>
-          </form>
+            <form onSubmit={handleSubmit(onValid)} className="mt-10 w-full border-t px-1 py-1">
+              <div className="relative w-full rounded-md bg-white px-2 py-2 outline-none">
+                <input
+                  {...register("chatMsg", { required: true, maxLength: 80 })}
+                  maxLength={80}
+                  placeholder={
+                    user === undefined ? "로그인 후 이용가능합니다." : "메세지를 입력해주세요."
+                  }
+                  className="w-full text-[15px] outline-none placeholder:text-gray-300"
+                />
+                <button
+                  disabled={user === undefined}
+                  type="submit"
+                  className="absolute bottom-3 right-3 flex h-8 items-end rounded-md bg-orange-400 px-4 py-1.5 text-sm text-white hover:bg-orange-500"
+                >
+                  {isLoadingSendChat === true ? (
+                    <div>
+                      <Loading color="" size={12} />
+                    </div>
+                  ) : (
+                    "전송"
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </div>
-    </Layout>
+      </Layout>
+    </>
   );
 };
 

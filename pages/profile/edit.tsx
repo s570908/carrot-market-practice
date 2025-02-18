@@ -6,8 +6,6 @@ import useUser from "@libs/client/useUser";
 import { useForm } from "react-hook-form";
 import { useEffect, useState } from "react";
 import useMutation from "@libs/client/useMutation";
-import useSWR from "swr";
-import fetcher from "@libs/client/fetcher";
 import gravatar from "gravatar";
 
 interface EditProfileForm {

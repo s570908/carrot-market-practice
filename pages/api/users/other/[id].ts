@@ -25,14 +25,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
             select: {
               id: true,
               userId: true,
-              image: true,
+              images: true,
               name: true,
               price: true,
               productReviews: {
                 select: {
                   score: true,
                   review: true,
-                  updatedAt: true
+                  updatedAt: true,
                 },
               },
             },

@@ -1,6 +1,7 @@
 import aclient from "./aclient";
 import {
   ItemDetailResponse,
+  ProductDetailResponse,
   ProductsPagingResponse,
   ReservationResponse,
   ReviewData,
@@ -16,6 +17,7 @@ export async function getProductsPaging(page: number, limit: number) {
   const response = await aclient.get<ProductsPagingResponse>(
     `/api/products?page=${page}&limit=${limit}`
   );
+  //console.log("getProductsPaging: ", response.data);
   return response.data;
 }
 
@@ -51,11 +53,12 @@ export async function getReviewWritable(params: {
 }
 
 export async function getProduct(id: number) {
-  const response = await aclient.get<ItemDetailResponse>(`/api/products/${id}`);
+  const response = await aclient.get<ProductDetailResponse>(`/api/products/${id}`);
   return response.data;
 }
 
 export async function writeSellComplete(params: { productId: number; buyerId: number }) {
+  console.log("writeSellComplete: ", params);
   const { productId, buyerId } = params;
   const response = await aclient.post<SellCompleteResponse>(`/api/products/${productId}`, {
     buyerId,

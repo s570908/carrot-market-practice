@@ -56,13 +56,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
             },
           },
           product: {
+            // include: {
+            //   images: true, // Include images relationship
+            // },
             select: {
               id: true,
               userId: true,
               name: true,
-              image: true,
               price: true,
               status: true,
+              images: true, // Corrected field name
             },
           },
           sellerChat: {
@@ -155,7 +158,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
               id: true,
               userId: true,
               name: true,
-              image: true,
+              images: true, // Corrected field name
               price: true,
               status: true,
             },

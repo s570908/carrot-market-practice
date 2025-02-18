@@ -57,7 +57,7 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
         product: {
           select: {
             price: true,
-            image: true,
+            images: true, // images 속성 추가
             name: true,
             status: true,
           },
@@ -82,7 +82,7 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
         ?.of(`ws-${worksapce}`)
         .to(channel)
         .emit("chats-lastReadMessage", result);
-      console.log("Check if you listened chats-lastReadMessage event");
+      //console.log("Check if you listened chats-lastReadMessage event");
     }
 
     if (chatRoomOfSeller?.buyerId !== user?.id && chatRoomOfSeller?.sellerId !== user?.id) {

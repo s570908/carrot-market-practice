@@ -1,6 +1,7 @@
 import type { NextPage } from "next";
 import Layout from "@components/Layout";
 import ProductList from "@components/ProductList";
+import { Kind } from "@prisma/client";
 
 const Loved: NextPage = () => {
   return (
@@ -11,7 +12,7 @@ const Loved: NextPage = () => {
       backUrl={"/profile"}
       isProfile={true}
     >
-      <ProductList kind="favs" />
+      <ProductList kind={Kind.Fav} />
     </Layout>
   );
 };

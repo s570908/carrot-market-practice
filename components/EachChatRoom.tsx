@@ -15,12 +15,6 @@ import { ChatRoomResponse } from "apiLibs/atypes";
 //   name: string;
 // }
 
-// interface Product {
-//   name: string;
-//   price: number;
-//   image: string;
-// }
-
 // interface ChatRoom {
 //   id: number;
 //   buyerId: number;
@@ -44,7 +38,7 @@ import { ChatRoomResponse } from "apiLibs/atypes";
 
 interface EachChatRoomProps {
   chatRoomId: number;
-  onlineUsers: number[]; // number[]에서 string[]로 변경
+  onlineUsers: number[]; // number[]
   shouldRefetch: boolean;
 }
 
@@ -94,7 +88,6 @@ const EachChatRoom = ({ chatRoomId, onlineUsers, shouldRefetch }: EachChatRoomPr
 
       // router.events 가 발생할 때 refetch를 수행한다.
       // 여기서는 router.back()으로 이 페이지로 돌아왔을 때에 발생하는 이벤트에 대한 처리이다.
-      // router.back()으로 인한 이벤트가 아닌
       if (shouldRefetch) {
         refetch();
       }
@@ -135,25 +128,29 @@ const EachChatRoom = ({ chatRoomId, onlineUsers, shouldRefetch }: EachChatRoomPr
     return msg.substring(0, length) + "...";
   };
 
+  console.log("chatRoom--product: ", chatRoom?.product);
+
   return (
     <>
       {chatRoom ? (
         <Link href={`/chats/${chatRoom.id}`} key={chatRoom.id}>
-          <a className="flex items-center px-4 py-3 space-x-3 cursor-pointer">
+          <a className="flex cursor-pointer items-center space-x-3 px-4 py-3">
             <div className="">
               <ImgComponent
-                imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${chatRoom?.product?.image}/public`}
+                imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${
+                  chatRoom?.product?.images?.[0]?.imageId || ""
+                }/public`}
                 width={72}
                 height={72}
                 imgName={chatRoom?.product?.name}
               />
             </div>
-            <div className="flex flex-col w-full space-y-1">
+            <div className="flex w-full flex-col space-y-1">
               <div className="flex flex-row space-x-2">
                 <div className="text-md">{chatRoom?.product?.name}</div>
                 <div className="text-md">{`${chatRoom?.product?.price}원`}</div>
               </div>
-              <div className="flex flex-row items-center w-full space-x-2">
+              <div className="flex w-full flex-row items-center space-x-2">
                 <div className="relative w-10/12 space-y-1">
                   <div className="flex flex-row items-center space-x-2">
                     <div
@@ -182,7 +179,7 @@ const EachChatRoom = ({ chatRoomId, onlineUsers, shouldRefetch }: EachChatRoomPr
                       </div>
                     </div>
                     {chatRoom.unreadCount > 0 ? (
-                      <div className="flex items-center justify-center w-5 h-5 bg-red-500 rounded-full">
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500">
                         <div className="text-sm text-white">{chatRoom.unreadCount}</div>
                       </div>
                     ) : null}

@@ -14,6 +14,8 @@ import {
   ReviewType,
   Kind,
   Stream,
+  ProductImage,
+  Prisma,
 } from "@prisma/client";
 
 /// User
@@ -52,16 +54,27 @@ export interface ProfileResponse {
 
 //// Product Paging
 
-export interface ProductPaging {
-  id: number;
-  createdAt: string;
-  updatedAt: string;
-  userId: number;
-  image: string;
-  name: string;
-  price: number;
-  description: string;
-  status: string;
+// export interface ProductPaging {
+//   id: number;
+//   createdAt: string;
+//   updatedAt: string;
+//   userId: number;
+//   images: ProductImage[];
+//   name: string;
+//   price: number;
+//   description: string;
+//   status: string;
+//   favs: {
+//     userId: number;
+//   }[];
+//   user: UserID;
+//   _count: {
+//     favs: number;
+//   };
+// }
+
+export interface ProductPaging extends Product {
+  images: ProductImage[];
   favs: {
     userId: number;
   }[];
@@ -104,7 +117,7 @@ export enum ChatRoomType {
 
 export interface ChatRoomID {
   id: number;
-  product: Product;
+  product: ProductWithImages;
   recentMsg: string;
 }
 
@@ -148,7 +161,7 @@ export interface ChatRoomById {
   buyer: User;
   sellerId: number;
   seller: User;
-  product: Product;
+  product: ProductWithImages;
   recentMsg?: {
     userId: number;
     chatMsg: string;
@@ -163,16 +176,19 @@ export interface ChatRoomByIdResponse {
   chatRoom: ChatRoomById;
 }
 
+// Product 모델과 관련된 모든 관계를 포함한 타입 정의
+type ProductWithRelations = Prisma.ProductGetPayload<{
+  include: {
+    favs: true;
+    records: true;
+    Reservations: true;
+    images: true;
+  };
+}>;
+
 export interface ChatRoomByProduct {
   id: number;
-  product: {
-    id: number;
-    userId: number;
-    name: string;
-    image: string;
-    price: number;
-    status: string;
-  };
+  product: ProductWithImages;
   recentMsg: RecentMsg;
   buyer: {
     name: string;
@@ -196,6 +212,39 @@ export interface ChatRoomByProduct {
   unreadCount: number;
 }
 
+// export interface ChatRoomByProduct {
+//   id: number;
+//   product: {
+//     id: number;
+//     userId: number;
+//     name: string;
+//     images: ProductImage[];
+//     price: number;
+//     status: string;
+//   };
+//   recentMsg: RecentMsg;
+//   buyer: {
+//     name: string;
+//     avatar: string;
+//     id: number;
+//   };
+//   seller: {
+//     name: string;
+//     avatar: string;
+//     id: number;
+//   };
+//   sellerChat: {
+//     chatMsg: string;
+//     isNew: boolean;
+//     user: {
+//       id: number;
+//       name: string;
+//       avatar: string;
+//     };
+//   }[];
+//   unreadCount: number;
+// }
+
 export interface ChatRoomsByProductResponse {
   ok: boolean;
   chatRoomListWithUnreadCount: ChatRoomByProduct[];
@@ -214,6 +263,7 @@ interface ChatRoomCreate {
 export interface ChatRoomCreateResponse {
   ok: boolean;
   chatRoom?: ChatRoom;
+  isNew: boolean;
   error?: string;
 }
 
@@ -226,6 +276,7 @@ export interface ChatRoomCreateResponse {
 // }
 
 export interface ProductWithFav extends Product {
+  images: ProductImage[];
   favs: Fav[];
   _count: {
     favs: number;
@@ -233,6 +284,7 @@ export interface ProductWithFav extends Product {
 }
 
 export interface ProductWithSale extends Product {
+  images: ProductImage[];
   sales: Sale[];
   _count: {
     sales: number;
@@ -240,6 +292,7 @@ export interface ProductWithSale extends Product {
 }
 
 export interface ProductWithPurchase extends Product {
+  images: ProductImage[];
   purchases: Purchase[];
   _count: {
     purchases: number;
@@ -354,9 +407,14 @@ interface ProductWithReview extends Review {
   createdBy: User;
 }
 
-interface ProductWithUser extends Product {
+export interface ProductWithUser extends Product {
   user: User;
   productReviews: ProductWithReview[];
+  //images: ProductImage[]; // images 속성 추가
+}
+
+export interface ProductWithImages extends Product {
+  images: ProductImage[];
 }
 
 export interface ItemDetailResponse {
@@ -364,6 +422,33 @@ export interface ItemDetailResponse {
   product: ProductWithUser;
   relatedProducts: Product[];
   isLike: boolean;
+}
+
+// ProductWithDetails 인터페이스 정의
+export interface ProductWithDetails extends Omit<Product, "createdAt" | "updatedAt"> {
+  user: User;
+  productReviews: {
+    id: number;
+    createdBy: User;
+    review: string;
+    score: number;
+    createdAt: Date;
+  }[];
+  images: ProductImage[];
+}
+
+// RelatedProduct 인터페이스 정의
+export interface RelatedProduct
+  extends Omit<Product, "createdAt" | "updatedAt" | "description" | "status"> {
+  user: User;
+  images: ProductImage[];
+}
+
+export interface ProductDetailResponse {
+  ok: boolean;
+  isLike: boolean;
+  product: ProductWithDetails;
+  relatedProducts: RelatedProduct[];
 }
 
 export interface ReviewData {
@@ -409,14 +494,7 @@ interface ChatRoomWithUnreadCount {
     avatar: string;
     id: number;
   };
-  product: {
-    id: number;
-    userId: number;
-    name: string;
-    image: string;
-    price: number;
-    status: string;
-  };
+  product: ProductWithImages;
   sellerChat: {
     chatMsg: string;
     isNew: boolean;
@@ -471,7 +549,7 @@ export interface ChatResponse {
     productId: number;
     buyer: UserWithwrittenReviews;
     seller: UserWithwrittenReviews;
-    product: Product;
+    product: ProductWithImages;
   };
 }
 
@@ -635,4 +713,6 @@ export interface ApiResponseType {
   [key: string]: any | undefined;
 }
 
-export type MethodType = "GET" | "POST" | "DELETE";
+export type MethodType = "GET" | "POST" | "DELETE" | "PATCH" | "PUT";
+
+export { Kind };

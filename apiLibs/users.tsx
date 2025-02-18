@@ -1,9 +1,13 @@
 import { Kind } from "@prisma/client";
 import aclient from "./aclient";
 import { ProductListResponse, ProfileResponse, UserResponse } from "./atypes";
+import { getKindString } from "@libs/utils";
 
 export async function getProducts(kind: Kind) {
-  const response = await aclient.get<ProductListResponse>(`/api/users/me/${kind}`);
+  //console.log("getProducts: kind---", kind);
+  const kindStr = getKindString(kind);
+
+  const response = await aclient.get<ProductListResponse>(`/api/users/me/${kindStr}`);
   return response.data;
 }
 

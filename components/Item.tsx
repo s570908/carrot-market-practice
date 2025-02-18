@@ -19,17 +19,7 @@ interface ItemProps {
 const defaultImageUrl =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="%23E5E7EB"><rect width="100%" height="100%" fill="%23E5E7EB"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%236B7280">No Image</text></svg>';
 
-const Item = ({
-  title,
-  price,
-  comments,
-  hearts,
-  id,
-  isLike,
-  photo,
-  date,
-  status,
-}: ItemProps) => {
+const Item = ({ title, price, comments, hearts, id, isLike, photo, date, status }: ItemProps) => {
   return (
     <Link href={`/products/${id}`}>
       <a className="flex cursor-pointer justify-between px-4 pt-5">
@@ -57,7 +47,9 @@ const Item = ({
               ? "예약중"
               : status === Status.Sold
               ? "거래완료"
-              : "판매중"}
+              : status === Status.Registered
+              ? "판매중"
+              : "미등록"}
           </div>
           <div
             className={cls(

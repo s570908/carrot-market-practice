@@ -3,6 +3,7 @@ import { useQuery } from "react-query";
 import { getProducts } from "apiLibs/users";
 import { handleLoadingAndError } from "./LoadingError";
 import { Kind } from "@prisma/client";
+import { getKindString } from "@libs/utils";
 
 interface ProductListProps {
   kind: Kind;
@@ -22,9 +23,11 @@ export default function ProductList({ kind }: ProductListProps) {
   const loadingOrError = handleLoadingAndError(isLoading, isError, error);
   if (loadingOrError) return loadingOrError;
 
+  const kindStr = getKindString(kind);
+
   return data ? (
     <>
-      {data[kind]?.map((record) => {
+      {data[kindStr]?.map((record) => {
         const { product } = record;
         console.log("ProductList--record: ", record);
         // kind에 따라 hearts 값을 동적으로 설정
@@ -36,6 +39,7 @@ export default function ProductList({ kind }: ProductListProps) {
         } else if (kind === Kind.Purchase) {
           hearts = (product._count as { purchases: number }).purchases;
         }
+        console.log("ProductList--hearts: ", hearts);
 
         return (
           <Item
@@ -45,8 +49,9 @@ export default function ProductList({ kind }: ProductListProps) {
             price={product.price}
             comments={1}
             hearts={hearts}
-            photo={product.image ?? undefined} // null 값을 undefined로 변환
+            photo={product.images[0].imageId ?? undefined} // null 값을 undefined로 변환
             isLike={true} // isLoading을 사용하여 처리}
+            status={product.status}
           />
         );
       })}

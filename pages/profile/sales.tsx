@@ -1,6 +1,7 @@
 import type { NextPage } from "next";
 import Layout from "@components/Layout";
 import ProductList from "@components/ProductList";
+import { Kind } from "@prisma/client";
 
 const Sold: NextPage = () => {
   return (
@@ -11,7 +12,7 @@ const Sold: NextPage = () => {
       backUrl={"/profile"}
       isProfile={true}
     >
-      <ProductList kind="sales" />
+      <ProductList kind={Kind.Sale} />
     </Layout>
   );
 };

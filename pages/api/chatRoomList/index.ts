@@ -19,6 +19,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
       res.json({
         ok: true,
         chatRoom,
+        isNew: false, // 기존에 존재하는 chatRoom
       });
     } else {
       const createChatRoom = await client.chatRoom.create({
@@ -44,6 +45,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
       res.json({
         ok: true,
         chatRoom: createChatRoom,
+        isNew: true, // 새로 생성된 chatRoom
       });
     }
   }

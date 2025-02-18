@@ -6,6 +6,89 @@ import { Status } from "@prisma/client";
 import axios, { AxiosError } from "axios";
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
+  if (req.method === "POST") {
+    console.log("POST /api/products/[id]: ", req.body);
+    const {
+      query: { id },
+      body: { buyerId },
+      session: { user },
+    } = req;
+    if (!id || !buyerId) {
+      return res.status(404).end({ error: "request query, id or sellor, is not given." });
+    }
+    // 현재의 상태는 판매중이다. 예약한 사람이 없어야 한다.
+    const reserveExist = await client.reservation.findFirst({
+      where: {
+        productId: Number(id),
+      },
+    });
+    if (reserveExist) {
+      return res.status(400).json({
+        error: "Logical error: 얘약이 존재해서는 안된다. ",
+      });
+      // // 예약한 사람과 사려는 사람이 다른 경우에 에러 메세지가 나온다.
+      // if (reserveExist.userId !== Number(buyerId)) {
+      //   return res
+      //     .status(404)
+      //     .json({
+      //       error: "buyer is not the reserved user. so you can't sell.",
+      //     });
+      // } else if (reserveExist.userId === Number(buyerId)) {
+      //   // 예약한 사람에게 물건을 판매하는 경우 기존의 예약은 삭제하고 거래완료를 한다.
+      //   await client.reservation.delete({
+      //     where: {
+      //       id: reserveExist.id,
+      //     },
+      //   });
+      // } else {
+      //   // Logical error: 예약한 사람과 사려는 사람이 동일하지 않은 경우
+      //   return res.status(400).json({
+      //     error: "Logical error: The reserved user and the buyer do not match.",
+      //   });
+      // }
+    }
+    // login user sells
+    // 사려는 자에게 물건을 파는 경우 sale과 purchase를 만든다.
+    const saleProduct = await client.sale.create({
+      data: {
+        user: {
+          connect: {
+            id: user?.id,
+          },
+        },
+        product: {
+          connect: {
+            id: +id,
+          },
+        },
+      },
+    });
+
+    // buyer purchases
+    const purchaseProduct = await client.purchase.create({
+      data: {
+        user: {
+          connect: {
+            id: +buyerId,
+          },
+        },
+        product: {
+          connect: {
+            id: +id,
+          },
+        },
+      },
+    });
+    const updatedProduct = await client.product.update({
+      where: {
+        id: +id,
+      },
+      data: {
+        status: Status.Sold, // this product has been sold.
+      },
+    });
+    res.json({ ok: true, updatedProduct, purchaseProduct, saleProduct });
+  }
   // if (req.method === "POST") {
   //   const {
   //     query: { id },
@@ -135,6 +218,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
         },
         productReviews: {
           select: {
+            id: true,
             createdBy: {
               select: {
                 name: true,
@@ -276,10 +360,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
               };
             }
           } catch (error: any) {
-            console.error(
-              `Cloudflare 이미지 삭제 실패 (imageId: ${image.imageId}):`,
-              error
-            );
+            console.error(`Cloudflare 이미지 삭제 실패 (imageId: ${image.imageId}):`, error);
             if (error.response) {
               // 요청이 이루어졌으며 서버가 2xx의 범위를 벗어나는 상태 코드로 응답했습니다.
               console.error("response data:", error.response.data);
@@ -320,15 +401,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     } = req;
 
     if (!id || !body) {
-      return res
-        .status(400)
-        .json({ error: "Product ID and update data are required." });
+      return res.status(400).json({ error: "Product ID and update data are required." });
     }
 
     try {
       // 업데이트할 데이터 추출
-      const { name, price, description, status, images, deletedImageIds } =
-        body;
+      const { name, price, description, status, images, deletedImageIds } = body;
 
       // 1. 삭제된 이미지들을 Cloudflare에서 먼저 삭제
       // if (deletedImageIds && deletedImageIds.length > 0) {
@@ -359,11 +437,11 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
       // 2. Prisma 트랜잭션으로 상품 정보와 이미지 정보 동시 업데이트
       const updatedProduct = await client.$transaction(async (prisma) => {
         // 2-1. 기존 이미지 관계를 모두 삭제
-      await prisma.productImage.deleteMany({
-        where: {
-          productId: +id,
-        },
-      });
+        await prisma.productImage.deleteMany({
+          where: {
+            productId: +id,
+          },
+        });
 
         // 2-2. 새 이미지 추가 및 상품 정보 업데이트
         const product = await prisma.product.update({
@@ -433,5 +511,5 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 };
 
 export default withApiSession(
-  withHandler({ methods: ["GET", "PUT", "DELETE"], handler, isPrivate: true })
+  withHandler({ methods: ["GET", "POST", "PUT", "DELETE"], handler, isPrivate: true })
 );

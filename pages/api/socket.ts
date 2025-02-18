@@ -76,10 +76,16 @@ export default function handler(req: NextApiRequest, res: NextApiResponseServerI
       socket.on("joinRoom", (data) => {
         const roomName = data.room;
         socket.join(roomName);
-        console.log(`Socket ${socket.id} joined room ${roomName}`);
+        console.log(`joinRoom -- Socket:${socket.id} joined room:${roomName}`);
         // 조인한 룸에 테스트 메시지 전송
         // const testMessage = `Test message for room: ${roomName}`;
         // WSmarketnamespace.to(roomName).emit("message", { room: roomName, message: testMessage });
+      });
+
+      socket.on("changeState", (data) => {
+        console.log("changeState -- data: ", data);
+        // 동일한 namespace에 있는 모든 socket 클라이언트에게 상태 변경 이벤트 전송
+        socket.nsp.emit("changeState", data);
       });
 
       // 테스트 이벤트

@@ -11,13 +11,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
     session: { user },
   } = req;
 
-  // const alreadyExists = await client.reservation.findFirst({
-  //   where: {
-  //     productId: Number(id),
-  //     userId: user?.id,
-  //   },
-  // });
-
   const reserveExist = await client.reservation.findFirst({
     where: {
       productId: Number(id),
@@ -34,69 +27,100 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
 
   if (req.method === "GET") {
     res.json({ ok: true, isReserved: reserveExist ? true : false, reserve: reserveExist });
-  } else if (req.method === "POST") {
-    if (reserveExist) {
-      await client.reservation.delete({
-        where: {
-          id: reserveExist.id,
-        },
-      });
-      // Update the product to set isReserved to false when the reservation is deleted
-      await client.product.update({
-        where: {
-          id: Number(id), // Ensure you are targeting the correct product
-        },
-        data: {
-          status: Status.Registered,
-        },
-      });
-      res.json({ ok: true, isReserved: false });
-    } else {
-      if (!buyerId) {
-        return res.status(404).json({ ok: false, error: "buyerId is not given in request body." });
-      }
-      const buyerExist = Boolean(
-        await client.user.findUnique({
-          where: { id: +buyerId },
-        })
-      );
-      console.log("=== buyerExist: ", buyerExist);
-      if (buyerExist === false) {
-        return res.status(404).json({ ok: false, error: "buyerId is not valid." });
-      }
-      await client.reservation.create({
-        data: {
-          user: {
-            connect: {
-              id: +buyerId,
+  }
+  if (req.method === "POST") {
+    try {
+      await client.$transaction(async (prisma) => {
+        if (reserveExist) {
+          await prisma.reservation.delete({
+            where: {
+              id: reserveExist.id,
             },
-          },
-          product: {
-            connect: {
+          });
+          await prisma.product.update({
+            where: {
               id: Number(id),
             },
-          },
-        },
+            data: {
+              status: Status.Registered,
+            },
+          });
+          res.json({ ok: true, isReserved: false });
+        } else {
+          if (!buyerId) {
+            throw new Error("buyerId is not given in request body.");
+          }
+          const buyerExist = Boolean(
+            await prisma.user.findUnique({
+              where: { id: +buyerId },
+            })
+          );
+          if (buyerExist === false) {
+            throw new Error("buyerId is not valid.");
+          }
+          await prisma.reservation.create({
+            data: {
+              user: {
+                connect: {
+                  id: +buyerId,
+                },
+              },
+              product: {
+                connect: {
+                  id: Number(id),
+                },
+              },
+            },
+          });
+          await prisma.product.update({
+            where: {
+              id: Number(id),
+            },
+            data: {
+              status: Status.Reserved,
+            },
+          });
+          res.json({ ok: true, isReserved: true });
+        }
       });
-      // Update the product to set isReserved to true once the reservation is made
-      await client.product.update({
+    } catch (error) {
+      console.error("Error handling reservation:", error);
+      res.status(500).json({ ok: false, error: "Failed to handle reservation." });
+    }
+  }
+  if (req.method === "DELETE") {
+    if (!id) {
+      return res.status(400).json({ ok: false, error: "Product ID is required." });
+    }
+
+    try {
+      const reservation = await client.reservation.findFirst({
         where: {
-          id: Number(id),
-        },
-        data: {
-          status: Status.Reserved,
+          productId: Number(id),
         },
       });
-      res.json({ ok: true, isReserved: true });
+
+      if (!reservation) {
+        return res.status(404).json({ ok: false, error: "Reservation not found." });
+      }
+
+      await client.reservation.delete({
+        where: {
+          id: reservation.id,
+        },
+      });
+
+      res.status(200).json({ ok: true, message: "Reservation deleted successfully." });
+    } catch (error) {
+      console.error("Error deleting reservation:", error);
+      res.status(500).json({ ok: false, error: "Failed to delete reservation." });
     }
   }
 }
 
 export default withApiSession(
   withHandler({
-    methods: ["GET", "POST"],
+    methods: ["GET", "POST", "DELETE"],
     handler,
   })
 );
-
-// withIronSessionApiRoute로 감싸면 req.session을 확인할 수 있다.

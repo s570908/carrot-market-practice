@@ -9,7 +9,7 @@ import { useRouter } from "next/router";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import PaginationButton from "@components/PaginationButton";
 import client from "@libs/client/client";
-import { useInfiniteQuery, useQuery } from "react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "react-query";
 import axios from "axios";
 import useSocket from "@libs/client/useSocket";
 import { ChatRoomType, ProductPaging, ProductWithFav, UserID } from "apiLibs/atypes";
@@ -37,11 +37,14 @@ interface ProductsResponse {
 
 const limitNumber = 3;
 
+const workspace = "market"; // 추후 다른 workspace를 추가하려면 로직을 개편해야 한다.
+
 const Home: NextPage = () => {
   const { user, isLoading } = useUser();
   const [limit, setLimit] = useState(10); // limit을 상태로 설정
   const observerElem = useRef(null);
-  const [socket, disconnect] = useSocket("market");
+  const [socket, disconnect] = useSocket(workspace);
+  const queryClient = useQueryClient();
   // console.log("Home socket: ", socket);
   // const { data } = useSWR<ProductsResponse>(`/api/products?page=${page}`);
   // ProductsResponse 타입에 맞는 데이터 요청 함수
@@ -59,6 +62,7 @@ const Home: NextPage = () => {
     hasNextPage,
     fetchNextPage,
     isFetchingNextPage,
+    refetch, // refetch 메서드 추가
   } = useInfiniteQuery(
     ["products", limit], // 쿼리 키에 limit을 포함
     ({ pageParam = 1 }) => getProductsPaging(pageParam, limit),
@@ -118,55 +122,41 @@ const Home: NextPage = () => {
       socket?.on("message", (message: any) => {
         console.log("message received: ", message);
       });
+      socket.on("changeState", (data) => {
+        // product db collection에서 data.productId에 해당하는 상품의 상태를 data.new로 변경되었음을 알림
+        // page.products를 다시 fetch하도록 한다.
+        console.log("socket.on(changeState) -- data: ", data);
+        console.log("socket.on(changeState) -- refetch: ");
+        refetch(); // refetch 메서드 호출
+      });
     }
 
     return () => {
       socket?.off("message");
+      socket?.off("changeState");
     };
-  }, [socket]);
+  }, [socket, refetch]);
 
-  //console.log("===data: ", data);
+  console.log("===data: ", data);
   return (
     <Layout seoTitle="Home" title="홈" hasTabBar notice>
-      <div className="flex flex-col px-4 space-y-5 divide-y">
-        {/* {data?.products?.map((product) => {
-          const reserved = product?.status === Status.Reserved ? true : false;
-          const sold = product?.status === Status.Sold ? true : false;
-          // const selling = !reserved && !sold;
-          let status: Status = Status.Registered;
-          if (reserved) {
-            status = Status.Reserved;
-          } else if (sold) {
-            status = Status.Sold;
-          }
-
-          return (
-            <Item
-              id={product.id}
-              key={product.id}
-              title={product.name}
-              price={product.price}
-              hearts={product._count?.favs}
-              photo={product.image}
-              isLike={product.favs
-                .map((uid) => {
-                  if (uid.userId === user?.id) return true;
-                })
-                .includes(true)}
-              status={status}
-            />
-          );
-        })} */}
+      <div className="flex flex-col space-y-5 divide-y px-4">
         {data?.pages.map((page) =>
           page.products.map((product: ProductPaging) => {
-            const reserved = product?.status === Status.Reserved;
-            const sold = product?.status === Status.Sold;
-            let status: Status = Status.Registered;
-
-            if (reserved) {
-              status = Status.Reserved;
-            } else if (sold) {
-              status = Status.Sold;
+            let status: Status;
+            switch (product?.status) {
+              case Status.Reserved:
+                status = Status.Reserved;
+                break;
+              case Status.Sold:
+                status = Status.Sold;
+                break;
+              case Status.Registered:
+                status = Status.Registered;
+                break;
+              default:
+                status = Status.Unregistered;
+                return null; // Skip products with status Unregistered
             }
 
             return (
@@ -205,7 +195,7 @@ const Home: NextPage = () => {
         {isFetchingNextPage && hasNextPage ? "Loading..." : "No product left"}
       </div>
       {data ? (
-        <div className="relative w-full group">
+        <div className="group relative w-full">
           {/* <PaginationButton
             onClick={onPrevBtn}
             direction="prev"
@@ -248,12 +238,11 @@ const Home: NextPage = () => {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 d="M13 9l3 3m0 0l-3 3m3-3H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
             </svg>
           </PaginationButton> */}
           <FloatingButton href="/products/upload" isGroup={true}>
             <svg
-              className="w-6 h-6"
+              className="h-6 w-6"
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"
@@ -274,51 +263,51 @@ const Home: NextPage = () => {
   );
 };
 
-const Page: NextPage<{ products: ProductWithFav[] }> = ({ products }) => {
-  return (
-    <SWRConfig
-      value={{
-        fallback: {
-          "/api/products?page=1": {
-            ok: true,
-            products,
-          },
-        },
-      }}
-    >
-      <Home />
-    </SWRConfig>
-  );
-};
+// const Page: NextPage<{ products: ProductWithFav[] }> = ({ products }) => {
+//   return (
+//     <SWRConfig
+//       value={{
+//         fallback: {
+//           "/api/products?page=1": {
+//             ok: true,
+//             products,
+//           },
+//         },
+//       }}
+//     >
+//       <Home />
+//     </SWRConfig>
+//   );
+// };
 
-export async function getServerSideProps() {
-  const products = await client.product.findMany({
-    include: {
-      _count: {
-        select: {
-          favs: true,
-        },
-      },
-      favs: {
-        select: {
-          userId: true,
-        },
-      },
-      user: {
-        select: {
-          id: true,
-        },
-      },
-    },
-    take: 10,
-    skip: 0,
-    orderBy: { createdAt: "desc" },
-  });
-  return {
-    props: {
-      products: JSON.parse(JSON.stringify(products)),
-    },
-  };
-}
+// export async function getServerSideProps() {
+//   const products = await client.product.findMany({
+//     include: {
+//       _count: {
+//         select: {
+//           favs: true,
+//         },
+//       },
+//       favs: {
+//         select: {
+//           userId: true,
+//         },
+//       },
+//       user: {
+//         select: {
+//           id: true,
+//         },
+//       },
+//     },
+//     take: 10,
+//     skip: 0,
+//     orderBy: { createdAt: "desc" },
+//   });
+//   return {
+//     props: {
+//       products: JSON.parse(JSON.stringify(products)),
+//     },
+//   };
+// }
 
-export default Page;
+export default Home;

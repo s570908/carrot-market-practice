@@ -59,7 +59,7 @@ const ImgComponent = ({
             src={`${imgAdd}`}
             width={width}
             height={height}
-            className={clsProps}
+            className={`${clsProps} object-cover`} // aspect ration를 원본과 같세 유지하기 위해 object-cover 추가
             alt={imgName}
             priority // 로딩 우선순위를 높이기 위해 priority 속성 추가
           />

@@ -1,4 +1,4 @@
-import { Fav } from "@prisma/client";
+import { Fav, Kind } from "@prisma/client";
 import { useEffect, useState } from "react";
 
 export const cls = (...classnames: string[]) => {
@@ -64,3 +64,16 @@ export const parseId = (id: string | string[] | undefined): number | undefined =
   }
   return undefined;
 };
+
+export function getKindString(kind: Kind): string {
+  switch (kind) {
+    case Kind.Sale:
+      return "sales";
+    case Kind.Purchase:
+      return "purchases";
+    case Kind.Fav:
+      return "favs";
+    default:
+      throw new Error(`Unknown kind: ${kind}`);
+  }
+}
