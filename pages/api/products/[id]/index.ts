@@ -303,7 +303,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
     //console.log("product: ", product);
     //console.log("relatedProducts: ", relatedProducts);
-    console.log("/api/products/[id] : id, isLike ", id, isLike);
+    //console.log("/api/products/[id] : id, isLike ", id, isLike);
     res.status(200).json({
       ok: true,
       isLike,

@@ -14,8 +14,8 @@ import axios from "axios";
 import useSocket from "@libs/client/useSocket";
 import { ChatRoomType, ProductPaging, ProductWithFav, UserID } from "apiLibs/atypes";
 import { getChatRoomIDs } from "apiLibs/chatRooms";
-//import { SWRConfig } from "swr";
 import { getProductsPaging } from "apiLibs/products";
+import { ClipLoader } from "react-spinners"; // react-spinners에서 ClipLoader 가져오기
 
 export interface ProductWithCount extends Product {
   favs: Fav[];
@@ -109,7 +109,7 @@ const Home: NextPage = () => {
     const userData = user;
     if (channelData?.ok && userData) {
       console.info("로그인하자", socket);
-      console.log("channelData.sellerChatRoomList: ", channelData.sellerChatRoomList);
+      //console.log("channelData.sellerChatRoomList: ", channelData.sellerChatRoomList);
       socket?.emit("login", {
         id: userData?.id,
         channels: channelData.sellerChatRoomList.map((v: any) => v.id),
@@ -137,109 +137,59 @@ const Home: NextPage = () => {
     };
   }, [socket, refetch]);
 
-  console.log("===data: ", data);
+  //console.log("===data: ", data);
   return (
     <Layout seoTitle="Home" title="홈" hasTabBar notice>
       <div className="flex flex-col space-y-5 divide-y px-4">
-        {data?.pages.map((page) =>
-          page.products.map((product: ProductPaging) => {
-            let status: Status;
-            switch (product?.status) {
-              case Status.Reserved:
-                status = Status.Reserved;
-                break;
-              case Status.Sold:
-                status = Status.Sold;
-                break;
-              case Status.Registered:
-                status = Status.Registered;
-                break;
-              default:
-                status = Status.Unregistered;
-                return null; // Skip products with status Unregistered
-            }
+        {isLoading ? (
+          <div className="flex h-64 items-center justify-center">
+            <ClipLoader color="#36d7b7" size={50} />
+          </div>
+        ) : (
+          data?.pages.map((page) =>
+            page.products.map((product: ProductPaging) => {
+              let status: Status;
+              switch (product?.status) {
+                case Status.Reserved:
+                  status = Status.Reserved;
+                  break;
+                case Status.Sold:
+                  status = Status.Sold;
+                  break;
+                case Status.Registered:
+                  status = Status.Registered;
+                  break;
+                default:
+                  status = Status.Unregistered;
+                  return null; // Skip products with status Unregistered
+              }
 
-            return (
-              <Item
-                id={product.id}
-                key={product.id}
-                title={product.name}
-                price={product.price}
-                hearts={product._count?.favs}
-                photo={product?.images?.[0]?.imageId ?? ""}
-                isLike={product.favs
-                  .map((uid: UserID) => (uid.userId === user?.id ? true : false))
-                  .includes(true)}
-                status={status}
-              />
-            );
-          })
+              return (
+                <Item
+                  id={product.id}
+                  key={product.id}
+                  title={product.name}
+                  price={product.price}
+                  hearts={product._count?.favs}
+                  photo={product?.images?.[0]?.imageId ?? ""}
+                  isLike={product.favs
+                    .map((uid: UserID) => (uid.userId === user?.id ? true : false))
+                    .includes(true)}
+                  status={status}
+                />
+              );
+            })
+          )
         )}
-        {isLoading && <p>Loading...</p>}
+        {isFetchingNextPage && hasNextPage && (
+          <div className="flex h-16 items-center justify-center">
+            <ClipLoader color="#36d7b7" size={30} />
+          </div>
+        )}
       </div>
-      {/* 사용자에게 limit을 조정할 수 있는 인터페이스 추가 */}
-      {/* <div className="my-4">
-        <label htmlFor="limit" className="mr-2">
-          페이지 당 항목 수:
-        </label>
-        <input
-          id="limit"
-          type="number"
-          min="1"
-          value={limit === 0 ? "" : limit} // limit이 0일 때 빈 문자열로 설정
-          onChange={(e) => setLimit(Number(e.target.value) || 0)} // 빈 문자열 처리
-          className="px-2 py-1 border rounded"
-        />
-      </div> */}
-      <div className="loader" ref={observerElem}>
-        {isFetchingNextPage && hasNextPage ? "Loading..." : "No product left"}
-      </div>
+      <div className="loader" ref={observerElem}></div>
       {data ? (
         <div className="group relative w-full">
-          {/* <PaginationButton
-            onClick={onPrevBtn}
-            direction="prev"
-            page={page}
-            isLoading={isLoading}
-            isGroup={true}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-6 h-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z"
-              />
-            </svg>
-          </PaginationButton>
-          <PaginationButton
-            onClick={onNextBtn}
-            direction="next"
-            page={page}
-            itemLength={data?.nextProducts?.length}
-            isLoading={isLoading}
-            isGroup={true}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-6 h-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M13 9l3 3m0 0l-3 3m3-3H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z"
-            </svg>
-          </PaginationButton> */}
           <FloatingButton href="/products/upload" isGroup={true}>
             <svg
               className="h-6 w-6"
@@ -262,52 +212,5 @@ const Home: NextPage = () => {
     </Layout>
   );
 };
-
-// const Page: NextPage<{ products: ProductWithFav[] }> = ({ products }) => {
-//   return (
-//     <SWRConfig
-//       value={{
-//         fallback: {
-//           "/api/products?page=1": {
-//             ok: true,
-//             products,
-//           },
-//         },
-//       }}
-//     >
-//       <Home />
-//     </SWRConfig>
-//   );
-// };
-
-// export async function getServerSideProps() {
-//   const products = await client.product.findMany({
-//     include: {
-//       _count: {
-//         select: {
-//           favs: true,
-//         },
-//       },
-//       favs: {
-//         select: {
-//           userId: true,
-//         },
-//       },
-//       user: {
-//         select: {
-//           id: true,
-//         },
-//       },
-//     },
-//     take: 10,
-//     skip: 0,
-//     orderBy: { createdAt: "desc" },
-//   });
-//   return {
-//     props: {
-//       products: JSON.parse(JSON.stringify(products)),
-//     },
-//   };
-// }
 
 export default Home;

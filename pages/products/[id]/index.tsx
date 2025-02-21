@@ -101,7 +101,7 @@ const ItemDetail: NextPage = () => {
 
   const {
     data: reservationData,
-    //refetch: refetchReservation,
+    refetch: refetchReservation,
     isLoading: isLoadingReservation,
     isError: isErrorReservation,
     error: errorReservation,
@@ -323,6 +323,8 @@ const ItemDetail: NextPage = () => {
       socket.on("changeState", async (data) => {
         console.log("changeState socket event received:", data);
         await refetch();
+        await refetchChatRoom();
+        await refetchReservation();
       });
     }
     return () => {

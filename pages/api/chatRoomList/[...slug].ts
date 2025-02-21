@@ -27,7 +27,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
 
   if (req.method === "GET") {
     if (type === "product") {
-      console.log("/api/chatRoomList/product/${queryId}---type, value: ", type, value);
+      //console.log("/api/chatRoomList/product/${queryId}---type, value: ", type, value);
       // Handle multiple chat rooms for a product
       const chatRoomList = await client.chatRoom.findMany({
         where: { productId: parseInt(value, 10) },
