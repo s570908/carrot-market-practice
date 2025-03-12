@@ -28,13 +28,11 @@ const CreateAppointment = () => {
   };
 
   // React Query로 데이터 가져오기
-  const { data, isLoading, error } = useQuery(
-    ["chatRoom", chatroomId], // 쿼리 키
-    () => fetchChatRoomData(chatroomId), // 채팅방 데이터 API 호출
-    {
-      enabled: !!chatroomId, // chatroomId가 유효할 때만 실행
-    }
-  );
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["chatRoom", chatroomId], // 쿼리 키
+    queryFn: () => fetchChatRoomData(chatroomId), // 채팅방 데이터 API 호출
+    enabled: !!chatroomId, // chatroomId가 유효할 때만 실행
+  });
 
   const otherName =
     data?.chatRoomOfSeller?.buyerId === user?.id
