@@ -6,7 +6,7 @@ import Input from "@components/Input";
 import TextArea from "@components/TextArea";
 import { NextPage } from "next";
 import Image from "next/image";
-import { useMutation, useQuery } from "react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 import axios from "axios";
 import cameraIcon from "public/images/camera.png";
@@ -17,13 +17,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import {
-  closestCenter,
-  DndContext,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
+import { closestCenter, DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { toast } from "react-toastify";
 
 interface EditProductForm {
@@ -68,15 +62,8 @@ interface ItemDetailResponse {
   };
 }
 
-const SortableItem = ({
-  id,
-  children,
-}: {
-  id: string;
-  children: React.ReactNode;
-}) => {
-  const { attributes, listeners, setNodeRef, transform, transition } =
-    useSortable({ id });
+const SortableItem = ({ id, children }: { id: string; children: React.ReactNode }) => {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -122,9 +109,7 @@ const EditProduct: NextPage = () => {
       if (!router?.query?.id) {
         return Promise.reject(new Error("Product ID is required"));
       }
-      return axios
-        .get(`/api/products/${router.query.id}`)
-        .then((res) => res.data);
+      return axios.get(`/api/products/${router.query.id}`).then((res) => res.data);
     },
     {
       enabled: Boolean(router?.query?.id),
@@ -138,15 +123,11 @@ const EditProduct: NextPage = () => {
     // formData: UploadProductForm & { imageIds?: string[] }
     updateProduct: EditProduct
   ) => {
-    const response = await axios.put(
-      `/api/products/${router?.query?.id}`,
-      updateProduct,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const response = await axios.put(`/api/products/${router?.query?.id}`, updateProduct, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
     return response.data;
   };
 
@@ -185,14 +166,11 @@ const EditProduct: NextPage = () => {
 
       // 중복된 파일이 있으면 toast 메시지 표시
       if (duplicateFileNames.length > 0) {
-        toast.warn(
-          `이미 추가된 이미지입니다: ${duplicateFileNames.join(", ")}`,
-          {
-            position: "top-center",
-            autoClose: 3000,
-            closeOnClick: true,
-          }
-        );
+        toast.warn(`이미 추가된 이미지입니다: ${duplicateFileNames.join(", ")}`, {
+          position: "top-center",
+          autoClose: 3000,
+          closeOnClick: true,
+        });
       }
 
       // 중복되지 않은 파일만 필터링하여 처리
@@ -247,8 +225,7 @@ const EditProduct: NextPage = () => {
     // 3. 기존 Cloudflare 이미지 (삭제되지 않은 것들만) + 새로 업로드된 이미지
     return [
       ...previewImages.filter(
-        (image) =>
-          image.kind === "Cloudflare" && !deletedImageIds.includes(image.CLurl!)
+        (image) => image.kind === "Cloudflare" && !deletedImageIds.includes(image.CLurl!)
       ),
       ...uploadedImages,
     ];
@@ -281,11 +258,7 @@ const EditProduct: NextPage = () => {
       const remainingImages = prev.filter((image) => image.id !== id);
 
       // 로컬 URL 정리
-      if (
-        imageToDelete &&
-        imageToDelete.kind === "Local" &&
-        imageToDelete.url
-      ) {
+      if (imageToDelete && imageToDelete.kind === "Local" && imageToDelete.url) {
         URL.revokeObjectURL(imageToDelete.url);
       }
 
@@ -408,9 +381,7 @@ const EditProduct: NextPage = () => {
       let uploadedImages: { imageId: string }[] = [];
 
       if (localImages.length > 0) {
-        const cloudflareUploadResult = await uploadImagesToCloudflare(
-          localImages
-        );
+        const cloudflareUploadResult = await uploadImagesToCloudflare(localImages);
         uploadedImages = cloudflareUploadResult.map((img) => ({
           imageId: img.CLurl!,
         }));
@@ -544,12 +515,7 @@ const EditProduct: NextPage = () => {
                     className="hidden"
                   />
                   <div className="flex flex-col items-center">
-                    <Image
-                      src="/images/camera.png"
-                      alt="Upload"
-                      width={30}
-                      height={30}
-                    />
+                    <Image src="/images/camera.png" alt="Upload" width={30} height={30} />
                     <span className="mt-1 text-sm text-gray-600">
                       {previewImages.length}/{maxImages}
                     </span>
@@ -629,9 +595,7 @@ const EditProduct: NextPage = () => {
                               }}
                               className="absolute right-0 top-0 z-10 flex h-6 w-6 translate-x-[50%] translate-y-[-50%] items-center justify-center rounded-full bg-black text-white shadow-lg"
                             >
-                              <span className="relative top-[-1px] text-sm font-bold">
-                                ×
-                              </span>
+                              <span className="relative top-[-1px] text-sm font-bold">×</span>
                             </button>
                           )}
                         </div>

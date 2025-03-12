@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>티맵 OpenAPI</title>
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+    <script src="https://apis.openapi.sk.com/tmap/jsv2?version=1&appKey=mJ6mBP6tQV36Iy6kld88d47kCwo3GGs11IBkoxf7"></script>
+  </head>
+  <body>
+    <div id="map_div"></div>
+
+    <script>
+      var map = new Tmapv2.Map("map_div", {
+        // 지도가 생성될 div
+        center: new Tmapv2.LatLng(37.57216786291851, 126.98577404022258), // 지도의 중심좌표
+        width: "750px", // 지도의 넓이
+        height: "750px", // 지도의 높이
+        zoom: 15, // 지도의 줌레벨
+        httpsMode: true, // https모드 설정
+      });
+
+      // 지도 타입 변경: ROAD
+      map.setMapType(Tmapv2.Map.MapType.ROAD);
+
+      // 이벤트의 종류와 해당 이벤트 발생 시 실행할 함수를 리스너를 통해 등록합니다.
+      map.addListener("click", function (e) {
+        console.log("클릭한 위치의 좌표는" + e.latLng + "입니다.");
+      });
+    </script>
+  </body>
+</html>

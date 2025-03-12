@@ -1,5 +1,5 @@
 import Item from "./Item";
-import { useQuery } from "react-query";
+import { useQuery } from "@tanstack/react-query";
 import { getProducts } from "apiLibs/users";
 import { handleLoadingAndError } from "./LoadingError";
 import { Kind } from "@prisma/client";

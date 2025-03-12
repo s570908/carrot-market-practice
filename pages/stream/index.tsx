@@ -11,7 +11,7 @@ import PaginationButton from "@components/PaginationButton";
 import Image from "next/image";
 import { cls } from "@libs/utils";
 import axios from "axios";
-import { QueryFunctionContext, useQuery } from "react-query";
+import { QueryFunctionContext, useQuery } from "@tanstack/react-query";
 import { StreamsResponse } from "apiLibs/atypes";
 import { getStreamsPaging } from "apiLibs/streams";
 import { handleLoadingAndError } from "@components/LoadingError";

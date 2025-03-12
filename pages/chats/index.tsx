@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import axios from "axios";
 import RadioButtonGroup from "@components/RadioGroupButton";
-import { useQuery } from "react-query";
+import { useQuery } from "@tanstack/react-query";
 import useSocket from "@libs/client/useSocket";
 import EachChatRoom from "@components/EachChatRoom";
 import { parseId } from "@libs/utils";
@@ -53,22 +53,22 @@ const Chats: NextPage = () => {
     isLoading,
     isError,
     refetch: refetchChats,
-  } = useQuery(
-    ["chatRoomList", productId || ""], // 쿼리 키: productId가 있으면 달라짐
-    () =>
+  } = useQuery({
+    queryKey: ["chatRoomList", productId || ""], // 쿼리 키
+    queryFn: () =>
       productId
         ? getChatRoomsByProduct(parseId(productId)!)
         : (getChatRoomsByKey(ChatRoomType.All) as Promise<
             ChatRoomsByProductResponse | ChatRoomsByKeyResponse
           >), // 타입 강제 변환
-    {
-      // refetchInterval: 1000, // 1초마다 데이터를 다시 가져오는 옵션
-      enabled: !!url, // URL이 유효할 때만 쿼리 실행
-      onSuccess: (data) => {
-        console.log("chatRoomList Fetched data and url: ", data, url); // 데이터가 성공적으로 가져와졌을 때 콘솔에 로그 출력
-      },
+    enabled: !!url, // URL이 유효할 때만 쿼리 실행
+  });
+
+  useEffect(() => {
+    if (data) {
+      console.log("chatRoomList Fetched data and url: ", data, url); // 데이터가 성공적으로 가져와졌을 때 콘솔에 로그 출력
     }
-  );
+  }, [data, url]);
 
   async function fetchAndAddReservationData(chatRoomList: ChatRoom[]) {
     try {

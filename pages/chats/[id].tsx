@@ -21,7 +21,7 @@ import Loading from "@components/Loading";
 import ImgComponent from "@components/ImgComponent";
 import { getChatRoomData } from "@libs/server/chatUtils";
 import Dropdown from "@components/Dropdown";
-import { useMutation, useQuery, useQueryClient } from "react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import useSocket from "@libs/client/useSocket";
 import dayjs from "@libs/dayjs";
@@ -99,19 +99,16 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     isError,
     error,
     refetch: refetchChat, // 데이터를 수동으로 패칭할 수 있는 함수
-  } = useQuery(
-    ["chat", id], // 쿼리 키
-    // () => fetch(`/api/chat/${router.query.id}`).then((res) => res.json()), // 데이터 패칭 함수
-    () => getChat(id!), // id가 undefined가 아닌 경우에만 호출
-    {
-      enabled: id !== undefined, // id가 있을 때만 쿼리를 실행
-      refetchInterval: 300000, // 5분마다 데이터 재패칭
-      // onSuccess: (data) => {
-      //   console.log("/api/chat/${router.query.id}--router.query.id:", router.query.id);
-      //   console.log("/api/chat/${router.query.id}--data:", data);
-      // },
-    }
-  );
+  } = useQuery({
+    queryKey: ["chat", id], // 쿼리 키
+    queryFn: () => getChat(id!), // id가 undefined가 아닌 경우에만 호출
+    enabled: id !== undefined, // id가 있을 때만 쿼리를 실행
+    refetchInterval: 300000, // 5분마다 데이터 재패칭
+    // onSuccess: (data) => {
+    //   console.log("/api/chat/${router.query.id}--router.query.id:", router.query.id);
+    //   console.log("/api/chat/${router.query.id}--data:", data);
+    // },
+  });
 
   // const { openModal: openReservedModal, renderModal: renderReservedModal } = useAwaitableModal(
   //   (modal, params) => {
@@ -222,7 +219,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     isLoading: isLoadingReservation,
     isError: isErrorReservation,
     error: errorReservation,
-  } = useQuery(["reservation", productId], () => getReservation(productId!), {
+  } = useQuery({
+    queryKey: ["reservation", productId],
+    queryFn: () => getReservation(productId!),
     enabled: productId !== undefined,
   });
 
@@ -232,13 +231,11 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     isLoading: isLoadingReviewWritable,
     isError: isErrorReviewWritable,
     error: errorReviewWritable,
-  } = useQuery(
-    ["reviewWritable", productId, otherId, reviewType],
-    () => getReviewWritable({ productId: productId!, otherId: otherId!, reviewType }),
-    {
-      enabled: !!id && !!productId && !!otherId, // 모든 값이 있을 때만 쿼리를 실행
-    }
-  );
+  } = useQuery({
+    queryKey: ["reviewWritable", productId, otherId, reviewType],
+    queryFn: () => getReviewWritable({ productId: productId!, otherId: otherId!, reviewType }),
+    enabled: !!id && !!productId && !!otherId, // 모든 값이 있을 때만 쿼리를 실행
+  });
 
   //console.log("reviewWritableData================: ", reviewWritableData);
 
@@ -312,14 +309,14 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   const {
     mutate: sendChat,
-    isLoading: isLoadingSendChat,
+    isPending: isLoadingSendChat, // isLoading → isPending으로 변경
     isError: isErrorSendChat,
     error: errorSendChat,
     data: sendChatData,
-  } = useMutation(writeChatMessage, {
-    // 뮤테이션이 시작되기 전에 실행
+  } = useMutation({
+    mutationFn: writeChatMessage,
     onMutate: async (params: { chatForm: ChatFormResponse; chatId: number }) => {
-      await queryClient.cancelQueries(["chat", params.chatId]);
+      await queryClient.cancelQueries({ queryKey: ["chat", params.chatId] });
       const previousChatData = queryClient.getQueryData(["chat", params.chatId]);
       queryClient.setQueryData(["chat", params.chatId], (prev: any) => {
         if (prev) {
@@ -338,30 +335,29 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       });
       return { previousChatData };
     },
-    // 뮤테이션이 실패했을 때 실행
     onError: (error, variables, context) => {
       if (context?.previousChatData) {
         queryClient.setQueryData(["chat", variables.chatId], context.previousChatData); // 이전 데이터로 롤백
       }
     },
-    // 뮤테이션이 성공하거나 실패한 후에 실행
     onSettled: () => {
-      queryClient.invalidateQueries(["chat", id]); // 쿼리 무효화
+      queryClient.invalidateQueries({ queryKey: ["chat", id] }); // 쿼리 무효화
     },
   });
 
   const {
     mutate: toggleReservationMutate,
-    isLoading: isLoadingToggleReservation,
+    isPending: isLoadingToggleReservation, // isLoading -> isPending으로 변경
     isError: isErrorToggleReservation,
     error: errorToggleReservation,
-  } = useMutation(writeToggleReservation, {
+  } = useMutation({
+    mutationFn: writeToggleReservation,
     // onSuccess: () => {
     //   // 즉시 데이터를 다시 가져옵니다
     //   console.log("refetch(): ");
     //   refetchChat();
     //   // 쿼리를 무효화하고, 해당 쿼리가 다시 접근될 때 데이터를 가져오도록 하고 싶을 때 사용됩니다.
-    //   // queryClient.invalidateQueries(["chat", id]);  // 쿼리를 무효화하고, 해당 쿼리가 다시 접근될 때 데이터를 가져오도록 하고 싶을 때 사용됩니다.
+    //   // queryClient.invalidateQueries({ queryKey: ["chat", id] });  // 새로운 형식으로 수정
     // },
   });
 
@@ -374,12 +370,13 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   const {
     mutate: sendSellComplete,
-    isLoading: isLoadingSendSellComplete,
+    isPending: isLoadingSendSellComplete, // isLoading -> isPending으로 변경
     isError: isErrorSendSellComplete,
     error: errorSendSellComplete,
-  } = useMutation(writeSellComplete, {
+  } = useMutation({
+    mutationFn: writeSellComplete,
     // onSuccess: () => {
-    //   queryClient.invalidateQueries(["chat", id]); // 판매 완료 후 데이터 갱신
+    //   queryClient.invalidateQueries({ queryKey: ["chat", id] }); // 새로운 형식으로 수정
     // },
   });
 

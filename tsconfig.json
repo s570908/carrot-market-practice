@@ -17,9 +17,20 @@
     "baseUrl": ".",
     "paths": {
       "@libs/*": ["libs/*"],
-      "@components/*": ["components/*"]
+      "@components/*": ["components/*"],
+      "@/*": ["./*"],
+      "@morak/ui": ["morak/packages/morak-ui"],
+      "@morak/*": ["morak/packages/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "pages/index.tsx.Ssr", "components/Modal.tsx.org", "pages/myItem/[id]/index.tsx"],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    "pages/index.tsx.Ssr",
+    "components/Modal.tsx.org",
+    "pages/myItem/[id]/index.tsx",
+    "pages/mapModal"
+  ],
   "exclude": ["node_modules"]
 }

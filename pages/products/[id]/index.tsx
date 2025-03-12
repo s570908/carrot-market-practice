@@ -25,7 +25,7 @@ import eventEmitter from "@libs/eventEmitter";
 import Dropdown from "@components/Dropdown";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { useMutation, useQuery, useQueryClient } from "react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Swiper as SwiperCore } from "swiper"; // SwiperCore 타입 가져오기
 import { Navigation } from "swiper/modules"; // 네비게이션 모듈

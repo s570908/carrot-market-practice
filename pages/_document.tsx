@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-sync-scripts */
 // import { Html, Head, Main, NextScript } from 'next/document'
 
 // export default function Document() {
@@ -26,6 +27,9 @@ class CustomDocument extends Document {
             href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR&display=swap"
             rel="stylesheet"
           />
+          <script
+            src={`https://apis.openapi.sk.com/tmap/jsv2?version=1&appKey=${process.env.NEXT_PUBLIC_TMAP_APP_KEY}`}
+          ></script>
         </Head>
         <body>
           <Main />

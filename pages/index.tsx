@@ -9,7 +9,7 @@ import { useRouter } from "next/router";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import PaginationButton from "@components/PaginationButton";
 import client from "@libs/client/client";
-import { useInfiniteQuery, useQuery, useQueryClient } from "react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import useSocket from "@libs/client/useSocket";
 import { ChatRoomType, ProductPaging, ProductWithFav, UserID } from "apiLibs/atypes";
@@ -53,7 +53,10 @@ const Home: NextPage = () => {
     return response.data;
   };
 
-  const { data: channelData } = useQuery("chatRoomIDs", () => getChatRoomIDs(ChatRoomType.All));
+  const { data: channelData } = useQuery({
+    queryKey: ["chatRoomIDs"],
+    queryFn: () => getChatRoomIDs(ChatRoomType.All),
+  });
 
   const {
     data,
@@ -63,20 +66,19 @@ const Home: NextPage = () => {
     fetchNextPage,
     isFetchingNextPage,
     refetch, // refetch 메서드 추가
-  } = useInfiniteQuery(
-    ["products", limit], // 쿼리 키에 limit을 포함
-    ({ pageParam = 1 }) => getProductsPaging(pageParam, limit),
-    {
-      getNextPageParam: (lastPage, allPages) => {
-        // 다음 페이지가 존재하면 다음 페이지 번호를 반환
-        if (lastPage?.products?.length === limit) {
-          return allPages.length + 1;
-        }
-        return undefined;
-      },
-      keepPreviousData: true, // 이전 데이터 유지
-    }
-  );
+  } = useInfiniteQuery({
+    queryKey: ["products", limit], // 쿼리 키에 limit을 포함
+    initialPageParam: 1,
+    queryFn: ({ pageParam = 1 }) => getProductsPaging(pageParam as number, limit),
+    getNextPageParam: (lastPage, allPages) => {
+      // 다음 페이지가 존재하면 다음 페이지 번호를 반환
+      if ((lastPage as any)?.products?.length === limit) {
+        return allPages.length + 1;
+      }
+      return undefined;
+    },
+    placeholderData: undefined, // keepPreviousData -> placeholderData
+  });
 
   const handleObserver = useCallback(
     (entries: IntersectionObserverEntry[]) => {

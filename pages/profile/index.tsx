@@ -5,7 +5,7 @@ import useUser from "@libs/client/useUser";
 import { cls } from "@libs/utils";
 import ImgComponent from "@components/ImgComponent";
 import gravatar from "gravatar";
-import { useQuery } from "react-query";
+import { useQuery } from "@tanstack/react-query";
 import { getReviews } from "apiLibs/reviews";
 import { handleLoadingAndError } from "@components/LoadingError";
 

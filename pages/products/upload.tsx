@@ -9,7 +9,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Product } from "@prisma/client";
 import { useRouter } from "next/router";
 import useUser from "@libs/client/useUser";
-import { useMutation, useQueryClient } from "react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import Image from "next/image";
 import cameraIcon from "public/images/camera.png";
@@ -25,13 +25,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import {
-  closestCenter,
-  DndContext,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
+import { closestCenter, DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { toast } from "react-toastify";
 
 interface UploadProductForm {
@@ -62,15 +56,8 @@ interface PreviewImage {
   CLurl?: string;
 }
 
-const SortableItem = ({
-  id,
-  children,
-}: {
-  id: string;
-  children: React.ReactNode;
-}) => {
-  const { attributes, listeners, setNodeRef, transform, transition } =
-    useSortable({ id });
+const SortableItem = ({ id, children }: { id: string; children: React.ReactNode }) => {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -134,30 +121,23 @@ const Upload: NextPage = () => {
         .filter((newFile) => {
           console.log("dup---newFile.name:", newFile.name);
           console.log("dup---previewImages: ", previewImages);
-          return previewImages.some(
-            (existingImage) => existingImage.file?.name === newFile.name
-          );
+          return previewImages.some((existingImage) => existingImage.file?.name === newFile.name);
         })
         .map((file) => file.name);
 
       // 중복된 파일이 있으면 toast 메시지 표시
       if (duplicateFileNames.length > 0) {
-        toast.warn(
-          `이미 첨부된 이미지입니다: ${duplicateFileNames.join(", ")}`,
-          {
-            position: "top-center",
-            autoClose: 3000,
-            closeOnClick: true,
-          }
-        );
+        toast.warn(`이미 첨부된 이미지입니다: ${duplicateFileNames.join(", ")}`, {
+          position: "top-center",
+          autoClose: 3000,
+          closeOnClick: true,
+        });
       }
 
       // 중복되지 않은 파일만 필터링하여 처리
       const uniqueFiles = files.filter(
         (newFile) =>
-          !previewImages.some(
-            (existingImage) => existingImage.file?.name === newFile.name
-          )
+          !previewImages.some((existingImage) => existingImage.file?.name === newFile.name)
       );
 
       if (uniqueFiles.length > 0) {
@@ -384,12 +364,7 @@ const Upload: NextPage = () => {
                     className="hidden"
                   />
                   <div className="flex flex-col items-center">
-                    <Image
-                      src="/images/camera.png"
-                      alt="Upload"
-                      width={30}
-                      height={30}
-                    />
+                    <Image src="/images/camera.png" alt="Upload" width={30} height={30} />
                     <span className="mt-1 text-sm text-gray-600">
                       {previewImages.length}/{maxImages}
                     </span>
@@ -471,9 +446,7 @@ const Upload: NextPage = () => {
                               }}
                               className="absolute right-0 top-0 z-10 flex h-6 w-6 translate-x-[50%] translate-y-[-50%] items-center justify-center rounded-full bg-black text-white shadow-lg"
                             >
-                              <span className="relative top-[-1px] text-sm font-bold">
-                                ×
-                              </span>
+                              <span className="relative top-[-1px] text-sm font-bold">×</span>
                             </button>
                           )}
                         </div>

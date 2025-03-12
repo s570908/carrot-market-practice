@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 import RegDate from "@components/RegDate";
 import ImgComponent from "@components/ImgComponent";
 import axios from "axios";
-import { useMutation, useQuery, useQueryClient } from "react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getCommunityPost, writeCommunityAnswer, writeCommunityPost } from "apiLibs/posts";
 import { handleLoadingAndError } from "@components/LoadingError";
 import { CommunityPostResponse } from "apiLibs/atypes";
@@ -141,7 +141,7 @@ const CommunityPostDetail: NextPage = () => {
         <span className="my-3 ml-4 inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
           동네질문
         </span>
-        <div className="flex items-center px-4 pb-3 mb-3 space-x-3 border-b">
+        <div className="mb-3 flex items-center space-x-3 border-b px-4 pb-3">
           <ImgComponent
             imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.post?.user?.avatar}/public`}
             width={40}
@@ -152,14 +152,14 @@ const CommunityPostDetail: NextPage = () => {
           <div>
             <p className="text-sm font-medium text-gray-700">{data?.post?.user.name}</p>
             <Link href={`/profile/${data?.post?.user.id}`}>
-              <a className="text-xs font-medium text-gray-500 cursor-pointer">
+              <a className="cursor-pointer text-xs font-medium text-gray-500">
                 View profile &rarr;
               </a>
             </Link>
           </div>
         </div>
         <div>
-          <div className="px-4 mt-2 text-gray-700">
+          <div className="mt-2 px-4 text-gray-700">
             <span className="font-medium text-orange-500">Q. </span>
             {data?.post?.question}
           </div>
@@ -172,7 +172,7 @@ const CommunityPostDetail: NextPage = () => {
               )}
             >
               <svg
-                className="w-4 h-4"
+                className="h-4 w-4"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -189,7 +189,7 @@ const CommunityPostDetail: NextPage = () => {
             </button>
             <span className="flex items-center space-x-2 text-sm">
               <svg
-                className="w-4 h-4"
+                className="h-4 w-4"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -206,7 +206,7 @@ const CommunityPostDetail: NextPage = () => {
             </span>
           </div>
         </div>
-        <div className="px-4 my-5 space-y-5">
+        <div className="my-5 space-y-5 px-4">
           {data?.post?.answers.map((ans) => (
             <div key={ans.id} className="flex items-start space-x-3">
               {ans.user.avatar ? (
@@ -218,7 +218,7 @@ const CommunityPostDetail: NextPage = () => {
                   imgName={ans.user.name}
                 />
               ) : (
-                <div className="w-8 h-8 rounded-full bg-slate-200" />
+                <div className="h-8 w-8 rounded-full bg-slate-200" />
               )}
               <div>
                 <span className="block text-sm font-medium text-gray-700">{ans.user.name}</span>
@@ -234,7 +234,7 @@ const CommunityPostDetail: NextPage = () => {
             name="description"
             placeholder="Answer this question!"
           />
-          <button className="w-full px-4 py-2 mt-2 text-sm font-medium text-white bg-orange-500 border border-transparent rounded-md shadow-sm hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 ">
+          <button className="mt-2 w-full rounded-md border border-transparent bg-orange-500 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 ">
             {isLoadingWriteCommunityAnswer ? "Loading..." : "Reply"}
           </button>
         </form>

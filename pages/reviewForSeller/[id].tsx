@@ -7,7 +7,7 @@ import Link from "next/link";
 import ImgComponent from "@components/ImgComponent";
 import { useEffect } from "react";
 import gravatar from "gravatar";
-import { useMutation, useQuery } from "react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { ProfileResponse } from "apiLibs/atypes";
 import { handleLoadingAndError } from "@components/LoadingError";
 import { getOther } from "apiLibs/users";

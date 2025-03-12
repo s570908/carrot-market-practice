@@ -10,7 +10,7 @@ import useSWR from "swr";
 import { Product, User, ReviewType } from "@prisma/client";
 import ImgComponent from "@components/ImgComponent";
 import Link from "next/link";
-import { useMutation, useQuery } from "react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { parseId } from "@libs/utils";
 import { getProduct, writeReview } from "apiLibs/products";

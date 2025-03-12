@@ -5,7 +5,7 @@ import useUser from "@libs/client/useUser";
 import axios from "axios";
 import { useRouter } from "next/router";
 import { useState } from "react";
-import { useQuery } from "react-query";
+import { useQuery } from "@tanstack/react-query";
 
 const CreateAppointment = () => {
   const { user } = useUser();
@@ -83,9 +83,7 @@ const CreateAppointment = () => {
 
           {/* 알림 시간 */}
           <div className="flex items-center justify-between">
-            <span className="font-medium text-gray-700">
-              약속 전 나에게 알림
-            </span>
+            <span className="font-medium text-gray-700">약속 전 나에게 알림</span>
             <select
               value={alertTime}
               onChange={(e) => setAlertTime(e.target.value)}

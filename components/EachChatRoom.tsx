@@ -5,7 +5,7 @@ import { cls } from "@libs/utils";
 import useUser from "@libs/client/useUser";
 import { useEffect } from "react";
 import useSocket from "@libs/client/useSocket";
-import { useQuery } from "react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Socket } from "socket.io-client";
 import { getChatRoom, getChatRoomsById } from "apiLibs/chatRooms";
 import { ChatRoomResponse } from "apiLibs/atypes";
@@ -54,20 +54,17 @@ const EachChatRoom = ({ chatRoomId, onlineUsers, shouldRefetch }: EachChatRoomPr
     isError,
     error,
     refetch,
-  } = useQuery(
-    ["chatRoomList", chatRoomId], // Query Key
-    //() => fetcher<ChatRoomResponse>(`/api/chatRoomList/id/${chatRoomId}`), // Fetching 함수
-    () => getChatRoomsById(chatRoomId),
-    {
-      enabled: !!chatRoomId, // id가 있을 때만 실행
-      // staleTime: 1000 * 60 * 5, // 데이터가 5분 동안 최신 상태로 간주
-      // cacheTime: 1000 * 60 * 10, // 데이터 캐시 10분 동안 유지
-      // onSuccess: (chatRoomData) => {
-      //   // 성공 시 실행되는 콜백
-      //   console.log("Fetched chat room data:", chatRoomData);
-      // },
-    }
-  );
+  } = useQuery({
+    queryKey: ["chatRoomList", chatRoomId], // 쿼리 키
+    queryFn: () => getChatRoomsById(chatRoomId), // 쿼리 함수
+    enabled: !!chatRoomId, // id가 있을 때만 실행
+    // staleTime: 1000 * 60 * 5, // 데이터가 5분 동안 최신 상태로 간주
+    // cacheTime: 1000 * 60 * 10, // 데이터 캐시 10분 동안 유지
+    // onSuccess: (data) => {
+    //   // 성공 시 실행되는 콜백
+    //   console.log("Fetched chat room data:", data);
+    // },
+  });
 
   useEffect(() => {
     if (socket) {

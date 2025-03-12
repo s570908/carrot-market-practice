@@ -91,3 +91,30 @@ Bachar El karni
 @Tofik Nuryanto thanks
 
 Reply
+
+# Tmapv2 event type
+
+- event 동작이 안될 경우 브라우져의 extension 과의 충돌이 있을 수 있으므로, 그 경우에는 incognito 브라우져에서 앱을 수행시켜야 한다.
+
+  bounds_changed,
+  center_changed,
+  click,
+  dblclick,
+  drag,
+  dragend,
+  dragstart,
+  zoom_changed,
+  mouseenter,
+  mouseleave,
+  mousedown,
+  mousemove,
+  mouseup,
+  mousewheel,
+  touchstart,
+  touchmove,
+  touchend,
+  touchcancel,
+  keydown,
+  keyup,
+  contextmenu,
+  resize
