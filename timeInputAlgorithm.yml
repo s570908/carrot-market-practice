@@ -1,0 +1,71 @@
+# 시간 input 알고리즘
+
+const [displayHour, setDisplayHour] = useState(00);
+const [displayMinute, setDisplayMinute] = useState(00);
+
+const hourRef = useState(00);
+const minuteRef = useState(00);
+
+const digit0 = useRef(0);
+const digit1 = useRef(0);
+
+const firstValueRef = useRef(false);
+const secondValueRef = useRef(false);
+
+
+// hour input handler
+firstValueRef.current  =  false
+secondValueRef.current  =  false
+number keyboard input이 들어오면
+  if firstValueRef.current == false && secondValueRef.current == false
+    firstValueRef.current = true
+    digit0.current = e.target.value
+    setDisplayHour(digit0.current)
+    hourRef.current = digit0.current
+    return;
+  else if firstValueRef.current == true && secondValueRef.current == false
+    secondValueRef.current = true
+    digit1.current = e.target.value
+    first value와 second value를 하나의 integer로 변환한다.
+    _finalValue = digit0.current * 10 + digit1.current
+    if 0 <== _finalValue <== 12
+      hourRef.current = _finalValue
+      setDisplayHour(_finalValue)
+      firstValueRef.current  =  false
+      secondValueRef.current  =  false
+      return;
+  else return;
+
+// minute input handler
+firstValueRef.current  =  false
+secondValueRef.current  =  false
+number keyboard input이 들어오면
+  if firstValueRef.current == false && secondValueRef.current == false
+    firstValueRef.current = true
+    digit0.current = e.target.value
+    setDisplayMinute(digit0.current)
+    minuteRef.current = digit0.current
+    return;
+  else if firstValueRef.current == true && secondValueRef.current == false
+    secondValueRef.current = true
+    digit1.current = e.target.value
+    first value와 second value를 하나의 integer로 변환한다.
+    _finalValue = digit0.current * 10 + digit1.current
+    if 0 <== _finalValue <== 59
+      minuteRef.current = _finalValue
+      setDisplayMinute(_finalValue)
+      firstValueRef.current  =  false
+      secondValueRef.current  =  false
+      return;
+  else return;
+
+  완료로 인해 모달이 닫히면
+    firstValueRef.current  =  false
+    secondValueRef.current  =  false
+    hourRef.current를 final hour value로 사용한다.
+    minuteRef.current를 final minute value로 사용한다.
+    오전, 오후 값도 사용한다.
+
+  취소소로 인해 모달이 닫히면
+    firstValueRef.current  =  false
+    secondValueRef.current  =  false
