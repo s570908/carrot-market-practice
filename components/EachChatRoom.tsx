@@ -58,7 +58,7 @@ const EachChatRoom = ({ chatRoomId, onlineUsers, shouldRefetch }: EachChatRoomPr
     queryKey: ["chatRoomList", chatRoomId], // 쿼리 키
     queryFn: () => getChatRoomsById(chatRoomId), // 쿼리 함수
     enabled: !!chatRoomId, // id가 있을 때만 실행
-    // staleTime: 1000 * 60 * 5, // 데이터가 5분 동안 최신 상태로 간주
+    //staleTime: 1000 * 60 * 5, // 데이터가 5분 동안 최신 상태로 간주
     // cacheTime: 1000 * 60 * 10, // 데이터 캐시 10분 동안 유지
     // onSuccess: (data) => {
     //   // 성공 시 실행되는 콜백
@@ -68,14 +68,25 @@ const EachChatRoom = ({ chatRoomId, onlineUsers, shouldRefetch }: EachChatRoomPr
 
   useEffect(() => {
     if (socket) {
-      console.log("socket: ", socket);
+      //console.log("EachChatRoom--socket: ", socket);
       socket?.on("message", (message: any) => {
-        console.log("EachChatRoom--message: ", message);
-        // 이  chatRoom에 새로운 message가 들어오면... chatRoom 관련 data를 다시 읽어온다.
-        // 해당 chatRoom에서만 refetch하도록...
+        // console.log("EachChatRoom--message 이벤트 들어 왔다. message: ", message);
+        // // 이  chatRoom에 새로운 message가 들어오면... chatRoom 관련 data를 다시 읽어온다.
+        // // 해당 chatRoom에서만 refetch하도록...
+        // console.log(
+        //   "EachChatRoom 들어옴--chatRoomId, onlineUsers, shouldRefetch: ",
+        //   chatRoomId,
+        //   onlineUsers,
+        //   shouldRefetch
+        // );
+        // console.log(
+        //   "::EachChatRoom--message.channelId, chatRoomId: ",
+        //   message.channelId,
+        //   chatRoomId
+        // );
         if (chatRoomId && message.channelId === chatRoomId) {
           console.log(
-            "EachChatRoom--message.channelId, chatRoomId: ",
+            "EachChatRoom--message.channelId과 chatRoomId 가 동일하다. reftech한다: ",
             message.channelId,
             chatRoomId
           );
@@ -92,7 +103,7 @@ const EachChatRoom = ({ chatRoomId, onlineUsers, shouldRefetch }: EachChatRoomPr
     return () => {
       socket?.off("message");
     };
-  }, [chatRoomId, refetch, shouldRefetch, socket]);
+  }, [chatRoomId, onlineUsers, refetch, shouldRefetch, socket]);
 
   if (!user) {
     return null; // user가 undefined일 경우 아무것도 렌더링하지 않음
@@ -125,7 +136,7 @@ const EachChatRoom = ({ chatRoomId, onlineUsers, shouldRefetch }: EachChatRoomPr
     return msg.substring(0, length) + "...";
   };
 
-  console.log("chatRoom--product: ", chatRoom?.product);
+  //console.log("chatRoom--product: ", chatRoom?.product);
 
   return (
     <>

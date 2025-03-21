@@ -23,7 +23,6 @@ import Message from "@components/Message";
 import { useIntersectionObserver } from "@libs/client/useIntersectionObserver";
 import { FiChevronsDown } from "react-icons/fi";
 import { cls, parseId } from "@libs/utils";
-//import axios from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ApiResponseType,
@@ -41,12 +40,12 @@ import {
   getViews,
   writeStreamMessage,
 } from "apiLibs/streams";
-import { videoClient } from "apiLibs/aclient";
 import { handleLoadingAndError } from "@components/LoadingError";
 
 const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) => {
   const { user } = useUser();
   const router: NextRouter = useRouter();
+  const id = (router.query.id !== undefined ? parseId(router.query.id) : 0) ?? 0;
   const [showStreamInfo, setShowStreamInfo] = useState(false);
   const [newMessageSubmitted, setNewMessageSubmitted] = useState(false);
   const queryClient = useQueryClient();
@@ -58,82 +57,66 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
     freezeOnceVisible: false, // 계속하여 감지하겠다.
   });
 
-  const id = parseId(router.query.id);
+  //const id = parseId(router.query.id);
 
   console.log("Entry.isIntersecting: ", entry?.isIntersecting);
 
-  // const addStreamMessage = async (messageData: MessageData) => {
-  //   const { data } = await axios.post<StreamMessageResponse>(`/api/streams/${router.query.id}/messages`, messageData);
-  //   return data;
-  // };
-
   const {
     mutate: streamMessageAdd,
-    isLoading: isLoadingStreamMessageAdd,
+    isPending: isLoadingStreamMessageAdd,
     isError: isErrorStreamMessageAdd,
     error: errorStreamMessageAdd,
-  } = useMutation(
-    async (messageData: MessageData) => writeStreamMessage({ id: id!, messageData }),
-    {
-      onMutate: async ({ message }) => {
-        // 새로운 메시지를 바로 추가하는 낙관적 업데이트
-        const newMessage = {
-          id: Date.now(),
-          message,
-          user: {
-            ...user,
-          },
-        };
+  } = useMutation({
+    mutationFn: (messageData: MessageData) => writeStreamMessage({ id: id!, messageData }),
+    onMutate: async ({ message }) => {
+      const newMessage = {
+        id: Date.now(),
+        message,
+        user: {
+          ...user,
+        },
+      };
 
-        // 이전 데이터 백업
-        await queryClient.cancelQueries(["stream", router.query.id]);
-        const previousData = queryClient.getQueryData(["stream", router.query.id]);
+      await queryClient.cancelQueries({ queryKey: ["stream", id] });
+      const previousData = queryClient.getQueryData(["stream", id]);
 
-        // 업데이트된 메시지 리스트로 바로 반영
-        queryClient.setQueryData(["stream", router.query.id], (old: any) => {
-          if (old && old.stream) {
-            return {
-              ...old,
-              stream: {
-                ...old.stream,
-                messages: [...old.stream.messages, newMessage],
-              },
-            };
-          }
-          return old;
-        });
-
-        return { previousData };
-      },
-      onError: (error, _, context) => {
-        // 오류 발생 시 이전 데이터로 복구
-        if (context?.previousData) {
-          queryClient.setQueryData(["stream", router.query.id], context.previousData);
+      queryClient.setQueryData(["stream", id], (old: any) => {
+        if (old && old.stream) {
+          return {
+            ...old,
+            stream: {
+              ...old.stream,
+              messages: [...old.stream.messages, newMessage],
+            },
+          };
         }
-        console.error("Failed to add message:", error);
-      },
-      onSettled: () => {
-        // 요청이 성공하든 실패하든 다시 쿼리 데이터를 가져와 동기화
-        queryClient.invalidateQueries(["stream", router.query.id]);
-      },
-    }
-  );
+        return old;
+      });
 
-  // const deleteStream = async (id: string) => {
-  //   const { data } = await axios.delete(`/api/streams/${id}/delete`);
-  //   return data;
-  // };
+      return { previousData };
+    },
+    onError: (error, _, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(["stream", id], context.previousData);
+      }
+      console.error("Failed to add message:", error);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["stream", id] });
+    },
+  });
 
   const {
     mutate: streamDelete,
     data: streamDeleteData,
-    isLoading: isLoadingStreamDelete,
+    isPending: isLoadingStreamDelete,
     isError: isErrorStreamDelete,
     error: errorStreamDelete,
-  } = useMutation(deleteStream, {
+  } = useMutation({
+    mutationFn: deleteStream,
     onSuccess: () => {
       console.log("Stream deleted successfully");
-      queryClient.invalidateQueries("streams"); // 'streams' 데이터를 다시 불러오기 위해 쿼리 무효화
+      queryClient.invalidateQueries({ queryKey: ["streams"] });
     },
     onError: (error) => {
       console.error("Failed to delete stream:", error);
@@ -144,97 +127,51 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
     defaultValues: { message: "" },
   });
 
-  // const { data, mutate } = useSWR<ResponseType>(
-  //   router.query.id ? `/api/streams/${router.query.id}` : null,
-  //   { refreshInterval: 1000 }
-  // );
-
-  // const fetchStream = async (id: number) => {
-  //   const { data } = await axios.get<ApiResponseType>(`/api/streams/${id}`);
-  //   return data;
-  // };
-
   const {
     data: streamData,
     isLoading,
     isError,
     error,
-  } = useQuery(
-    ["stream", id], // 쿼리 키 설정
-    () => getStreamDetail(id!), // id를 안전하게 number로 변환
-    {
-      enabled: !!id, // id가 존재할 때만 쿼리 실행
-      // refetchInterval: 1000, // 1초마다 데이터 리프레시
-    }
-  );
-
-  // const fetchViews = async (cloudflareId: string) => {
-  //   const { data } = await videoClient.get<ViewsResult>(`/${cloudflareId}/views`);
-  //   return data;
-  // };
+  } = useQuery({
+    queryKey: ["stream", id],
+    queryFn: () => getStreamDetail(id!),
+    enabled: !!id,
+  });
 
   const {
     data: viewsData,
     isLoading: isLoadingViews,
     isError: isErrorViews,
     error: errorViews,
-  } = useQuery<ViewsResult>(
-    ["views", streamData?.stream?.cloudflareId], // 쿼리 키로 cloudflareId를 사용
-    () => getViews(streamData?.stream?.cloudflareId!), // 데이터를 가져오는 함수
-    {
-      enabled: !!streamData?.stream?.cloudflareId, // cloudflareId가 존재할 때만 쿼리 실행
-      // refetchInterval: 1000, // 1초마다 데이터 리프레시
-    }
-  );
-
-  // const fetchLifecycle = async (cloudflareId: string) => {
-  //   const { data } = await videoClient.get<LifecycleResult>(`/${cloudflareId}/lifecycle`);
-  //   return data;
-  // };
+  } = useQuery({
+    queryKey: ["views", streamData?.stream?.cloudflareId],
+    queryFn: () => getViews(streamData?.stream?.cloudflareId!),
+    enabled: !!streamData?.stream?.cloudflareId,
+  });
 
   const {
     data: lifecycleData,
     isLoading: isLoadingLifecycle,
     isError: isErrorLifecycle,
     error: errorLifecycle,
-  } = useQuery<LifecycleResult>(
-    ["lifecycle", streamData?.stream?.cloudflareId], // 쿼리 키로 cloudflareId를 사용
-    () => getLifecycle(streamData?.stream?.cloudflareId!), // 데이터를 가져오는 함수
-    {
-      enabled: !!streamData?.stream?.cloudflareId, // cloudflareId가 존재할 때만 쿼리 실행
-      // refetchInterval: 1000, // 1초마다 데이터 리프레시
-    }
-  );
-
-  // console.log(
-  //   "strem/[id]/index.tsx---https://videodelivery.net/${data?.stream?.cloudflareId}/lifecycle lifecycleData: ",
-  //   JSON.stringify(lifecycleData, null, 2)
-  // );
+  } = useQuery({
+    queryKey: ["lifecycle", streamData?.stream?.cloudflareId],
+    queryFn: () => getLifecycle(streamData?.stream?.cloudflareId!),
+    enabled: !!streamData?.stream?.cloudflareId,
+  });
 
   const onValid = async () => {
-    if (isLoadingStreamMessageAdd === true) {
-      return;
-    }
+    if (isLoadingStreamMessageAdd) return;
 
     const { message } = getValues();
-
     setNewMessageSubmitted(true);
-
     streamMessageAdd({ message });
     reset();
   };
 
   const handleDeleteStream = async () => {
-    if (isLoadingStreamDelete === true) {
-      return;
-    }
-    if (typeof router.query.id === "string") {
-      streamDelete(router.query.id); // id를 문자열로 전달
-    } else if (Array.isArray(router.query.id)) {
-      streamDelete(router.query.id[0]); // id가 배열일 경우 첫 번째 요소 사용
-    } else {
-      console.error("Invalid stream ID");
-    }
+    if (isLoadingStreamDelete) return;
+    streamDelete(id.toString());
   };
 
   const handleToggleStreamInfo = () => {

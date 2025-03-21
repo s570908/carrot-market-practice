@@ -56,7 +56,7 @@ const getChatRooms = async ({ condition, user }: GetChatRoomParams) => {
       recentMsg: {
         select: {
           chatMsg: true,
-          isNew: true,
+          //isNew: true,
           userId: true,
           createdAt: true,
           updatedAt: true,
@@ -89,7 +89,7 @@ const getChatRooms = async ({ condition, user }: GetChatRoomParams) => {
       sellerChat: {
         select: {
           chatMsg: true,
-          isNew: true,
+          //isNew: true,
           user: true,
         },
       },
@@ -100,15 +100,15 @@ const getChatRooms = async ({ condition, user }: GetChatRoomParams) => {
   chatRooms.forEach((chatRoom) => {
     let unreadCount = 0;
 
-    if (chatRoom.sellerChat) {
-      chatRoom.sellerChat.forEach((chat) => {
-        if (chat.user !== user) {
-          if (chat.isNew === true) {
-            unreadCount++;
-          }
-        }
-      });
-    }
+    // if (chatRoom.sellerChat) {
+    //   chatRoom.sellerChat.forEach((chat) => {
+    //     if (chat.user !== user) {
+    //       if (chat.isNew === true) {
+    //         unreadCount++;
+    //       }
+    //     }
+    //   });
+    // }
 
     unreadCountsPerRoom[chatRoom.id] = unreadCount;
   });
@@ -125,7 +125,7 @@ const getChatRoomListForProduct = async (productIdValue: number) => {
       recentMsg: {
         select: {
           chatMsg: true,
-          isNew: true,
+          //isNew: true,
           userId: true,
           createdAt: true,
           updatedAt: true,
@@ -158,7 +158,7 @@ const getChatRoomListForProduct = async (productIdValue: number) => {
       sellerChat: {
         select: {
           chatMsg: true,
-          isNew: true,
+          //isNew: true,
           user: true,
         },
       },

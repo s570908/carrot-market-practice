@@ -2,7 +2,7 @@ import type { NextPage } from "next";
 import Link from "next/link";
 import FloatingButton from "@components/FloatingButton";
 import Layout from "@components/Layout";
-import useSWR, { mutate } from "swr";
+//import useSWR, { mutate } from "swr";
 import { Stream } from "@prisma/client";
 import useUser from "@libs/client/useUser";
 import { useEffect, useState } from "react";
@@ -11,7 +11,7 @@ import PaginationButton from "@components/PaginationButton";
 import Image from "next/image";
 import { cls } from "@libs/utils";
 import axios from "axios";
-import { QueryFunctionContext, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { StreamsResponse } from "apiLibs/atypes";
 import { getStreamsPaging } from "apiLibs/streams";
 import { handleLoadingAndError } from "@components/LoadingError";
@@ -41,13 +41,11 @@ const Streams: NextPage = () => {
     isLoading,
     isError,
     error,
-  } = useQuery(
-    ["streams", page, limit], // 쿼리 키, page와 limit에 따라 쿼리가 달라짐
-    () => getStreamsPaging(page, limit), // 데이터를 가져오는 함수
-    {
-      // refetchInterval: 1000, // 1초마다 데이터 리프레시
-    }
-  );
+  } = useQuery({
+    queryKey: ["streams", page, limit], // 쿼리 키, page와 limit에 따라 쿼리가 달라짐
+    queryFn: () => getStreamsPaging(page, limit), // 데이터를 가져오는 함수
+    // refetchInterval: 1000, // 1초마다 데이터 리프레시
+  });
 
   const onPrevBtn = (page: number) => {
     router.push(`${router.pathname}?page=${page - 1}&limit=${limit}`);

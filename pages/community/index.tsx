@@ -2,7 +2,7 @@ import type { NextPage } from "next";
 import Link from "next/link";
 import FloatingButton from "@components/FloatingButton";
 import Layout from "@components/Layout";
-import useSWR from "swr";
+//import useSWR from "swr";
 import { Post, User, Wondering } from "@prisma/client";
 import useCoords from "@libs/client/useCoords";
 import RegDate from "@components/RegDate";

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { cls } from "@libs/utils";
 import { useRouter } from "next/router";
 import Head from "next/head";
-import useSWR from "swr";
+//import useSWR from "swr";
 import useUser from "@libs/client/useUser";
 import { IoEllipsisVerticalSharp } from "react-icons/io5";
 import { useAwaitableModal } from "@libs/client/useAwaitableModal";
@@ -30,7 +30,7 @@ interface NewChatProps {
   newChat: [
     {
       recentMsg: {
-        isNew: boolean;
+        //isNew: boolean;
         userId: number;
       };
     }
@@ -56,18 +56,16 @@ export default function Layout({
   const [isNew, setIsNew] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const {
-    openModal: openPostOptionsModal,
-    renderModal: renderPostOptionsModal,
-  } = useAwaitableModal((modal, params) => (
-    <PostOptionsModal
-      postId={params.postId}
-      onEdit={() => router.push(`/products/${params.postId}/edit`)}
-      onClose={(result) => modal.closeWithResult(result)}
-    />
-  ));
-  const { openModal: openDeleteModal, renderModal: renderDeleteModal } =
-    useAwaitableModal((modal) => (
+  const { openModal: openPostOptionsModal, renderModal: renderPostOptionsModal } =
+    useAwaitableModal((modal, params) => (
+      <PostOptionsModal
+        postId={params.postId}
+        onEdit={() => router.push(`/products/${params.postId}/edit`)}
+        onClose={(result) => modal.closeWithResult(result)}
+      />
+    ));
+  const { openModal: openDeleteModal, renderModal: renderDeleteModal } = useAwaitableModal(
+    (modal) => (
       <DeleteConfirmModal
         onClose={(result) =>
           result === "backdrop_click" || result === "삭제 취소됨"
@@ -75,7 +73,8 @@ export default function Layout({
             : modal.closeWithResult(result)
         }
       />
-    ));
+    )
+  );
   const handlePostOptionsClick = async () => {
     // setIsModalOpen(true); // 모달을 열기
     try {
@@ -109,13 +108,13 @@ export default function Layout({
   const handleHomeClick = () => {
     router.push("/");
   };
-  const { data } = useSWR<NewChatProps>(`/api/newchat`);
-  useEffect(() => {
-    data?.newChat?.map((chat) => {
-      if (chat.recentMsg?.isNew && chat.recentMsg.userId !== user?.id)
-        setIsNew(true);
-    });
-  }, [data, user]);
+
+  // const { data } = useSWR<NewChatProps>(`/api/newchat`);
+  // useEffect(() => {
+  //   data?.newChat?.map((chat) => {
+  //     if (chat.recentMsg?.isNew && chat.recentMsg.userId !== user?.id) setIsNew(true);
+  //   });
+  // }, [data, user]);
 
   const titleHead = `${seoTitle} | Carrot Market`;
 
@@ -153,10 +152,7 @@ export default function Layout({
             </button>
           ) : null}
           {goHome && (
-            <button
-              onClick={handleHomeClick}
-              className="absolute left-4 z-[2] ml-10"
-            >
+            <button onClick={handleHomeClick} className="absolute left-4 z-[2] ml-10">
               <svg
                 className="h-6 w-6"
                 fill="none"
@@ -169,9 +165,7 @@ export default function Layout({
               </svg>
             </button>
           )}
-          {title ? (
-            <span className={cls(canGoBack ? "mx-auto" : "", "")}>{title}</span>
-          ) : null}
+          {title ? <span className={cls(canGoBack ? "mx-auto" : "", "")}>{title}</span> : null}
           {notice ? (
             <Link href="/blog">
               <a className="absolute right-4 rounded-md border-2 bg-orange-500 p-1 text-sm text-white hover:bg-orange-600">
@@ -191,11 +185,7 @@ export default function Layout({
           ) : null}
         </div>
         <div
-          className={cls(
-            "z-0 pt-12",
-            hasTabBar ? "pb-24" : "",
-            isProfile ? "pb-5 sm:pb-10" : ""
-          )}
+          className={cls("z-0 pt-12", hasTabBar ? "pb-24" : "", isProfile ? "pb-5 sm:pb-10" : "")}
         >
           {children}
         </div>
@@ -256,7 +246,7 @@ export default function Layout({
             <Link href="/chats">
               <a
                 className={cls(
-                  "flex flex-col items-center space-y-2",
+                  "relative flex flex-col items-center space-y-2",
                   router.pathname === "/chats"
                     ? "text-orange-500"
                     : "transition-colors hover:text-gray-500"
@@ -276,8 +266,8 @@ export default function Layout({
                     d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
                   ></path>
                 </svg>
-                {isNew && router.pathname !== "/chats" ? (
-                  <div className="absolute left-[15.5rem] top-0 text-orange-500 sm:left-72">
+                {notice && router.pathname !== "/chats" ? (
+                  <div className="absolute -right-3 -top-3 text-orange-500">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       className="h-5 w-5"

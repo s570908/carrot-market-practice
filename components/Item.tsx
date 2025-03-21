@@ -1,3 +1,4 @@
+import React from "react";
 import Link from "next/link";
 import { cls } from "@libs/utils";
 import ImgComponent from "@components/ImgComponent";
@@ -19,7 +20,7 @@ interface ItemProps {
 const defaultImageUrl =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="%23E5E7EB"><rect width="100%" height="100%" fill="%23E5E7EB"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%236B7280">No Image</text></svg>';
 
-const Item = ({ title, price, comments, hearts, id, isLike, photo, date, status }: ItemProps) => {
+const Item = ({ title, id, price, hearts, photo, comments, isLike, date, status }: ItemProps) => {
   return (
     <Link href={`/products/${id}`}>
       <a className="flex cursor-pointer justify-between px-4 pt-5">
@@ -40,7 +41,6 @@ const Item = ({ title, price, comments, hearts, id, isLike, photo, date, status 
             <span className="mt-1 font-medium text-gray-900">￦{price}</span>
           </div>
         </div>
-        {/* <div>{isReserved && <span className="mt-1 text-xs text-red-500">예약됨</span>}</div> */}
         <div className="flex flex-col items-start justify-end space-x-2">
           <div>
             {status === Status.Reserved

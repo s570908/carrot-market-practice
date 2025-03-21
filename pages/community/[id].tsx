@@ -9,11 +9,9 @@ import { cls, parseId } from "@libs/utils";
 import { useEffect, useState } from "react";
 import RegDate from "@components/RegDate";
 import ImgComponent from "@components/ImgComponent";
-import axios from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getCommunityPost, writeCommunityAnswer, writeCommunityPost } from "apiLibs/posts";
 import { handleLoadingAndError } from "@components/LoadingError";
-import { CommunityPostResponse } from "apiLibs/atypes";
 
 interface AnswerForm {
   answer: string;
@@ -32,24 +30,23 @@ const CommunityPostDetail: NextPage = () => {
 
   const id = parseId(router.query.id);
 
-  const { data, refetch, isLoading, isError, error } = useQuery<CommunityPostResponse>(
-    ["community", id, page], // 쿼리 키
-    () => getCommunityPost(id!, page), // 데이터를 가져오는 함수
-    {
-      enabled: !!id, // id가 있을 때만 쿼리 실행
-    }
-  );
+  const { data, refetch, isLoading, isError, error } = useQuery({
+    queryKey: ["community", id, page],
+    queryFn: () => getCommunityPost(id!, page),
+    enabled: !!id,
+  });
 
   const {
     mutate: sendWonder,
-    isLoading: isLoadingWriteCommunityPost,
+    isPending: isLoadingWriteCommunityPost,
     isError: isErrorWriteCommunityPost,
     error: errorWriteCommunityPost,
-  } = useMutation(writeCommunityPost, {
+  } = useMutation({
+    mutationFn: writeCommunityPost,
     // onMutate: 서버 요청 전에 캐시 데이터를 optimistic하게 업데이트
     onMutate: async () => {
       // 현재 쿼리 무효화 방지
-      await queryClient.cancelQueries(["community", id, page]);
+      await queryClient.cancelQueries({ queryKey: ["community", id, page] });
 
       // 현재 캐시된 데이터를 가져오기 (롤백을 위해 저장)
       const previousData = queryClient.getQueryData(["community", id, page]);
@@ -84,17 +81,18 @@ const CommunityPostDetail: NextPage = () => {
     },
     // onSettled: 요청이 성공하거나 실패한 후 캐시를 다시 무효화하여 최신 상태로 갱신
     onSettled: () => {
-      queryClient.invalidateQueries(["community", id, page]);
+      queryClient.invalidateQueries({ queryKey: ["community", id, page] });
     },
   });
 
   const {
     mutate: sendAnswer,
     data: answerData,
-    isLoading: isLoadingWriteCommunityAnswer,
+    isPending: isLoadingWriteCommunityAnswer,
     isError: isErrorWriteCommunityAnswer,
     error: errorWriteCommunityAnswer,
-  } = useMutation(writeCommunityAnswer, {
+  } = useMutation({
+    mutationFn: writeCommunityAnswer,
     onSuccess: (data) => {
       console.log("Answer submitted successfully", data);
     },

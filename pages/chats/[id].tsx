@@ -93,6 +93,10 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   const router = useRouter();
   const id = (router.query.id !== undefined ? parseId(router.query.id) : 0) ?? 0;
 
+  // 헤더 상태 관련
+  const [productStatus, setProductStatus] = useState<string>("");
+  const [selectedValue, setSelectedValue] = useState("");
+
   const {
     data,
     isLoading,
@@ -191,8 +195,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     data?.chatRoomOfSeller?.product?.status === Status.Unregistered ? true : false;
   // selling은 Status.Registered와 동일하다.
   const selling = !reserved && !sold && !unregistered;
-  const productStatus =
-    (reserved && "예약중") || (sold && "거래완료") || (selling && "판매중") || "미등록";
+  // const productStatus =
+  //   (reserved && "예약중") || (sold && "거래완료") || (selling && "판매중") || "미등록";
 
   const isProvider = data?.chatRoomOfSeller?.sellerId === user?.id;
   const isConsumer = data?.chatRoomOfSeller?.buyerId === user?.id;
@@ -200,6 +204,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   const isSellingAndConsumer = selling && isConsumer;
   const isSellingAndProvider = selling && isProvider;
+  const productStatusInitial =
+    (reserved && "예약중") || (sold && "거래완료") || (selling && "판매중") || "미등록";
 
   const fetchReservation = async (productId: string) => {
     const { data } = await axios.get(`/api/products/${productId}/reservation`);
@@ -269,44 +275,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   const { register, handleSubmit, reset } = useForm<ChatFormResponse>();
 
-  /*   const {
-    mutate: sendChat,
-    isLoading: sendChatDataLoading,
-    data: sendChatData,
-  } = useMutation(
-    (chatForm: ChatFormResponse) => axios.post(`/api/chat/${router.query.id}`, chatForm),
-    {
-      onMutate: async (chatForm: ChatFormResponse) => {
-        await queryClient.cancelQueries(["chat", router.query.id]);
-        const previousChatData = queryClient.getQueryData(["chat", router.query.id]);
-        queryClient.setQueryData(["chat", router.query.id], (prev: any) => {
-          if (prev) {
-            const newMessage = {
-              id: Date.now(),
-              chatMsg: chatForm.chatMsg + "test",
-              user: { ...user },
-              userId: user?.id,
-            };
-            return {
-              ...prev,
-              sellerChat: [...prev.sellerChat, newMessage],
-            };
-          }
-          return prev;
-        });
-        return { previousChatData };
-      },
-      onError: (error, variables, context) => {
-        if (context?.previousChatData) {
-          queryClient.setQueryData(["chat", router.query.id], context.previousChatData); // 이전 데이터로 롤백
-        }
-      },
-      onSettled: () => {
-        queryClient.invalidateQueries(["chat", router.query.id]); // 쿼리 무효화
-      },
-    }
-  ); */
-
   const {
     mutate: sendChat,
     isPending: isLoadingSendChat, // isLoading → isPending으로 변경
@@ -334,6 +302,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         return prev;
       });
       return { previousChatData };
+      // React Query 내부에서 해당 mutation의 컨텍스트(context)로 저장,
+      // 저장된 컨텍스트는 같은 mutation 내의 다른 콜백 함수들에서 세 번째 매개변수를 통해 접근
     },
     onError: (error, variables, context) => {
       if (context?.previousChatData) {
@@ -342,8 +312,41 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["chat", id] }); // 쿼리 무효화
+      // 채팅은 여러 사용자가 동시에 메시지를 주고받는 실시간 기능이므로,
+      // 메시지 전송 후 자동으로 최신 데이터를 가져오는 것이 일관된 사용자 경험을 제공하는 데 필수적
     },
   });
+
+  // // 채팅 보내기 mutation
+  // const { mutate: sendChat, isPending: isLoadingSendChat } = useMutation({
+  //   mutationFn: writeChatMessage,
+  //   onSuccess: () => {
+  //     refetchChat();
+  //   },
+  // });
+
+  // 캐시 업데이트 함수
+  const updateProductStatus = useCallback(
+    (newState: string, status: Status) => {
+      queryClient.setQueryData(["chat", id], (oldData: any) => {
+        if (!oldData || !oldData.chatRoomOfSeller) {
+          return oldData;
+        }
+
+        return {
+          ...oldData,
+          chatRoomOfSeller: {
+            ...oldData.chatRoomOfSeller,
+            product: {
+              ...oldData.chatRoomOfSeller.product,
+              status,
+            },
+          },
+        };
+      });
+    },
+    [queryClient, id]
+  );
 
   const {
     mutate: toggleReservationMutate,
@@ -386,7 +389,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
     setNewMessageSubmitted(true);
 
-    sendChat({ chatForm, chatId: id }); // mutate에서 option을 false로 하였기 때문에 서버의 데이터가 아직 업데이트되지 않았으므로 지금 여기서 서버의 데이터를 업데이트한다.
+    sendChat({ chatForm, chatId: id }); //  지금 여기서 서버의 데이터를 업데이트한다.
   };
 
   // useEffect(() => {
@@ -406,8 +409,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   useEffect(() => {
     scrollToBottom(scrollRef);
   }, [data?.sellerChat]); // chat data를 모두 가져온 후에만 scrollRef의 값을 가져올 수 있다.
-
-  const [selectedValue, setSelectedValue] = useState("");
 
   const initialOptions = useMemo(
     () => [
@@ -447,21 +448,122 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   const [connected, setConnected] = useState<boolean>(false);
 
+  // useEffect(() => {
+  //   if (socket) {
+  //     socket.on("changeState", async (data) => {
+  //       console.log("changeState socket event received:", data);
+  //       await refetchChat();
+  //       await refetchReservation();
+  //       await refetchReviewWritable();
+  //     });
+  //   }
+  //   return () => {
+  //     if (socket) {
+  //       socket.off("changeState");
+  //     }
+  //   };
+  // }, [socket]);
+
+  // 소켓 이벤트 리스너
   useEffect(() => {
     if (socket) {
-      socket.on("changeState", async (data) => {
-        console.log("changeState socket event received:", data);
-        await refetchChat();
-        await refetchReservation();
-        await refetchReviewWritable();
-      });
+      const handleChangeState = (eventData: any) => {
+        const { productId: changedProductId, new: newState } = eventData;
+
+        if (productId === changedProductId) {
+          setProductStatus(newState);
+
+          let newStatus: Status;
+          switch (newState) {
+            case "예약중":
+              newStatus = Status.Reserved;
+              break;
+            case "거래완료":
+              newStatus = Status.Sold;
+              break;
+            case "판매중":
+              newStatus = Status.Registered;
+              break;
+            default:
+              newStatus = Status.Unregistered;
+          }
+
+          updateProductStatus(newState, newStatus);
+        }
+      };
+
+      socket.on("changeState", handleChangeState);
+
+      return () => {
+        socket.off("changeState", handleChangeState);
+      };
     }
-    return () => {
-      if (socket) {
-        socket.off("changeState");
-      }
-    };
-  }, [socket]);
+  }, [socket, productId, updateProductStatus]);
+
+  // 소켓 이벤트 리스너
+  useEffect(() => {
+    if (socket) {
+      const handleChangeState = (eventData: any) => {
+        const { productId: changedProductId, new: newState } = eventData;
+
+        if (productId === changedProductId) {
+          setProductStatus(newState);
+
+          let newStatus: Status;
+          switch (newState) {
+            case "예약중":
+              newStatus = Status.Reserved;
+              break;
+            case "거래완료":
+              newStatus = Status.Sold;
+              break;
+            case "판매중":
+              newStatus = Status.Registered;
+              break;
+            default:
+              newStatus = Status.Unregistered;
+          }
+
+          updateProductStatus(newState, newStatus);
+        }
+      };
+
+      socket.on("changeState", handleChangeState);
+
+      return () => {
+        socket.off("changeState", handleChangeState);
+      };
+    }
+  }, [socket, productId, updateProductStatus]);
+
+  // 초기 상태 설정
+  useEffect(() => {
+    const initialStatus = productStatusInitial;
+    setProductStatus(initialStatus);
+
+    if (initialStatus === "판매중") {
+      setOptions(
+        initialOptions.map((option) => ({
+          ...option,
+          active: option.value !== "판매중",
+        }))
+      );
+    } else if (initialStatus === "예약중") {
+      setOptions(
+        initialOptions.map((option) => ({
+          ...option,
+          active: option.value !== "예약중",
+        }))
+      );
+    } else if (initialStatus === "거래완료") {
+      setOptions(
+        initialOptions.map((option) => ({
+          ...option,
+          active: false,
+        }))
+      );
+    }
+  }, [reserved, sold, selling, initialOptions, productStatusInitial]);
 
   useEffect(() => {
     if (socket) {
@@ -470,8 +572,12 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       console.log(`Joined room: ${roomName}`);
 
       socket.on("message", (message: any) => {
+        // message는 같은 채널에 있는 모든 사용자에게 전달된다.
+        // 따라서  if (id && message.channelId === id) 는 항상 true이다.
+        // 그러나 메시지가 현재 채팅방에 해당하는지 확인하는 것이 좋다.
+        // 애플리케이션 확장성: 향후 기능 확장 시 구현이 변경될 수 있으므로, 이 검사는 방어적 프로그래밍 측면에서 유용합니다.
         // 해당 chatRoom에서만 refetch하도록...
-        if (router.query.id && message.channelId === +router.query.id) {
+        if (id && message.channelId === id) {
           refetchChat();
         }
       });
@@ -514,6 +620,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               const stateObj = { productId, old: "판매중", new: "예약중" };
               console.log("socket?.emit(changeState)--stateObj: ", stateObj);
               socket?.emit("changeState", stateObj);
+              setProductStatus("예약중");
             },
           }
         );
@@ -530,6 +637,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               const stateObj = { productId, old: "판매중", new: "거래완료" };
               console.log("socket?.emit(changeState)--stateObj: ", stateObj);
               socket?.emit("changeState", stateObj);
+              setProductStatus("거래완료");
             },
           }
         );
@@ -555,6 +663,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               const stateObj = { productId, old: "예약중", new: "판매중" };
               console.log("socket?.emit(changeState)--stateObj: ", stateObj);
               socket?.emit("changeState", stateObj);
+              setProductStatus("판매중");
             },
           }
         );
@@ -570,6 +679,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               const stateObj = { productId, old: "예약중", new: "거래완료" };
               console.log("socket?.emit(changeState)--stateObj: ", stateObj);
               socket?.emit("changeState", stateObj);
+              setProductStatus("거래완료");
             },
           }
         );
@@ -753,12 +863,11 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     router.push(`/appointment/create?chatroomId=${chatroomId}`); // 채팅방 ID를 URL로 전달
   };
 
-  // console.log(
-  //   "user?.id === sellerUserId,selling,reserved: ",
-  //   user?.id === sellerUserId,
-  //   selling,
-  //   reserved
-  // );
+  // 상태 표시 컴포넌트
+  const ProductStatusDisplay = React.memo(({ status }: { status: string }) => {
+    return <div>{status}</div>;
+  });
+  ProductStatusDisplay.displayName = "ProductStatusDisplay";
 
   return (
     <>

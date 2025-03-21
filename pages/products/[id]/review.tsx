@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import useUser from "@libs/client/useUser";
-import useSWR from "swr";
+//import useSWR from "swr";
 import { Product, User, ReviewType } from "@prisma/client";
 import ImgComponent from "@components/ImgComponent";
 import Link from "next/link";
@@ -54,26 +54,22 @@ const Review: NextPage = () => {
   const id = parseId(router.query.id);
   const otherId = parseId(router.query.otherId);
 
-  const { data, isLoading, isError, error } = useQuery(
-    ["product", id], // 쿼리 키 (id에 따라 쿼리가 달라짐)
-    () => getProduct(id!),
-    {
-      enabled: !!id, // query.id가 있을 때만 쿼리 실행
-    }
-  );
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["product", id], // 쿼리 키 (id에 따라 쿼리가 달라짐)
+    queryFn: () => getProduct(id!),
+    enabled: !!id, // query.id가 있을 때만 쿼리 실행
+  });
 
   const {
     data: otherData,
     isLoading: isLoadingOther,
     isError: isErrorOther,
     error: errorOther,
-  } = useQuery<UserResponse>(
-    ["user", otherId], // 쿼리 키 (otherId에 따라 변경)
-    () => getSimpleProfile(otherId!),
-    {
-      enabled: !!otherId, // otherId가 있을 때만 쿼리 실행
-    }
-  );
+  } = useQuery({
+    queryKey: ["user", otherId], // 쿼리 키 (otherId에 따라 변경)
+    queryFn: () => getSimpleProfile(otherId!),
+    enabled: !!otherId, // otherId가 있을 때만 쿼리 실행
+  });
 
   const { register, handleSubmit, watch } = useForm<ReviewForm>({
     mode: "onChange",
@@ -83,23 +79,21 @@ const Review: NextPage = () => {
   //   useMutation(`/api/products/${router.query.id}/reviewNew`);
   const {
     mutate: sendReview,
-    isLoading: isLoadingWriteReview,
+    isPending: isLoadingWriteReview, // isLoading → isPending으로 변경됨
     isError: isErrorWriteReview,
     error: errorWriteReview,
     data: writeReviewData,
-  } = useMutation(
-    writeReview, // POST 요청
-    {
-      onSuccess: (data) => {
-        console.log("Review submitted successfully", data);
-        // 성공 시 처리할 로직 추가
-      },
-      onError: (error) => {
-        console.error("Error submitting review", error);
-        // 에러 시 처리할 로직 추가
-      },
-    }
-  );
+  } = useMutation({
+    mutationFn: writeReview, // POST 요청 함수를 mutationFn으로 지정
+    onSuccess: (data) => {
+      console.log("Review submitted successfully", data);
+      // 성공 시 처리할 로직 추가
+    },
+    onError: (error) => {
+      console.error("Error submitting review", error);
+      // 에러 시 처리할 로직 추가
+    },
+  });
 
   useEffect(() => {
     if (writeReviewData?.ok) {

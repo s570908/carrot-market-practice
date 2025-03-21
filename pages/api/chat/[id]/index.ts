@@ -82,7 +82,10 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
         ?.of(`ws-${worksapce}`)
         .to(channel)
         .emit("chats-lastReadMessage", result);
-      //console.log("Check if you listened chats-lastReadMessage event");
+      console.log(
+        "channel에 chats-lastReadMessage 이벤트를 보낸다: result.sellerChatId: ",
+        result.sellerChatId
+      );
     }
 
     if (chatRoomOfSeller?.buyerId !== user?.id && chatRoomOfSeller?.sellerId !== user?.id) {
@@ -118,7 +121,7 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
             id: user?.id,
           },
         },
-        isNew: true, //// 이 chat message는 상대방이 읽지 않았으므로 true, 추후 지운다.
+        //isNew: true, //// 이 chat message는 상대방이 읽지 않았으므로 true, 추후 지운다.
       },
     });
 
@@ -138,7 +141,10 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
     //****************************************************
     res?.socket?.server?.io?.of(`ws-${worksapce}`).to(channel).emit("message", message);
     console.log(
-      `workspace: ${worksapce}의 channel: ${channel}로 message: ${message}를 이벤트로 전송하였다.`
+      "workspace.channel 로 message 이벤트를 전송하였다: ",
+      worksapce,
+      channel,
+      message.chatMsg
     );
 
     // 가장 최신 메시지 recentMsg를 서버에 보내야 한다.

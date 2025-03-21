@@ -118,3 +118,37 @@ Reply
   keyup,
   contextmenu,
   resize
+
+# 판매자가 상품 상태를 변경했을 때,
+
+사용자가 필터 옵션(RadioButtonGroup)을 클릭하면 최신 데이터를 가져와 변경된 상태를 반영하도록 하는 기능
+
+## 구현
+
+1. 제품 상태 변경 이벤트(changeState)를 추적하는 상태 변수를 추가
+2. handleOptionChange 함수를 수정하여:
+   - 값이 변경되었을 때
+   - changeState 이벤트가 발생했었다면
+   - refetchChats를 실행하고
+   - changeState 이벤트 기록을 초기화
+
+## 작동 흐름
+
+1. hasStateChanged 상태 변수를 추가하여 상품 상태 변경 이벤트를 추적합니다.
+2. 소켓에 changeState 이벤트 리스너를 추가하여 상태 변경 시 hasStateChanged를 true로 설정합니다.
+3. 사용자가 RadioButtonGroup에서 옵션을 변경하면:
+   - 선택된 값이 실제로 변경되었는지 확인합니다.
+   - hasStateChanged가 true이면 refetchChats를 호출하고 hasStateChanged를 false로 재설정합니다.
+
+- [useIntersectionObserver hook](#useintersectionobserver-hook)
+- [Why This Error Occurred](#why-this-error-occurred)
+- [how to remove firefox's Default Dropdown for input html](#how-to-remove-firefoxs-default-dropdown-for-input-html)
+- [How to Remove Arrow on Input type Number with Tailwind CSS](#how-to-remove-arrow-on-input-type-number-with-tailwind-css)
+- [Data Fetching에 대해 알아보기 (3) - ISR](#data-fetching에-대해-알아보기-3---isr)
+- [NextJS와 ISR](#nextjs와-isr)
+- [SSR+SWR by hyunseo 에 대한 결과 관찰](#ssrswr-by-hyunseo-에-대한-결과-관찰)
+- [Next JS Upload File / Images to Local Directory](#next-js-upload-file--images-to-local-directory)
+- [Tmapv2 event type](#tmapv2-event-type)
+- [판매자가 상품 상태를 변경했을 때,](#판매자가-상품-상태를-변경했을-때)
+  - [구현](#구현)
+  - [작동 흐름](#작동-흐름)

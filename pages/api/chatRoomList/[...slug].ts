@@ -35,7 +35,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
           recentMsg: {
             select: {
               chatMsg: true,
-              isNew: true,
+              //isNew: true,
               userId: true,
               createdAt: true,
               updatedAt: true,
@@ -71,7 +71,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
           sellerChat: {
             select: {
               chatMsg: true,
-              isNew: true,
+              //isNew: true,
               user: true,
             },
           },
@@ -133,7 +133,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
           recentMsg: {
             select: {
               chatMsg: true,
-              isNew: true,
+              //isNew: true,
               userId: true,
               createdAt: true,
               updatedAt: true,
@@ -166,7 +166,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
           sellerChat: {
             select: {
               chatMsg: true,
-              isNew: true,
+              //isNew: true,
               user: true,
             },
           },

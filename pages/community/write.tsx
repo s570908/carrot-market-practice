@@ -3,7 +3,7 @@ import Button from "@components/Button";
 import Layout from "@components/Layout";
 import TextArea from "@components/TextArea";
 import { useForm } from "react-hook-form";
-import useSWR from "swr";
+//import useSWR from "swr";
 import useMutation from "@libs/client/useMutation";
 import { useEffect } from "react";
 import { Post } from "@prisma/client";

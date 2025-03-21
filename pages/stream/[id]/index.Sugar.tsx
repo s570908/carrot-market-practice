@@ -1,7 +1,6 @@
-import useSWR from "swr";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import client from "libs/client/client";
 import Loading from "@components/Loading";
-import useMutation from "libs/client/useMutation";
 import DeleteButton from "@components/delete-button";
 import StreamMessage from "@components/stream-message";
 import FloatingButton from "@components/FloatingButton";
@@ -26,7 +25,8 @@ import { ResponseType } from "@libs/server/withHandler";
 import Message from "@components/Message";
 import { useIntersectionObserver } from "@libs/client/useIntersectionObserver";
 import { FiChevronsDown } from "react-icons/fi";
-import { cls } from "@libs/utils";
+import { cls, parseId } from "@libs/utils";
+import { getStreamDetail, getViews, getLifecycle, writeStreamMessage } from "@/apiLibs/streams";
 
 interface StreamDetailFormData {
   message: string;
@@ -97,6 +97,8 @@ interface LifecycleResult {
 const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) => {
   const { user } = useUser();
   const router: NextRouter = useRouter();
+  const id = (router.query.id !== undefined ? parseId(router.query.id) : 0) ?? 0;
+  const queryClient = useQueryClient();
   const [showStreamInfo, setShowStreamInfo] = useState(false);
   const [newMessageSubmitted, setNewMessageSubmitted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -110,47 +112,84 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
 
   console.log("Entry.isIntersecting: ", entry?.isIntersecting);
 
-  const [streamMessageAddMutation, { loading: streamMessageAddLoading }] = useMutation(
-    `/api/streams/${router.query.id}/messages`
-  );
-  const [streamDeleteMutation, { data: streamDeleteData, loading: streamDeleteLoading }] =
-    useMutation<any>(`/api/streams/${router.query.id}/delete`);
+  // React Query mutation for message creation
+  const {
+    mutate: sendMessage,
+    isPending: streamMessageAddLoading,
+    data: sendMessageData,
+  } = useMutation({
+    mutationFn: (messageData: { message: string }) => writeStreamMessage({ messageData, id }),
+    onSuccess: () => {
+      // Optional: invalidate or update queries after success
+      // queryClient.invalidateQueries({ queryKey: ["stream", id] });
+    },
+  });
+
+  // React Query mutation for stream deletion
+  const {
+    mutate: deleteStream,
+    isPending: streamDeleteLoading,
+    data: streamDeleteData,
+  } = useMutation({
+    mutationFn: () =>
+      fetch(`/api/streams/${id}/delete`, {
+        method: "DELETE",
+      }).then((res) => res.json()),
+    onSuccess: () => {
+      // The redirection will be handled in the useEffect
+    },
+  });
+
   const { register, handleSubmit, getValues, reset } = useForm<StreamDetailFormData>({
     defaultValues: { message: "" },
   });
 
-  const { data, mutate } = useSWR<ResponseType>(
-    router.query.id ? `/api/streams/${router.query.id}` : null,
-    { refreshInterval: 10000 }
-  );
+  // Stream data query
+  const { data, refetch } = useQuery({
+    queryKey: ["stream", id],
+    queryFn: () => getStreamDetail(id),
+    enabled: Boolean(id),
+    refetchInterval: 10000,
+  });
 
-  console.log(
-    "strem/[id]/index.tsx---/api/streams/${router.query.id} data: ",
-    JSON.stringify(data, null, 2)
-  );
-
-  const { data: viewsData } = useSWR<ViewsResult>(
-    data?.stream?.cloudflareId
-      ? `https://videodelivery.net/${data?.stream?.cloudflareId}/views`
-      : null,
-    {
-      refreshInterval: 1000000,
+  // Custom mutate function to match the reference file pattern
+  const mutate = (updater?: ((prev: ResponseType | undefined) => ResponseType) | ResponseType) => {
+    // 1. updater가 없으면 refetch() 실행
+    if (updater === undefined) {
+      refetch();
+      return;
     }
-  );
+
+    // 2. updater가 함수이면 함수형 업데이트 실행
+    if (typeof updater === "function") {
+      queryClient.setQueryData(["stream", id], (oldData: any) => updater(oldData));
+      return;
+    }
+
+    // 3. updater가 데이터 객체이면 직접 업데이트
+    queryClient.setQueryData(["stream", id], updater);
+  };
+
+  // Views data query
+  const { data: viewsData } = useQuery({
+    queryKey: ["streamViews", data?.stream?.cloudflareId],
+    queryFn: () => getViews(data!.stream!.cloudflareId),
+    enabled: Boolean(data?.stream?.cloudflareId),
+    refetchInterval: 1000000,
+  });
 
   console.log(
     "strem/[id]/index.tsx---https://videodelivery.net/${data?.stream?.cloudflareId}/views viewsData: ",
     JSON.stringify(viewsData, null, 2)
   );
 
-  const { data: lifecycleData } = useSWR<LifecycleResult>(
-    data?.stream?.cloudflareId
-      ? `https://videodelivery.net/${data?.stream?.cloudflareId}/lifecycle`
-      : null,
-    {
-      refreshInterval: 100000,
-    }
-  );
+  // Lifecycle data query
+  const { data: lifecycleData } = useQuery({
+    queryKey: ["streamLifecycle", data?.stream?.cloudflareId],
+    queryFn: () => getLifecycle(data!.stream!.cloudflareId),
+    enabled: Boolean(data?.stream?.cloudflareId),
+    refetchInterval: 100000,
+  });
 
   console.log(
     "strem/[id]/index.tsx---https://videodelivery.net/${data?.stream?.cloudflareId}/lifecycle lifecycleData: ",
@@ -163,34 +202,38 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
     }
 
     const { message } = getValues();
-    const newMessage = {
-      id: Date.now(),
-      message: message,
-      user: {
-        ...user,
-      },
-    };
+    reset();
 
-    mutate((prev) => {
-      if (prev && prev.stream) {
-        return {
-          ...prev,
-          stream: { ...prev.stream, messages: [...prev.stream?.messages, newMessage] },
-        };
-      }
-    }, false);
+    // 현재 데이터를 가져와서 직접 수정
+    const currentData = queryClient.getQueryData(["stream", id]) as ResponseType;
+    if (currentData) {
+      // 새 메시지가 추가된 데이터 생성
+      const newData = {
+        ...currentData,
+        stream: {
+          ...currentData.stream,
+          messages: [
+            ...currentData.stream?.messages!,
+            { id: Date.now(), message: message, user: { ...user } },
+          ],
+        },
+      };
+
+      // 수정된 데이터로 캐시 업데이트
+      mutate(newData);
+    }
 
     setNewMessageSubmitted(true);
 
-    streamMessageAddMutation({ message });
-    reset();
+    // 라이브스트림 메시지 API 요청 (POST)
+    sendMessage({ message });
   };
 
   const handleDeleteStream = async () => {
     if (streamDeleteLoading === true) {
       return;
     }
-    streamDeleteMutation({});
+    deleteStream();
   };
 
   const handleToggleStreamInfo = () => {
@@ -234,8 +277,8 @@ const StreamDetail: NextPage<StreamDetailResult> = ({ stream, recordedVideos }) 
 
   return (
     <Layout
-      seoTitle={`${data?.stream.name} || 라이브`}
-      title={`${data?.stream.user.name}의 라이브`}
+      seoTitle={`${data?.stream?.name} || 라이브`}
+      title={`${data?.stream?.user.name}의 라이브`}
       canGoBack
       backUrl={"/stream"}
     >

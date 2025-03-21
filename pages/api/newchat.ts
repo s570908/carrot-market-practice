@@ -14,7 +14,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) 
     select: {
       recentMsg: {
         select: {
-          isNew: true,
+          //isNew: true,
           userId: true,
         },
       },

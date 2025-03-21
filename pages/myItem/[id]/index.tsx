@@ -1,7 +1,7 @@
 import type { GetStaticProps, NextPage } from "next";
 import Button from "@components/Button";
 import Layout from "@components/Layout";
-import useSWR, { mutate, useSWRConfig } from "swr";
+//import useSWR, { mutate, useSWRConfig } from "swr";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { Product, Reservation, Review, Status, User } from "@prisma/client";
@@ -16,6 +16,15 @@ import Dropdown from "@components/Dropdown";
 import { IoEllipsisVerticalSharp } from "react-icons/io5";
 import { ReserveResponse } from "pages/api/apiTypes";
 import EventEmitter from "eventemitter3";
+//import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getProduct } from "apiLibs/products"; // API 함수 import
+import { ProductDetailResponse } from "@/apiLibs/atypes";
+import { getReservation } from "apiLibs/products"; // getReservation 함수가 있다고 가정
+import {
+  useQuery,
+  useQueryClient,
+  useMutation as useReactQueryMutation,
+} from "@tanstack/react-query";
 
 interface ProductWithReview extends Review {
   createdBy: User;
@@ -42,32 +51,77 @@ const ItemDetail: NextPage = () => {
   const { user, isLoading } = useUser();
   const router = useRouter();
   // const { mutate: unboundMutate } = useSWRConfig();
-  const { data, mutate: boundMutate } = useSWR<ItemDetailResponse>(
-    router.query.id ? `/api/products/${router.query.id}` : null
-  );
+  // useQueryClient 훅 사용
+  const queryClient = useQueryClient();
+  const id = router.query.id ? +router.query.id : undefined;
+
+  // React Query로 제품 데이터 가져오기
+  const {
+    data,
+    isLoading: isQueryLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["product", id],
+    queryFn: () => getProduct(id!),
+    enabled: !!id, // id가 존재할 때만 쿼리 실행
+  });
+
+  // SWR의 boundMutate 기능과 유사한 함수 구현
+  const boundMutate = (newData?: ProductDetailResponse) => {
+    if (newData) {
+      // 새 데이터로 캐시 직접 업데이트
+      queryClient.setQueryData(["product", id], newData);
+    } else {
+      // 캐시 무효화하고 다시 가져오기
+      queryClient.invalidateQueries({ queryKey: ["product", id] });
+    }
+  };
+
+  // SWR 코드를 React Query로 변환
+  const {
+    data: reserveData,
+    isLoading: reserveLoading,
+    refetch: refreshReservation,
+  } = useQuery({
+    queryKey: ["reservation", id],
+    queryFn: () => getReservation(id!),
+    enabled: !!id, // id가 있을 때만 쿼리 활성화
+  });
+
+  // mutate 함수 대체 (SWR의 mutate와 유사한 기능)
+  const updateReservation = (newData?: ReserveResponse) => {
+    if (newData) {
+      // 새 데이터로 캐시 직접 업데이트
+      queryClient.setQueryData(["reservation", id], newData);
+    } else {
+      // 캐시 무효화하고 다시 가져오기
+      queryClient.invalidateQueries({ queryKey: ["reservation", id] });
+    }
+  };
+
+  // useMutation 사용 부분도 React Query의 useMutation으로 변경할 수 있습니다
+  // 필요에 따라 아래와 같이 변경
+  const { mutate: reserveProduct, isPending: isReservingProduct } = useReactQueryMutation({
+    mutationFn: (data: any) =>
+      fetch(`/api/products/${id}/reservation`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }).then((res) => res.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reservation", id] });
+    },
+  });
 
   const [toggleFav] = useMutation(`/api/products/${router.query.id}/fav`);
-  const [
-    talkToSeller,
-    { loading: talkToSellerLoading, data: talkToSellerData },
-  ] = useMutation(`/api/chat`);
+  const [talkToSeller, { loading: talkToSellerLoading, data: talkToSellerData }] =
+    useMutation(`/api/chat`);
   const [buyItem, { loading: buyItemLoading, data: buyItemData }] = useMutation(
     `/api/products/${router.query.id}?buyer=${data?.product.userId.toString()}`
   );
-  const {
-    data: reserveDataSWR,
-    isLoading: reserveLoadingSWR,
-    mutate: reserveMutateSWR,
-  } = useSWR<ReserveResponse>(
-    router.query.id ? `/api/products/${router.query.id}/reservation` : null
-  );
-  const [
-    reservedApi,
-    { loading: reserveMutateLoadingApi, data: reserveMutateDataApi },
-  ] = useMutation(`/api/products/${router.query.id}/reservation`);
   const onFavClick = () => {
     if (!data) return;
-    boundMutate((prev) => prev && { ...prev, isLike: !prev.isLike }, false);
+    boundMutate({ ...data, isLike: !data.isLike } as ProductDetailResponse);
     // unboundMutate("/api/users/me", (prev: any) => ({ ok: !prev.ok }), false);
     toggleFav({});
   };
@@ -104,13 +158,7 @@ const ItemDetail: NextPage = () => {
   }, [router, talkToSellerData]);
 
   return (
-    <Layout
-      seoTitle="댕댕마켓"
-      title="댕댕마켓"
-      canGoBack
-      backUrl={"back"}
-      openModal
-    >
+    <Layout seoTitle="댕댕마켓" title="댕댕마켓" canGoBack backUrl={"back"} openModal>
       <div className="px-4 py-4">
         <div className="mb-8">
           <ImgComponent
@@ -134,13 +182,10 @@ const ItemDetail: NextPage = () => {
             ) : (
               // <div className="w-12 h-12 rounded-full bg-slate-300" />
               <ImgComponent
-                imgAdd={`https:${gravatar.url(
-                  user?.email ? user?.email : "anonymous@email.com",
-                  {
-                    s: "48px",
-                    d: "retro",
-                  }
-                )}`}
+                imgAdd={`https:${gravatar.url(user?.email ? user?.email : "anonymous@email.com", {
+                  s: "48px",
+                  d: "retro",
+                })}`}
                 width={48}
                 height={48}
                 clsProps="rounded-full"
@@ -158,9 +203,7 @@ const ItemDetail: NextPage = () => {
                     : `/profile/${data?.product?.user?.id}`
                 }
               >
-                <a className="text-xs font-medium text-gray-500">
-                  View profile &rarr;
-                </a>
+                <a className="text-xs font-medium text-gray-500">View profile &rarr;</a>
               </Link>
             </div>
           </div>
@@ -175,17 +218,12 @@ const ItemDetail: NextPage = () => {
             <div className="my-3">
               <div className="border-t py-3 text-xl font-bold">
                 {/*@ts-ignore*/}
-                {data?.product?.productReviews?.length > 0
-                  ? "Review"
-                  : "Description"}
+                {data?.product?.productReviews?.length > 0 ? "Review" : "Description"}
               </div>
               {/*@ts-ignore*/}
               {data?.product?.productReviews?.length > 0 ? (
                 data?.product?.productReviews.map((review) => (
-                  <div
-                    key={review.id}
-                    className="flex flex-row justify-items-start space-x-12"
-                  >
+                  <div key={review.id} className="flex flex-row justify-items-start space-x-12">
                     <div className="flex flex-col items-center justify-center space-y-1">
                       {review.createdBy?.avatar ? (
                         <ImgComponent
@@ -198,9 +236,7 @@ const ItemDetail: NextPage = () => {
                       ) : (
                         <div className="h-12 w-12 rounded-full bg-slate-500" />
                       )}
-                      <span className="font-medium text-gray-900">
-                        {review?.createdBy.name}
-                      </span>
+                      <span className="font-medium text-gray-900">{review?.createdBy.name}</span>
                     </div>
                     <div className="flex flex-row items-center justify-evenly space-x-20">
                       <div className="flex flex-col items-start">
@@ -210,9 +246,7 @@ const ItemDetail: NextPage = () => {
                               key={star}
                               className={cls(
                                 "h-5 w-5",
-                                review.score >= star
-                                  ? "text-yellow-400"
-                                  : "text-gray-300"
+                                review.score >= star ? "text-yellow-400" : "text-gray-300"
                               )}
                               xmlns="http://www.w3.org/2000/svg"
                               viewBox="0 0 20 20"
@@ -223,9 +257,7 @@ const ItemDetail: NextPage = () => {
                             </svg>
                           ))}
                         </div>
-                        <p className="my-2 text-lg text-gray-700">
-                          {review.review}
-                        </p>
+                        <p className="my-2 text-lg text-gray-700">{review.review}</p>
                       </div>
                       <span className="font-medium text-gray-900">
                         <RegDate regDate={review.createdAt} />
@@ -307,18 +339,14 @@ const ItemDetail: NextPage = () => {
                 <Link href={`/products/${product.id}`} key={product.id}>
                   <a className="cursor-pointer">
                     <ImgComponent
-                      imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${product?.image}/public`}
+                      imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${product?.images[0]?.id}/public`}
                       isLayout={true}
                       layoutHeight="h-56"
                       clsProps="mt-6 mb-4 bg-slate-300"
                       imgName={product.name}
                     />
-                    <h3 className="-mb-1 text-base text-gray-700">
-                      {product.name}
-                    </h3>
-                    <span className="text-xs font-medium text-gray-900">
-                      ￦{product.price}
-                    </span>
+                    <h3 className="-mb-1 text-base text-gray-700">{product.name}</h3>
+                    <span className="text-xs font-medium text-gray-900">￦{product.price}</span>
                   </a>
                 </Link>
               ))}

@@ -26,6 +26,11 @@ import {
 //   id: number;
 // }
 
+export interface MeResponse extends User {
+  ok: boolean;
+  profile: User;
+}
+
 export interface UserResponse extends User {
   ok: boolean;
   other: User;
@@ -135,7 +140,7 @@ interface RecentMsg {
   id: number;
   chatMsg: string;
   createdAt: string;
-  isNew?: boolean;
+  //isNew?: boolean;
   userId?: number;
   updatedAt?: string;
 }
@@ -202,7 +207,7 @@ export interface ChatRoomByProduct {
   };
   sellerChat: {
     chatMsg: string;
-    isNew: boolean;
+    //isNew: boolean;
     user: {
       id: number;
       name: string;
@@ -263,7 +268,7 @@ interface ChatRoomCreate {
 export interface ChatRoomCreateResponse {
   ok: boolean;
   chatRoom?: ChatRoom;
-  isNew: boolean;
+  //isNew: boolean;
   error?: string;
 }
 
@@ -479,7 +484,7 @@ interface ChatRoomWithUnreadCount {
   sellerId: number;
   recentMsg: {
     chatMsg: string;
-    isNew: boolean;
+    //isNew: boolean;
     userId: number;
     createdAt: string;
     updatedAt: string;
@@ -497,7 +502,7 @@ interface ChatRoomWithUnreadCount {
   product: ProductWithImages;
   sellerChat: {
     chatMsg: string;
-    isNew: boolean;
+    //isNew: boolean;
     user: {
       id: number;
       name: string;

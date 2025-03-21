@@ -33,13 +33,14 @@ interface ReservationResponse {
 const Chats: NextPage = () => {
   const router = useRouter();
   const { productId } = router.query; // URL에서 productId 쿼리 파라미터를 추출
-  if (!productId) console.log("Chats---productId: ", productId, " (not given)");
-  else {
-    console.log("Chats---productId: ", productId);
-  }
+  // if (!productId) console.log("Chats---productId: ", productId, " (not given)");
+  // else {
+  //   console.log("Chats---productId: ", productId);
+  // }
 
   const [socket, disconnectSocket] = useSocket("market");
   const [onlineUsers, setOnlineUsers] = useState<number[]>([]); // Array to store online users
+  const [hasStateChanged, setHasStateChanged] = useState<boolean>(false); // 상태 변경 이벤트 추적
 
   const [shouldRefetch, setShouldRefetch] = useState(false);
 
@@ -116,6 +117,14 @@ const Chats: NextPage = () => {
 
   const handleOptionChange = (value: string) => {
     console.log("Selected value:", value); // Handle the selected value
+
+    // 값이 변경되었고, 상태 변경 이벤트가 있었다면 refetch 실행
+    if (selectedOption !== value && hasStateChanged) {
+      refetchChats();
+      setHasStateChanged(false); // 상태 변경 이벤트 기록 초기화
+      console.log("Refetching chats due to state change and filter change");
+    }
+
     setSelectedOption(value); // Update the selected value in state
   };
 
@@ -141,17 +150,24 @@ const Chats: NextPage = () => {
       setOnlineUsers(users); // Update online users list
     };
     const handleOnRoomList = (rooms: string[]) => {
-      console.log(`Rooms for socket ${socket.id}:`, rooms);
+      console.log(`roomList event received. Rooms for socket ${socket.id}:`, rooms);
     };
 
     const handleOnChats = (chats: string) => {
-      console.log("chats: ", chats);
+      console.log("chats event received--chats: ", chats);
       refetchChats();
+    };
+
+    // 상태 변경 이벤트 처리기 추가
+    const handleChangeState = () => {
+      console.log("changeState event received");
+      setHasStateChanged(true);
     };
 
     socket.on("onlineList", handleOnlineList);
     socket.on("roomList", handleOnRoomList);
     socket.on("chats", handleOnChats);
+    socket.on("changeState", handleChangeState); // 상태 변경 이벤트 리스너 추가
 
     // Request online list on component mount
     socket.emit("requestOnlineList");
@@ -162,6 +178,7 @@ const Chats: NextPage = () => {
       socket.off("onlineList", handleOnlineList);
       socket.off("roomList", handleOnRoomList);
       socket.off("chats", handleOnChats);
+      socket.off("changeState", handleChangeState); // 리스너 제거
     };
   }, [refetchChats, socket]); // Add 'socket' as a dependency to ensure it updates when the socket changes
 

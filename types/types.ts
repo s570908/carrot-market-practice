@@ -42,7 +42,7 @@ export interface MessageData {
 // Define types for the nested objects
 interface RecentMessage {
   chatMsg: string;
-  isNew: boolean;
+  //isNew: boolean;
   userId: number;
   createdAt: string;
   updatedAt: string;
@@ -65,7 +65,7 @@ interface Product {
 
 interface SellerChat {
   chatMsg: string;
-  isNew: boolean;
+  //isNew: boolean;
   user: User;
 }
 

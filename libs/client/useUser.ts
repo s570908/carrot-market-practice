@@ -1,46 +1,52 @@
-// import { useRouter } from "next/router";
-// import { useEffect, useState } from "react";
-
-// export default function useUser() {
-//   const [user, setUser] = useState();
-//   const router = useRouter();
-
-//   useEffect(() => {
-//     fetch("/api/users/me")
-//       .then((response) => response.json())
-//       .then((data) => {
-//         if (data.ok) {
-//           setUser(data.profile);
-//         } else {
-//           router.replace("/enter");
-//         }
-//       });
-//   }, [router]);
-//   return user;
-// }
 import { useRouter } from "next/router";
 import { useEffect } from "react";
-import useSWR from "swr";
-import { fetcher } from "@libs/client/fetcher";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { User } from "@prisma/client";
+import { getMe } from "@/apiLibs/users";
+import { MeResponse } from "@/apiLibs/atypes";
 
-interface ProfileResponse {
-  ok: boolean;
-  profile: User;
-}
+// MeResponse 인터페이스 정의 (getMe()가 반환하는 데이터 구조)
+// interface MeResponse {
+//   ok: boolean;
+//   user: User;
+// }
 
-export default function useUser() {
-  const { data, error, mutate } = useSWR<ProfileResponse>("/api/users/me", fetcher, {
-    revalidateIfStale: true,
-    revalidateOnFocus: false,
-    revalidateOnReconnect: false,
+const useUser = () => {
+  const queryClient = useQueryClient();
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["user", "me"],
+    queryFn: () => getMe(),
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
-  // console.log("useUser--data: ", data);
+
+  //console.log("useUser: data: ", data);
+
+  // 타입 안전한 mutate 함수 구현
+  const mutate = (newData?: MeResponse) => {
+    if (newData) {
+      // 새 데이터로 캐시 직접 업데이트
+      queryClient.setQueryData(["user", "me"], newData);
+    } else {
+      // 캐시 무효화하고 다시 가져오기
+      queryClient.invalidateQueries({ queryKey: ["user", "me"] });
+    }
+  };
+
   const router = useRouter();
   useEffect(() => {
     if (data && !data.ok) {
       router.replace("/enter");
     }
   }, [data, router]);
-  return { user: data?.profile, isLoading: !data && !error, mutate };
-}
+
+  return {
+    user: data?.profile,
+    isLoading: isLoading,
+    error: isError,
+    mutate,
+  };
+};
+
+export default useUser;

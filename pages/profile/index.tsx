@@ -29,10 +29,10 @@ const Reviews = () => {
     isLoading,
     isError,
     error,
-  } = useQuery(
-    "profile", // 쿼리 키
-    getReviews // 데이터를 가져오는 함수
-  );
+  } = useQuery({
+    queryKey: ["profile"], // 쿼리 키
+    queryFn: getReviews, // 데이터를 가져오는 함수
+  });
 
   const isLoadingAny = isLoading;
   const isErrorAny = isError;
@@ -90,6 +90,7 @@ const Reviews = () => {
 
 const ProfileHeader = () => {
   const { user } = useUser();
+  //console.log("ProfileHeader -- user: ", user);
 
   return (
     <>

@@ -91,13 +91,11 @@ const ItemDetail: NextPage = () => {
   const id = parseId(router.query.id);
   const [socket, disconnectSocket] = useSocket(workspace);
 
-  const { data, refetch, isLoading, isError, error } = useQuery<ProductDetailResponse>(
-    ["product", id],
-    () => getProduct(id!),
-    {
-      enabled: !!id,
-    }
-  );
+  const { data, refetch, isLoading, isError, error } = useQuery({
+    queryKey: ["product", id], // 쿼리 키 (id에 따라 쿼리가 달라짐)
+    queryFn: () => getProduct(id!),
+    enabled: !!id, // query.id가 있을 때만 쿼리 실행
+  });
 
   const {
     data: reservationData,
@@ -105,13 +103,11 @@ const ItemDetail: NextPage = () => {
     isLoading: isLoadingReservation,
     isError: isErrorReservation,
     error: errorReservation,
-  } = useQuery(
-    ["reservation", id], // 쿼리 키 (id에 따라 쿼리가 달라짐)
-    () => getReservation(id!),
-    {
-      enabled: !!id, // query.id가 있을 때만 쿼리가 활성화됨
-    }
-  );
+  } = useQuery({
+    queryKey: ["reservation", id], // 쿼리 키 (id에 따라 쿼리가 달라짐)
+    queryFn: () => getReservation(id!),
+    enabled: !!id, // query.id가 있을 때만 쿼리 실행
+  });
 
   //console.log("reservationData: ", reservationData);
 
@@ -121,32 +117,23 @@ const ItemDetail: NextPage = () => {
     isLoading: isLoadingChatRoom,
     isError: isErrorChatRoom,
     refetch: refetchChatRoom,
-  } = useQuery(
-    ["chatRoomList", id], // 쿼리 키 (productId에 따라 달라짐)
-    () => getChatRoomsByProduct(id!),
-    {
-      enabled: !!id, // query.id가 있을 때만 쿼리 실행
-      onSuccess: (data) => {
-        //console.log("/api/chatRoomList/product--queryId:", id);
-        //console.log("/api/chatRoomList/product--data:", JSON.stringify(data, null, 2));
-        // console.log(
-        //   "/api/chatRoomList/product--data.chatRoomListWithUnreadCount: ",
-        //   data.chatRoomListWithUnreadCount
-        // );
-      },
-    }
-  );
+  } = useQuery({
+    queryKey: ["chatRoomList", id], // 쿼리 키 (productId에 따라 달라짐)
+    queryFn: () => getChatRoomsByProduct(id!),
+    enabled: !!id, // query.id가 있을 때만 쿼리 실행
+  });
 
   const {
     mutate: toggleFavMutate,
     error: errorFav,
-    isLoading: isLoadingFav,
+    isPending: isLoadingFav,
     isError: isErrorFav,
-  } = useMutation(writeToggleFav, {
+  } = useMutation({
+    mutationFn: writeToggleFav,
     // mutation이 발생하기 전에 호출되어 optimistic UI 처리
     onMutate: async () => {
       // 현재 쿼리를 취소하여 새로운 데이터가 들어오기 전에 중복되지 않게 함
-      await queryClient.cancelQueries(["product", id]);
+      await queryClient.cancelQueries({ queryKey: ["product", id] });
 
       // 캐시에서 현재 데이터를 가져옴
       const previousData = queryClient.getQueryData<ProductDetailResponse>(["product", id]);
@@ -170,17 +157,18 @@ const ItemDetail: NextPage = () => {
     },
     // 서버 요청이 완료되면 (성공 또는 실패) 데이터를 무효화하여 최신 상태로 업데이트
     onSettled: () => {
-      queryClient.invalidateQueries(["product", id]);
+      queryClient.invalidateQueries({ queryKey: ["product", id] });
     },
   });
 
   const {
     mutate: talkToSeller,
-    isLoading: isLoadingTalkToSeller,
+    isPending: isLoadingTalkToSeller,
     isError: isErrorTalkToSeller,
     error: errorTalkToSeller,
     data: talkToSellerData,
-  } = useMutation(writeChatRoom, {
+  } = useMutation({
+    mutationFn: writeChatRoom,
     onSuccess: (data) => {
       console.log("Chat initialized successfully", data);
       //// 성공 시 처리할 로직
@@ -332,7 +320,7 @@ const ItemDetail: NextPage = () => {
         socket.off("changeState");
       }
     };
-  }, [socket]);
+  }, [refetch, refetchChatRoom, refetchReservation, socket]);
 
   useEffect(() => {
     // 이벤트를 처리할 콜백 함수 정의

@@ -174,7 +174,7 @@ model SellerChat {
   chatRoomForRecentMsg ChatRoom?         @relation(name: "recentMsg")
   //// 이 문자메세지를 consumer(문자를 받은 사람)가 읽었는가의 여부. isNew가 true이면 consumer가 아직 안 읽었다. 
   //// 현재의 응용에서는 producer(문자를 보낸 사람)와 consumer가 각 1명에 국한된다.
-  isNew                Boolean? //// 추후 지울 필요가 있는지 체크할 것
+  //isNew                Boolean? //// 추후 지울 필요가 있는지 체크할 것
   lastReadMessage      LastReadMessage[] // 여러 명이 이 메시지까지 읽었음을 표시한다.
 }
 

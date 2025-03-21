@@ -6,6 +6,7 @@ import {
   StreamDetailResponse,
   StreamsResponse,
   ViewsResult,
+  StreamMessageResponse,
 } from "./atypes";
 
 export async function getStreamsPaging(page: number, limit: number) {
@@ -41,3 +42,31 @@ export async function getLifecycle(cloudflareId: string) {
   const response = await videoClient.get<LifecycleResult>(`/${cloudflareId}/lifecycle`);
   return response.data;
 }
+
+// // 스트림 데이터 가져오기 함수
+// export async function getStream(id: string) {
+//   const response = await aclient.get<StreamDetailResponse>(`/api/streams/${id}`);
+//   return response.data;
+// }
+
+// // 조회수 데이터 가져오기 함수
+// export async function getStreamViews(cloudflareId: string) {
+//   const response = await videoClient.get<ViewsResult>(`/${cloudflareId}/views`);
+//   return response.data;
+// }
+
+// // 라이프사이클 데이터 가져오기 함수
+// export async function getStreamLifecycle(cloudflareId: string) {
+//   const response = await videoClient.get<LifecycleResult>(`/${cloudflareId}/lifecycle`);
+//   return response.data;
+// }
+
+// // 스트림 메시지 전송 함수
+// export async function writeStreamMessage(params: { formData: MessageForm; streamId: string | string[] }) {
+//   const { formData, streamId } = params;
+//   const response = await aclient.post<StreamMessageResponse>(
+//     `/api/streams/${streamId}/messages`,
+//     formData
+//   );
+//   return response.data;
+// }

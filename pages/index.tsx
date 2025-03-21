@@ -3,7 +3,7 @@ import FloatingButton from "@components/FloatingButton";
 import Item from "@components/Item";
 import Layout from "@components/Layout";
 import useUser from "@libs/client/useUser";
-import useSWR, { SWRConfig } from "swr";
+//import useSWR, { SWRConfig } from "swr";
 import { Fav, Product, ProductImage, Status } from "@prisma/client";
 import { useRouter } from "next/router";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
@@ -16,6 +16,8 @@ import { ChatRoomType, ProductPaging, ProductWithFav, UserID } from "apiLibs/aty
 import { getChatRoomIDs } from "apiLibs/chatRooms";
 import { getProductsPaging } from "apiLibs/products";
 import { ClipLoader } from "react-spinners"; // react-spinners에서 ClipLoader 가져오기
+import { getUnreadMessagesForUser } from "apiLibs/chats"; // 새로운 API 함수 가져오기
+import React from "react";
 
 export interface ProductWithCount extends Product {
   favs: Fav[];
@@ -39,12 +41,68 @@ const limitNumber = 3;
 
 const workspace = "market"; // 추후 다른 workspace를 추가하려면 로직을 개편해야 한다.
 
+// 개별 제품 렌더링을 담당할 메모이제이션된 컴포넌트
+const MemoizedProductItem = React.memo(
+  ({
+    product,
+    user,
+    changedProductId,
+  }: {
+    product: ProductPaging;
+    user: any;
+    changedProductId: number | null;
+  }) => {
+    // product.id와 changedProductId가 일치하면 이 제품은 변경된 것
+    const isChanged = product.id === changedProductId;
+
+    let status: Status;
+    switch (product?.status) {
+      case Status.Reserved:
+        status = Status.Reserved;
+        break;
+      case Status.Sold:
+        status = Status.Sold;
+        break;
+      case Status.Registered:
+        status = Status.Registered;
+        break;
+      default:
+        status = Status.Unregistered;
+        return null; // Skip products with status Unregistered
+    }
+
+    return (
+      <Item
+        id={product.id}
+        key={product.id}
+        title={product.name}
+        price={product.price}
+        hearts={product._count?.favs}
+        photo={product?.images?.[0]?.imageId ?? ""}
+        isLike={product.favs
+          .map((uid: UserID) => (uid.userId === user?.id ? true : false))
+          .includes(true)}
+        status={status}
+      />
+    );
+  },
+  // product.id와 changedProductId가 일치하지 않으면 이전 상태를 유지
+  // 이전 상태를 유지하면 불필요한 렌더링을 방지할 수 있습니다.
+  (prevProps, nextProps) => prevProps.product.id !== nextProps.changedProductId
+);
+
+// 주로 디버깅과 개발 도구에서 컴포넌트의 이름을 명확하게 표시하기 위해 사용됩니다.
+// React 개발 도구(React DevTools)나 콘솔 로그에서 컴포넌트의 이름을 명확하게 볼 수 있게 해줍니다.
+MemoizedProductItem.displayName = "MemoizedProductItem";
+
 const Home: NextPage = () => {
   const { user, isLoading } = useUser();
   const [limit, setLimit] = useState(10); // limit을 상태로 설정
   const observerElem = useRef(null);
   const [socket, disconnect] = useSocket(workspace);
   const queryClient = useQueryClient();
+  const [isNew, setIsNew] = useState(false); // isNew 상태 추가
+  const [changedProductId, setChangedProductId] = useState<number | null>(null); // 변경된 제품 ID 추적
   // console.log("Home socket: ", socket);
   // const { data } = useSWR<ProductsResponse>(`/api/products?page=${page}`);
   // ProductsResponse 타입에 맞는 데이터 요청 함수
@@ -57,6 +115,20 @@ const Home: NextPage = () => {
     queryKey: ["chatRoomIDs"],
     queryFn: () => getChatRoomIDs(ChatRoomType.All),
   });
+
+  // 안 읽은 메시지 확인 쿼리
+  const { data: unreadMessagesData } = useQuery({
+    queryKey: ["unreadMessages", user?.id],
+    queryFn: () => getUnreadMessagesForUser(),
+    enabled: !!user, // 사용자가 로그인한 경우에만 쿼리를 실행
+  });
+
+  // 안 읽은 메시지가 있으면 isNew 상태 업데이트
+  useEffect(() => {
+    if (unreadMessagesData?.ok) {
+      setIsNew(unreadMessagesData.hasUnreadMessages);
+    }
+  }, [unreadMessagesData]);
 
   const {
     data,
@@ -122,14 +194,56 @@ const Home: NextPage = () => {
   useEffect(() => {
     if (socket) {
       socket?.on("message", (message: any) => {
-        console.log("message received: ", message);
+        console.log("message 이벤트 received--message: ", message);
+        queryClient.invalidateQueries({ queryKey: ["unreadMessages", user?.id] });
       });
+
       socket.on("changeState", (data) => {
-        // product db collection에서 data.productId에 해당하는 상품의 상태를 data.new로 변경되었음을 알림
-        // page.products를 다시 fetch하도록 한다.
         console.log("socket.on(changeState) -- data: ", data);
-        console.log("socket.on(changeState) -- refetch: ");
-        refetch(); // refetch 메서드 호출
+
+        // 변경된 제품의 ID와 새 상태 추출
+        const { productId, new: newStatus } = data;
+
+        // 변경된 제품 ID 설정
+        setChangedProductId(productId);
+
+        // 현재 캐시된 제품 데이터에서 해당 제품만 업데이트. 이미 서버는 새로운 정보로 업데이트되어 있으므로
+        // client만 업데이트하는 것으로 충분하다.
+        queryClient.setQueryData(["products", limit], (oldData: any) => {
+          if (!oldData) return oldData;
+
+          // 각 페이지를 복사하면서 해당 제품만 상태 업데이트
+          const newPages = oldData.pages.map((page: any) => {
+            return {
+              ...page,
+              products: page.products.map((product: ProductPaging) => {
+                // 변경된 제품인 경우만 상태 업데이트
+                if (product.id === productId) {
+                  return {
+                    ...product,
+                    status:
+                      newStatus === "판매중"
+                        ? Status.Registered
+                        : newStatus === "예약중"
+                        ? Status.Reserved
+                        : Status.Sold,
+                  };
+                }
+                return product;
+              }),
+            };
+          });
+
+          return {
+            ...oldData,
+            pages: newPages,
+          };
+        });
+
+        // 일정 시간 후 changedProductId 초기화 (선택적)
+        setTimeout(() => {
+          setChangedProductId(null);
+        }, 0);
       });
     }
 
@@ -137,50 +251,27 @@ const Home: NextPage = () => {
       socket?.off("message");
       socket?.off("changeState");
     };
-  }, [socket, refetch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [socket, queryClient, limit]);
 
   //console.log("===data: ", data);
   return (
-    <Layout seoTitle="Home" title="홈" hasTabBar notice>
+    <Layout seoTitle="Home" title="홈" hasTabBar notice={isNew}>
       <div className="flex flex-col space-y-5 divide-y px-4">
         {isLoading ? (
           <div className="flex h-64 items-center justify-center">
             <ClipLoader color="#36d7b7" size={50} />
           </div>
         ) : (
-          data?.pages.map((page) =>
-            page.products.map((product: ProductPaging) => {
-              let status: Status;
-              switch (product?.status) {
-                case Status.Reserved:
-                  status = Status.Reserved;
-                  break;
-                case Status.Sold:
-                  status = Status.Sold;
-                  break;
-                case Status.Registered:
-                  status = Status.Registered;
-                  break;
-                default:
-                  status = Status.Unregistered;
-                  return null; // Skip products with status Unregistered
-              }
-
-              return (
-                <Item
-                  id={product.id}
-                  key={product.id}
-                  title={product.name}
-                  price={product.price}
-                  hearts={product._count?.favs}
-                  photo={product?.images?.[0]?.imageId ?? ""}
-                  isLike={product.favs
-                    .map((uid: UserID) => (uid.userId === user?.id ? true : false))
-                    .includes(true)}
-                  status={status}
-                />
-              );
-            })
+          data?.pages.map((page, pageIndex) =>
+            page.products.map((product: ProductPaging) => (
+              <MemoizedProductItem
+                key={`${product.id}-${product.status}`}
+                product={product}
+                user={user}
+                changedProductId={changedProductId}
+              />
+            ))
           )
         )}
         {isFetchingNextPage && hasNextPage && (

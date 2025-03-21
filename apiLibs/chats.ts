@@ -12,3 +12,14 @@ export async function writeChatMessage(params: { chatForm: ChatFormResponse; cha
   const response = await aclient.post<ChatMessageResponse>(`/api/chat/${chatId}`, chatForm);
   return response.data;
 }
+
+export async function getUnreadMessagesForUser() {
+  try {
+    // 세션에서 이미 인증된 사용자 정보를 서버가 사용하도록 수정
+    const response = await aclient.get(`/api/chat/unreadMessagesForUser`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching unread messages:", error);
+    return { ok: false, hasUnreadMessages: false };
+  }
+}
