@@ -11,31 +11,38 @@ datasource db {
 }
 
 model User {
-  id               Int               @id @default(autoincrement())
-  phone            String?           @unique
-  email            String?           @unique
-  name             String
-  avatar           String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  tokens           Token[]
-  products         Product[]
-  favs             Fav[]
-  sales            Sale[]
-  purchases        Purchase[]
-  posts            Post[]
-  answers          Answer[]
-  wonderings       Wondering[]
-  writtenReviews   Review[]          @relation("writtenReviews") // 유저가 구매자일때는 리뷰를 쓴다.
-  receivedReviews  Review[]          @relation("receivedReviews") // 유저가 판매자일때 리뷰를 받는다.
-  records          Record[]
-  streams          Stream[]
-  messages         Message[]
-  sellerchats      SellerChat[]
-  chatrooms_buyer  ChatRoom[]        @relation(name: "buyer")
-  chatrooms_seller ChatRoom[]        @relation(name: "seller")
-  Reservations     Reservation[]
-  lastReadMessages LastReadMessage[]
+  id                        Int                      @id @default(autoincrement())
+  phone                     String?                  @unique
+  email                     String?                  @unique
+  name                      String
+  avatar                    String?
+  createdAt                 DateTime                 @default(now())
+  updatedAt                 DateTime                 @updatedAt
+  tokens                    Token[]
+  products                  Product[]
+  favs                      Fav[]
+  sales                     Sale[]
+  purchases                 Purchase[]
+  posts                     Post[]
+  answers                   Answer[]
+  wonderings                Wondering[]
+  writtenReviews            Review[]                 @relation("writtenReviews") // 유저가 구매자일때는 리뷰를 쓴다.
+  receivedReviews           Review[]                 @relation("receivedReviews") // 유저가 판매자일때 리뷰를 받는다.
+  records                   Record[]
+  streams                   Stream[]
+  messages                  Message[]
+  sellerchats               SellerChat[]
+  chatrooms_buyer           ChatRoom[]               @relation(name: "buyer")
+  chatrooms_seller          ChatRoom[]               @relation(name: "seller")
+  Reservations              Reservation[]
+  lastReadMessages          LastReadMessage[]
+  // 약속 관련 관계 추가
+  organizedAppointments     Appointment[]            @relation("organizedAppointments")
+  appointmentParticipations AppointmentParticipant[]
+  // 친구 관계 (내가 친구로 추가한 사람들)
+  friendships               Friendship[]             @relation("UserFriendships")
+  // 친구 관계 (나를 친구로 추가한 사람들) - 이름 변경
+  friendInvited             Friendship[]             @relation("FriendInvited")
 }
 
 model Token {
@@ -285,3 +292,103 @@ model TimezoneTest {
 }
 
 // https://hyunseo-fullstackdiary.tistory.com/m/155
+
+// 기존 스키마에 추가할 내용
+
+// 약속 상태를 나타내는 열거형
+enum AppointmentStatus {
+  PENDING // 대기 중
+  CONFIRMED // 확정됨
+  CANCELLED // 취소됨
+  COMPLETED // 완료됨
+}
+
+// 알림 타입을 나타내는 열거형
+enum NotificationType {
+  EMAIL
+  PUSH
+  SMS
+}
+
+// 약속 모델
+model Appointment {
+  id          Int      @id @default(autoincrement())
+  title       String // 약속 제목
+  description String?  @db.MediumText // 약속 설명
+  date        DateTime // 만나는 날짜
+  startTime   DateTime // 시작 시간
+  endTime     DateTime // 종료 시간
+
+  // 장소 정보 (TMap API 연동)
+  locationName    String // 장소명 
+  locationAddress String // 전체 주소
+  roadAddress     String? // 도로명 주소
+  latitude        Float // 위도
+  longitude       Float // 경도
+  zoomLevel       Int     @default(15) // 지도 줌 레벨
+
+  // 상태 및 기본 정보
+  status    AppointmentStatus @default(PENDING)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  // 약속 생성자 (주최자)
+  organizer   User @relation("organizedAppointments", fields: [organizerId], references: [id], onDelete: Cascade)
+  organizerId Int
+
+  // 관계
+  participants  AppointmentParticipant[] // 약속 참가자
+  notifications AppointmentNotification[] // 약속 알림
+
+  @@index([organizerId])
+  @@index([date]) // 날짜로 조회 성능 향상
+}
+
+// 약속 참가자 모델
+model AppointmentParticipant {
+  id            Int         @id @default(autoincrement())
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  appointmentId Int
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        Int
+  status        String      @default("pending") // confirmed, pending, declined
+  responseTime  DateTime? // 응답 시간
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([appointmentId, userId]) // 한 약속에 동일 사용자가 중복 참가 불가
+  @@index([userId])
+  @@index([appointmentId])
+}
+
+// 약속 알림 모델
+model AppointmentNotification {
+  id            Int              @id @default(autoincrement())
+  appointment   Appointment      @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  appointmentId Int
+  title         String // 알림 제목
+  message       String?          @db.Text // 알림 메시지
+  type          NotificationType @default(PUSH)
+  minutesBefore Int // 약속 시간 전 알림 시간(분)
+  isSent        Boolean          @default(false) // 알림 발송 여부
+  sentAt        DateTime? // 알림 발송 시간
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([appointmentId])
+  @@index([isSent, minutesBefore]) // 미발송 알림 조회 성능 향상
+}
+
+// Friendship 모델 수정
+model Friendship {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation("UserFriendships", fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  friend    User     @relation("FriendInvited", fields: [friendId], references: [id], onDelete: Cascade)
+  friendId  Int
+  createdAt DateTime @default(now())
+
+  @@unique([userId, friendId])
+  @@index([userId])
+  @@index([friendId])
+}

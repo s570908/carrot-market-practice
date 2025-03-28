@@ -12,9 +12,7 @@ interface PromiseRef {
   params: any;
 }
 
-export const useAwaitableModal = (
-  renderModal: (modal: ModalAPI, params: any) => ReactNode
-) => {
+export const useAwaitableModal = (renderModal: (modal: ModalAPI, params: any) => ReactNode) => {
   const [isVisible, setIsVisible] = useState(false);
 
   const promiseRef = useRef<PromiseRef>({
@@ -25,7 +23,7 @@ export const useAwaitableModal = (
 
   const renderModalWithParamsAndContext = () => {
     const closeWithError = (error: any) => {
-      promiseRef.current.reject(error);
+      // promiseRef.current.reject(error);
       setIsVisible(false);
     };
 

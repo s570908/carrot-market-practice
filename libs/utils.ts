@@ -77,3 +77,87 @@ export function getKindString(kind: Kind): string {
       throw new Error(`Unknown kind: ${kind}`);
   }
 }
+
+// 날짜 포맷팅 함수
+export function formatDate(dateStr: string): string {
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("ko-KR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      weekday: "short",
+    });
+  } catch (error) {
+    console.error("날짜 변환 오류:", error);
+    return dateStr;
+  }
+}
+
+// 시간 포맷팅 함수
+export function formatTime(timeStr: string): string {
+  try {
+    const time = new Date(timeStr);
+    return time.toLocaleTimeString("ko-KR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  } catch (error) {
+    console.error("시간 변환 오류:", error);
+    return timeStr;
+  }
+}
+
+// 약속 상태 텍스트 변환
+export function getStatusText(status: string): string {
+  const statusMap: Record<string, string> = {
+    PENDING: "대기중",
+    CONFIRMED: "확정됨",
+    CANCELLED: "취소됨",
+    COMPLETED: "완료됨",
+    confirmed: "수락",
+    pending: "대기중",
+    declined: "거절",
+  };
+
+  return statusMap[status] || status;
+}
+
+// 남은 시간 계산
+export function getTimeRemaining(targetDate: string): string {
+  const now = new Date();
+  const target = new Date(targetDate);
+  const diff = target.getTime() - now.getTime();
+
+  if (diff <= 0) {
+    return "시간 종료";
+  }
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+  if (days > 0) {
+    return `${days}일 ${hours}시간 후`;
+  } else if (hours > 0) {
+    return `${hours}시간 ${minutes}분 후`;
+  } else {
+    return `${minutes}분 후`;
+  }
+}
+
+// 일정 주기 텍스트 변환
+export function getRecurrenceText(frequency: string, interval: number): string {
+  if (frequency === "NONE" || !interval) {
+    return "반복 없음";
+  }
+
+  const frequencyMap: Record<string, string> = {
+    DAILY: "일",
+    WEEKLY: "주",
+    MONTHLY: "개월",
+  };
+
+  return `${interval}${frequencyMap[frequency]}마다 반복`;
+}

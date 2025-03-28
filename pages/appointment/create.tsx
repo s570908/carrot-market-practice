@@ -59,8 +59,8 @@ const CreateAppointment = () => {
       canGoBack
       backUrl={"back"}
     >
-      <div className="flex h-screen flex-col bg-white p-4">
-        <div className="mt-6 flex flex-col space-y-6">
+      <div className="flex flex-col h-screen p-4 bg-white">
+        <div className="flex flex-col mt-6 space-y-6">
           {/* 날짜 */}
           <DatePicker value={date} onChange={(newDate) => setDate(newDate)} />
 
@@ -75,7 +75,7 @@ const CreateAppointment = () => {
               placeholder="장소 선택"
               value={place}
               onChange={(e) => setPlace(e.target.value)}
-              className="w-2/3 rounded-md border border-gray-300 px-3 py-2 text-gray-700"
+              className="w-2/3 px-3 py-2 text-gray-700 border border-gray-300 rounded-md"
             />
           </div>
 
@@ -85,7 +85,7 @@ const CreateAppointment = () => {
             <select
               value={alertTime}
               onChange={(e) => setAlertTime(e.target.value)}
-              className="w-2/3 rounded-md border border-gray-300 px-3 py-2 text-gray-700"
+              className="w-2/3 px-3 py-2 text-gray-700 border border-gray-300 rounded-md"
             >
               <option value="10분 전">10분 전</option>
               <option value="30분 전">30분 전</option>
@@ -99,7 +99,7 @@ const CreateAppointment = () => {
         <div className="mt-8">
           <button
             onClick={handleSubmit}
-            className="w-full rounded-md bg-orange-500 py-3 font-medium text-white hover:bg-orange-600"
+            className="w-full py-3 font-medium text-white bg-orange-500 rounded-md hover:bg-orange-600"
           >
             완료
           </button>

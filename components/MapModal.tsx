@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, ReactNode, useMemo, memo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/queries";
-import { useMap } from "../../libs/client/useMap"; // useMap 훅을 임포트
+import { useMap } from "@libs/client/useMap";
 
 // Input 컴포넌트
 function Input({ label = "", errorMessage = "", ...rest }: InputProps) {
@@ -105,6 +105,8 @@ function useDebounce(value: string, delay: number = 300): string {
   return debouncedValue;
 }
 
+// AddressList 컴포넌트를 스크롤 가능한 창으로 수정
+
 // AddressList 컴포넌트 분리 (불필요한 렌더링 방지)
 // memo는 이전 props와 새 props를 얕은 비교(shallow comparison)합니다.
 // props가 변경되지 않았다면 컴포넌트를 재렌더링하지 않고 이전 렌더링 결과를 재사용합니다.
@@ -122,29 +124,30 @@ const AddressList = memo(
     if (!addressData?.length) return null;
 
     return (
-      <ul id="address-input" className="space-y-2">
-        {addressData.map((address) => {
-          const fullAddress = address.newAddressList.newAddress[0].fullAddressRoad;
-          const addressName = address.name;
-          const { noorLat: lat, noorLon: lon } = address;
-          return (
-            <li
-              role="option"
-              aria-selected={false}
-              className="cursor-pointer rounded border p-2 hover:bg-gray-100"
-              key={address.pkey}
-              value={`${fullAddress} ${addressName}`}
-              data-lat={lat}
-              data-lon={lon}
-              onClick={onClickAddressListItem}
-              //onKeyDown={onClickAddressListItem}
-            >
-              <span className="text-sm font-bold">{addressName}</span>
-              <span className="text-xs font-normal">{fullAddress}</span>
-            </li>
-          );
-        })}
-      </ul>
+      <div className="h-full overflow-y-auto rounded-md border border-gray-300 p-2">
+        <ul className="space-y-2">
+          {addressData.map((address) => {
+            const fullAddress = address.newAddressList.newAddress[0].fullAddressRoad;
+            const addressName = address.name;
+            const { noorLat: lat, noorLon: lon } = address;
+            return (
+              <li
+                role="option"
+                aria-selected={false}
+                className="cursor-pointer rounded border p-2 hover:bg-gray-100"
+                key={address.pkey}
+                value={`${fullAddress} ${addressName}`}
+                data-lat={lat}
+                data-lon={lon}
+                onClick={onClickAddressListItem}
+              >
+                <span className="block text-sm font-bold">{addressName}</span>
+                <span className="block text-xs font-normal">{fullAddress}</span>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
     );
   }
 );
@@ -152,8 +155,14 @@ const AddressList = memo(
 AddressList.displayName = "AddressList";
 
 // MapModal 컴포넌트 수정
-export function MapModal() {
-  //const [open, setOpen] = useModalAtom();
+// Define the MapModalProps interface
+interface MapModalProps {
+  isOpen: boolean;
+  onClose: (selectedLocation?: null) => void;
+  onLocationSelect: (latitude: number, longitude: number, address: string) => void;
+}
+
+export function MapModal({ isOpen, onClose, onLocationSelect }: MapModalProps) {
   const [searchKeyword, setSearchKeyword] = useState("");
   const debouncedSearchKeyword = useDebounce(searchKeyword);
   const mapRef = useRef<HTMLDivElement>(null);
@@ -170,19 +179,19 @@ export function MapModal() {
   const isMarkerUpdated = useRef(false);
 
   /* 
-  queryKeys는 아래와 같이 구성될 것입니다.
-  {
-    tmap: {
-      searchAddress: (filters: { searchKeyword: string }) => ({
-        queryKey: [{ filters }],
-        queryFn: () => tmap.searchAddress(filters),
-      }),
-      getAddressFromCoord: (filters: { latitude: number; longitude: number }) => ({
-        queryKey: [{ filters }],
-        queryFn: () => tmap.getAddressFromCoord(filters),
-      }),
-    }
-  }
+	queryKeys는 아래와 같이 구성될 것입니다.
+	{
+		tmap: {
+			searchAddress: (filters: { searchKeyword: string }) => ({
+				queryKey: [{ filters }],
+				queryFn: () => tmap.searchAddress(filters),
+			}),
+			getAddressFromCoord: (filters: { latitude: number; longitude: number }) => ({
+				queryKey: [{ filters }],
+				queryFn: () => tmap.getAddressFromCoord(filters),
+			}),
+		}
+	}
  */
   // 주소 검색 쿼리 - staleTime을 30초로 설정하여 불필요한 재요청 방지
   const { data: tmapResponse } = useQuery({
@@ -202,16 +211,14 @@ export function MapModal() {
     return tmapResponse?.searchPoiInfo?.pois?.poi || [];
   }, [tmapResponse]);
 
-  //console.log("addressData: ", addressData);
-
   const resetSearchKeyword = () => {
     setSearchKeyword("");
   };
 
-  // const closeModal = () => {
-  //   resetSearchKeyword();
-  //   setOpen(false);
-  // };
+  const closeModal = () => {
+    resetSearchKeyword();
+    onClose(null); // null 값을 반환하여 선택된 위치를 초기화
+  };
 
   const onClickConfirm = () => {
     const { latitude, longitude } = coord;
@@ -219,7 +226,8 @@ export function MapModal() {
     console.log("선택한 주소:", selectedAddress);
     console.log("latitude:", latitude);
     console.log("longitude:", longitude);
-    //closeModal();
+    onLocationSelect(latitude, longitude, selectedAddress); // 선택된 위치를 전달
+    onClose(); // 모달 닫기
   };
 
   const onClickAddressListItem = <Event extends React.MouseEvent | React.KeyboardEvent>(
@@ -264,55 +272,82 @@ export function MapModal() {
     };
   }, [initMapModal]);
 
+  if (!isOpen) return null;
+
   return (
-    <dialog className="w-full max-w-4xl rounded-lg bg-white p-6 shadow-lg" open>
-      <div className="flex flex-col space-y-4">
-        <div className="flex items-center justify-center space-x-2">
-          <span className="text-sm font-normal">선택한 주소: </span>
-          <span className="text-sm font-bold">{selectedAddress}</span>
-        </div>
-        <div className="flex max-h-[calc(100%-5.7rem)] flex-1 flex-col space-x-2 md:flex-row">
-          <div className="flex min-w-[140px] flex-col space-y-2">
-            <Input
-              label="장소 검색"
-              list="address-input"
-              value={searchKeyword}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setSearchKeyword(e.currentTarget.value)
-              }
-            />
-            {/* 별도 컴포넌트로 분리한 주소 목록 */}
-            <AddressList
-              addressData={addressData}
-              onClickAddressListItem={onClickAddressListItem}
-            />
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="w-full max-w-4xl rounded-lg bg-white p-6 shadow-lg">
+        <div className="flex flex-col space-y-4">
+          <div className="flex items-center justify-center space-x-2">
+            <span className="text-sm font-normal">선택한 주소: </span>
+            <span className="text-sm font-bold">{selectedAddress}</span>
           </div>
-          <div id="map" className="h-full min-h-[300px] w-full" ref={mapRef} />
-        </div>
-        <div className="flex space-x-2">
-          <Button
-            type="button"
-            theme="primary"
-            size="medium"
-            shape="line"
-            //onClick={closeModal}
-            fullWidth
-          >
-            취소
-          </Button>
-          <Button
-            type="button"
-            theme="primary"
-            size="medium"
-            shape="fill"
-            fullWidth
-            onClick={onClickConfirm}
-          >
-            확인
-          </Button>
+
+          {/* 수직 레이아웃 조정 */}
+          <div className="flex h-[400px] space-x-4">
+            {/* 검색창과 목록을 포함하는 좌측 영역 */}
+            <div className="flex w-[260px] flex-shrink-0 flex-col">
+              {/* 검색창 - 고정 높이 */}
+              <div className="mb-2">
+                <Input
+                  label="장소 검색"
+                  list="address-input"
+                  value={searchKeyword}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setSearchKeyword(e.currentTarget.value)
+                  }
+                />
+              </div>
+
+              {/* 검색 결과 컨테이너 - 수정된 부분 */}
+              <div className="flex h-full flex-col overflow-hidden">
+                <h3 className="mb-2 text-sm font-medium">검색 결과</h3>
+
+                {/* 스크롤 가능한 영역 */}
+                <div className="flex-grow overflow-y-auto">
+                  {addressData.length > 0 ? (
+                    <AddressList
+                      addressData={addressData}
+                      onClickAddressListItem={onClickAddressListItem}
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center rounded-md border border-gray-300 p-2">
+                      <p className="text-center text-sm text-gray-500">검색 결과가 없습니다</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 지도 영역 */}
+            <div id="map" className="h-full flex-grow" ref={mapRef} />
+          </div>
+
+          <div className="flex space-x-2">
+            <Button
+              type="button"
+              theme="primary"
+              size="medium"
+              shape="line"
+              onClick={closeModal}
+              fullWidth
+            >
+              취소
+            </Button>
+            <Button
+              type="button"
+              theme="primary"
+              size="medium"
+              shape="fill"
+              fullWidth
+              onClick={onClickConfirm}
+            >
+              확인
+            </Button>
+          </div>
         </div>
       </div>
-    </dialog>
+    </div>
   );
 }
 

@@ -10,13 +10,11 @@ interface ProductListProps {
 }
 
 export default function ProductList({ kind }: ProductListProps) {
-  const { data, isLoading, isError, error } = useQuery(
-    ["products", kind],
-    () => getProducts(kind),
-    {
-      keepPreviousData: true,
-    }
-  );
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["products", kind],
+    queryFn: () => getProducts(kind),
+    placeholderData: (previousData) => previousData, // keepPreviousData의 v5 대체 방식
+  });
 
   console.log("ProductList: data---", JSON.stringify(data, null, 2));
 
