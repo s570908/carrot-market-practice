@@ -1,26 +1,14 @@
 import Input from "@components/Input";
-import useMutation from "@libs/client/useMutation";
 import { cls } from "@libs/utils";
 import { NextPage } from "next";
 import { useEffect, useState } from "react";
 import Button from "@components/Button";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/router";
-
-type MethodType = "email" | "phone";
-
-interface EnterForm {
-  email?: string;
-  phone?: string;
-}
-
-interface TokenForm {
-  token: string;
-}
-
-interface BaseMutation {
-  ok: boolean;
-}
+import { useMutation } from "@tanstack/react-query";
+import { EnterForm, MethodType, TokenForm } from "@/types";
+import { writeConfirm } from "@/apiLibs/confirms";
+import { writeEnter } from "@/apiLibs/users";
 
 // enter(validForm)을 수행한 후에 data.ok를 수신한다는 것은 token을 email이나 문자전송으로 성공적으로 송부하였음을 뜻한다.
 // data.ok를 수신하면 token을 입력하는 ui가 보여져야 한다. 이 UI에서 token을 입력한 후 submit하면
@@ -33,9 +21,25 @@ const Enter: NextPage = () => {
     handleSubmit: tokenHandleSubmit,
     reset: tokenReset,
   } = useForm<TokenForm>();
-  const [enter, { data, loading, error }] = useMutation<BaseMutation>("/api/users/enter");
-  const [confirm, { data: tokenData, loading: tokenLoading, error: tokenError }] =
-    useMutation<BaseMutation>("/api/users/confirm");
+
+  const {
+    mutate: enter,
+    data,
+    isPending: loading,
+    error,
+  } = useMutation({
+    mutationFn: (validForm: EnterForm) => writeEnter(validForm),
+  });
+
+  const {
+    mutate: confirm,
+    data: tokenData,
+    isPending: tokenLoading,
+    error: tokenError,
+  } = useMutation({
+    mutationFn: (validForm: TokenForm) => writeConfirm(validForm),
+  });
+
   const router = useRouter();
   console.log("Enter: data: ", data);
   console.log("Confirm: tokenData: ", tokenData);

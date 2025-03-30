@@ -8,9 +8,10 @@ import Button from "@/components/Button";
 import Input from "@/components/Input";
 import TextArea from "@/components/TextArea";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import MapLocation from "@/components/MapLocation";
+//import MapLocation from "@/components/MapLocation";
 import { getFriends } from "@/apiLibs/appointments";
 import ImgComponent from "@components/ImgComponent";
+import MapLocation from "@components/MapLocation";
 
 // 간소화된 DatePicker, TimePicker 컴포넌트 (실제로는 기존 구현된 컴포넌트 사용)
 const DatePicker = ({ onChange, className }: any) => (

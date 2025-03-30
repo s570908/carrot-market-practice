@@ -1,13 +1,20 @@
 import { Kind } from "@prisma/client";
 import aclient from "./aclient";
-import { MeResponse, ProductListResponse, ProfileResponse, UserResponse } from "./atypes";
+import { MeResponse, ProfileResponse, UserResponse } from "./atypes";
 import { getKindString } from "@libs/utils";
+import {
+  BaseMutation,
+  EditProfileForm,
+  EditProfileResponse,
+  EnterForm,
+  ProductListResponse,
+} from "@/types";
 
 export async function getProducts(kind: Kind) {
   //console.log("getProducts: kind---", kind);
   const kindStr = getKindString(kind);
 
-  const response = await aclient.get<ProductListResponse>(`/api/users/me/${kindStr}`);
+  const response = await aclient.get<ProductListResponse>(`/api/users/enter`);
   return response.data;
 }
 
@@ -23,5 +30,15 @@ export async function getOther(otherId: number) {
 
 export async function getMe() {
   const response = await aclient.get<MeResponse>(`/api/users/me`);
+  return response.data;
+}
+
+export async function writeEnter(validForm: EnterForm) {
+  const response = await aclient.post<BaseMutation>(`/api/users/enter`, validForm);
+  return response.data;
+}
+
+export async function updateMe(profileData: EditProfileForm) {
+  const response = await aclient.put<EditProfileResponse>(`/api/users/me`, profileData);
   return response.data;
 }

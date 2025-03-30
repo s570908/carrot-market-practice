@@ -2,6 +2,7 @@ import withHandler, { ResponseType } from "@libs/server/withHandler";
 import { NextApiHandler, NextApiRequest, NextApiResponse } from "next";
 import client from "@libs/client/client";
 import { sendTokenEmail } from "@libs/server/sendEmail";
+import { EnterForm } from "@/types";
 //import twilio from "twilio";
 
 //const twilioClient = twilio(process.env.TWILIO_SID, process.env.TWILIO_TOKEN);
@@ -14,15 +15,10 @@ import { sendTokenEmail } from "@libs/server/sendEmail";
 //   },
 // });
 
-interface reqBodyType {
-  email?: string;
-  phone?: string;
-}
-
 // NextApiResponse<ResponseType>에서 generic type, ResponseType, 을 주는 방식에 대해서는 다음의 url을 참조한다.
 // https://nextjs.org/docs/api-routes/response-helpers
 const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse<ResponseType>) => {
-  const { email, phone }: reqBodyType = req.body;
+  const { email, phone }: EnterForm = req.body;
   console.log("/api/users/enter--req.body: ", req.body);
   const userKey = phone ? { phone: phone } : { email: email };
   if (!userKey) return res.status(400).json({ ok: false });

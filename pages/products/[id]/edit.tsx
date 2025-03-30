@@ -7,8 +7,8 @@ import TextArea from "@components/TextArea";
 import { NextPage } from "next";
 import Image from "next/image";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useRouter } from "next/router";
 import axios from "axios";
+import { useRouter } from "next/router";
 import cameraIcon from "public/images/camera.png";
 import {
   arrayMove,
@@ -19,48 +19,11 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { closestCenter, DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { toast } from "react-toastify";
-
-interface EditProductForm {
-  name?: string;
-  price?: number;
-  description?: string;
-  deletedImageIds?: string[];
-  // photos: FileList;
-}
-
-interface PreviewImage {
-  id: string; // 고유 ID 필드
-  kind: "Local" | "Cloudflare";
-  url: string;
-  file?: File | null;
-  CLurl?: string;
-}
-
-interface CLImage {
-  imageId: string;
-}
-
-interface CloudflareImage {
-  id: string;
-  kind: "Cloudflare";
-  url: string;
-  CLurl: string;
-}
-
-interface EditProduct extends EditProductForm {
-  images?: CLImage[];
-}
-
-interface ItemDetailResponse {
-  ok: boolean;
-  product: {
-    name: string;
-    price: number;
-    description: string;
-    images: CLImage[];
-    // photoId: string;
-  };
-}
+import { getProduct, updateProduct } from "@/apiLibs/products";
+import { uploadFiles } from "@/apiLibs/files";
+import { parseId } from "@libs/utils";
+import Id from "@/pages/api/posts/[id]";
+import { EditProductForm, PreviewImage, UpdateProduct } from "@/types";
 
 const SortableItem = ({ id, children }: { id: string; children: React.ReactNode }) => {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
@@ -79,8 +42,9 @@ const SortableItem = ({ id, children }: { id: string; children: React.ReactNode 
 
 const EditProduct: NextPage = () => {
   const router = useRouter();
-  const [photoPreview, setPhotoPreview] = useState("");
+  const id = router.query.id ? parseId(router.query.id) : 0;
 
+  const [photoPreview, setPhotoPreview] = useState("");
   const [previewImages, setPreviewImages] = useState<PreviewImage[]>([]);
   const [deletedImageIds, setDeletedImageIds] = useState<string[]>([]);
   const maxImages = 10;
@@ -98,48 +62,39 @@ const EditProduct: NextPage = () => {
     watch,
     formState: { dirtyFields },
   } = useForm<EditProductForm>();
+
   const {
     data: productData,
     isLoading: isLoadingProduct,
     isError,
-  } = useQuery<ItemDetailResponse>(
-    ["product", router?.query?.id],
-    () => {
-      // router.query.id가 없으면 Promise reject
-      if (!router?.query?.id) {
-        return Promise.reject(new Error("Product ID is required"));
-      }
-      return axios.get(`/api/products/${router.query.id}`).then((res) => res.data);
+  } = useQuery({
+    queryKey: ["product", id],
+    queryFn: () => {
+      return getProduct(id!);
     },
-    {
-      enabled: Boolean(router?.query?.id),
-      // 에러 발생시 재시도 옵션
-      retry: 1,
-      // 캐시 시간 설정
-      staleTime: 30000,
-    }
-  );
-  const updateProduct = async (
-    // formData: UploadProductForm & { imageIds?: string[] }
-    updateProduct: EditProduct
-  ) => {
-    const response = await axios.put(`/api/products/${router?.query?.id}`, updateProduct, {
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    return response.data;
-  };
+    enabled: !!id,
+    retry: 1,
+    staleTime: 30000,
+  });
 
   const {
     mutate,
-    isLoading,
+    isPending: isLoading,
     data: mutationData,
-  } = useMutation(updateProduct, {
-    onSuccess: () => {
-      console.log("onSuccess-----------: data", mutationData);
+  } = useMutation({
+    mutationFn: (productData: UpdateProduct) =>
+      updateProduct({ productId: id!, updateProduct: productData }),
+    onSuccess: (data) => {
+      console.log("onSuccess-----------: data", data);
       // queryClient.invalidateQueries("products");
     },
+  });
+
+  const [uploadCount, setUploadCount] = useState(0);
+  const { data: uploadFilesData, refetch: refetchUploadFiles } = useQuery({
+    queryKey: ["uploadFiles", uploadCount],
+    queryFn: () => uploadFiles(uploadCount),
+    enabled: false,
   });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -244,6 +199,71 @@ const EditProduct: NextPage = () => {
   //   return finalImages;
   // };
 
+  // const updatePreviewImages = async () => {
+  //   // 1. 로컬 이미지를 Cloudflare로 업로드
+  //   const newCloudflareImages = await uploadImagesToCloudflare(previewImages);
+
+  //   // 2. 기존 Cloudflare 이미지를 유지하고, 새로 업로드된 이미지를 병합
+  //   const finalImages = [
+  //     ...previewImages.filter((image) => image.kind === "Cloudflare"),
+  //     ...newCloudflareImages,
+  //   ];
+
+  //   return finalImages;
+  // };
+
+  // const updatePreviewImages = async () => {
+  //   // 1. 로컬 이미지를 Cloudflare로 업로드
+  //   const newCloudflareImages = await uploadImagesToCloudflare(previewImages);
+
+  //   // 2. 기존 Cloudflare 이미지를 유지하고, 새로 업로드된 이미지를 병합
+  //   const finalImages = [
+  //     ...previewImages.filter((image) => image.kind === "Cloudflare"),
+  //     ...newCloudflareImages,
+  //   ];
+
+  //   return finalImages;
+  // };
+
+  // const updatePreviewImages = async () => {
+  //   // 1. 로컬 이미지를 Cloudflare로 업로드
+  //   const newCloudflareImages = await uploadImagesToCloudflare(previewImages);
+
+  //   // 2. 기존 Cloudflare 이미지를 유지하고, 새로 업로드된 이미지를 병합
+  //   const finalImages = [
+  //     ...previewImages.filter((image) => image.kind === "Cloudflare"),
+  //     ...newCloudflareImages,
+  //   ];
+
+  //   return finalImages;
+  // };
+
+  // const updatePreviewImages = async () => {
+  //   // 1. 로컬 이미지를 Cloudflare로 업로드
+  //   const newCloudflareImages = await uploadImagesToCloudflare(previewImages);
+
+  //   // 2. 기존 Cloudflare 이미지를 유지하고, 새로 업로드된 이미지를 병합
+  //   const finalImages = [
+  //     ...previewImages.filter((image) => image.kind === "Cloudflare"),
+  //     ...newCloudflareImages,
+  //   ];
+
+  //   return finalImages;
+  // };
+
+  // const updatePreviewImages = async () => {
+  //   // 1. 로컬 이미지를 Cloudflare로 업로드
+  //   const newCloudflareImages = await uploadImagesToCloudflare(previewImages);
+
+  //   // 2. 기존 Cloudflare 이미지를 유지하고, 새로 업로드된 이미지를 병합
+  //   const finalImages = [
+  //     ...previewImages.filter((image) => image.kind === "Cloudflare"),
+  //     ...newCloudflareImages,
+  //   ];
+
+  //   return finalImages;
+  // };
+
   const handleImageDelete = (id: string) => {
     const imageToDelete = previewImages.find((image) => image.id === id);
 
@@ -266,14 +286,23 @@ const EditProduct: NextPage = () => {
     });
   };
 
-  const deleteImageFromCloudflare = async (imageIds: string[]) => {
-    try {
-      const response = await axios.put("/api/cloudflare", { imageIds }); // 삭제 API 엔드포인트
-      return response.data;
-    } catch (error) {
-      console.error("Cloudflare 이미지 삭제 실패:", error);
-    }
-  };
+  // const deleteImageFromCloudflare = async (imageIds: string[]) => {
+  //   try {
+  //     const response = await axios.put("/api/cloudflare", { imageIds }); // 삭제 API 엔드포인트
+  //     return response.data;
+  //   } catch (error) {
+  //     console.error("Cloudflare 이미지 삭제 실패:", error);
+  //   }
+  // };
+
+  // const deleteImageFromCloudflare = async (imageIds: string[]) => {
+  //   try {
+  //     const response = await axios.put("/api/cloudflare", { imageIds }); // 삭제 API 엔드포인트
+  //     return response.data;
+  //   } catch (error) {
+  //     console.error("Cloudflare 이미지 삭제 실패:", error);
+  //   }
+  // };
 
   // Drag & Drop 순서 변경 처리
   const handleDragEnd = (event: any) => {
@@ -290,40 +319,21 @@ const EditProduct: NextPage = () => {
 
   const uploadImagesToCloudflare = async (localImages: PreviewImage[]) => {
     try {
-      // 1. 업로드 URL 요청
-      const { uploadURLs } = await axios
-        .get(`/api/files?count=${localImages.length}`)
-        .then((res) => res.data);
+      // Set the count and fetch uploadURLs via the refetch function
+      setUploadCount(localImages.length);
+      const { data } = await refetchUploadFiles();
+      const uploadURLs = data?.uploadURLs || [];
 
-      // const updatedImages: PreviewImage[] = [];
-
-      // for (let i = 0; i < images.length; i++) {
-      //   const image = images[i];
-      //   const formData = new FormData();
-      //   formData.append("file", image.file!); // 로컬 이미지 파일 추가
-
-      //   // 2. 이미지 업로드
-      //   const {
-      //     data: {
-      //       result: { id },
-      //     },
-      //   } = await axios.post(uploadURLs[i].uploadURL, formData);
-
-      //   // 3. Cloudflare 이미지 생성
-      //   updatedImages.push({
-      //     id: image.id,
-      //     kind: "Cloudflare",
-      //     url: `https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${id}/public`,
-      //     file: null,
-      //     CLurl: id,
-      //   });
-      // }
+      // uploadURLs가 비어있거나 필요한 만큼 없는 경우 처리
+      if (!uploadURLs.length || uploadURLs.length < localImages.length) {
+        toast.error("업로드 URL을 가져오는데 실패했습니다. 다시 시도해주세요.");
+        return [];
+      }
 
       const uploadPromises = localImages.map(async (image, index) => {
         const formData = new FormData();
         if (!image.file) throw new Error("파일이 없습니다.");
         formData.append("file", image.file);
-
         const {
           data: {
             result: { id },
@@ -337,10 +347,10 @@ const EditProduct: NextPage = () => {
           CLurl: id,
         };
       });
-
       return await Promise.all(uploadPromises);
     } catch (error) {
       console.error("Cloudflare 업로드 실패:", error);
+      toast.error("이미지 업로드에 실패했습니다.");
       throw error;
     }
   };
@@ -353,9 +363,23 @@ const EditProduct: NextPage = () => {
   //   // 이후 서버로 이미지와 함께 데이터를 전송합니다.
   // };
 
+  // const onSubmit = async (data: EditProductForm) => {
+  //   // 서버에 데이터를 업로드하는 로직을 구현합니다.
+  //   console.log("상품 업데이트 데이터:", data);
+  //   console.log("이미지 파일:", imageFiles);
+
+  //   // 이후 서버로 이미지와 함께 데이터를 전송합니다.
+  // };
+
   const onSubmit = async (data: EditProductForm) => {
     try {
       if (isLoading) return;
+
+      // 상품 ID 확인
+      if (!id) {
+        toast.error("상품 ID가 필요합니다.");
+        return;
+      }
 
       // 이미지 유효성 검사를 먼저 수행
       if (previewImages.length === 0) {
@@ -402,7 +426,7 @@ const EditProduct: NextPage = () => {
       }
 
       // 최종 데이터 구성
-      const finalProductData: EditProduct = {
+      const finalProductData: UpdateProduct = {
         ...editProductData,
         images: finalImages,
         deletedImageIds, // 삭제 목록 포함
@@ -418,7 +442,7 @@ const EditProduct: NextPage = () => {
           toast.success("상품이 성공적으로 수정되었습니다.");
           // 성공 시 상품 상세 페이지로 이동
           if (data?.ok) {
-            router.push(`/products/${router.query.id}`);
+            router.push(`/products/${id}`);
           }
         },
       });

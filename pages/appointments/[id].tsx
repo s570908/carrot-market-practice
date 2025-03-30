@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Layout from "@/components/Layout";
 import ModButton from "@/components/ModButton";
-import MapViewer from "@/components/MapViewer";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDate, formatTime, parseId } from "@libs/utils";
 import {
@@ -12,6 +11,7 @@ import {
   cancelAppointment as cancelAppointmentApi,
 } from "@/apiLibs/appointments";
 import useUser from "@libs/client/useUser"; // 로그인 유저를 가져오는 훅 추가
+import MapViewer from "@components/MapViewer";
 
 export default function AppointmentDetail() {
   const router = useRouter();

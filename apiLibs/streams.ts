@@ -1,3 +1,5 @@
+//import { CreateForm, CreateResponse } from "@/types/streams";
+import { CreateForm, CreateResponse } from "@/types";
 import aclient, { videoClient } from "./aclient";
 import {
   LifecycleResult,
@@ -40,6 +42,11 @@ export async function getViews(cloudflareId: string) {
 
 export async function getLifecycle(cloudflareId: string) {
   const response = await videoClient.get<LifecycleResult>(`/${cloudflareId}/lifecycle`);
+  return response.data;
+}
+
+export async function writeStream(form: CreateForm) {
+  const response = await aclient.post<CreateResponse>(`/api/streams`, form);
   return response.data;
 }
 

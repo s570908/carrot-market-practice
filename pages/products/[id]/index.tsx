@@ -34,8 +34,9 @@ import "swiper/css/navigation";
 import { getProduct, getReservation, writeToggleFav } from "apiLibs/products";
 import { getChatRoomsByProduct, writeChatRoom } from "apiLibs/chatRooms";
 import { handleLoadingAndError } from "@components/LoadingError";
-import { ProductDetailResponse } from "apiLibs/atypes";
+//import { ProductDetailResponse } from "apiLibs/atypes";
 import useSocket from "@libs/client/useSocket";
+import { ProductDetailResponse } from "@/types";
 
 interface ProductWithReview extends Review {
   createdBy: User;
@@ -252,7 +253,11 @@ const ItemDetail: NextPage = () => {
 
   const onBuyClick = () => {
     //console.log("onBuyClick clicked.");
-    if (confirm("정말 구매하시겠어요?")) {
+    if (
+      confirm(
+        "정말 구매하시겠어요?  <<ToDo: 구매의사를 표시했을 경우 처리에 대한 코딩이 필요하다. 판매자에게 알림을 발송하고 판매자는 판매에 관한 절차를 진행한다.>>"
+      )
+    ) {
       // if (buyItemLoading) return;
       // buyItem({});
       const payload = {
@@ -625,7 +630,7 @@ const ItemDetail: NextPage = () => {
               ) : (
                 <>
                   <Button onClick={onChatClick} large text="Talk to Seller" />
-                  {/* <Button onClick={onBuyClick} large text="Buy It" /> */}
+                  <Button onClick={onBuyClick} large text="Buy It" />
                 </>
               )}
               {isProvider ? null : (

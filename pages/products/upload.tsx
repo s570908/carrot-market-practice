@@ -27,34 +27,42 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { closestCenter, DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { toast } from "react-toastify";
+import {
+  PreviewImage,
+  UploadProductForm,
+  UploadProduct,
+  UploadProductMutation,
+  CLImage,
+} from "@/types";
+import { writeProduct } from "@/apiLibs/products";
 
-interface UploadProductForm {
-  name: string;
-  price: number;
-  description: string;
-  photo?: FileList;
-}
+// interface UploadProductForm {
+//   name: string;
+//   price: number;
+//   description: string;
+//   photo?: FileList;
+// }
 
-interface CLImage {
-  imageId: string;
-}
+// interface CLImage {
+//   imageId: string;
+// }
 
-interface UploadProduct extends UploadProductForm {
-  images: CLImage[];
-}
+// interface UploadProduct extends UploadProductForm {
+//   images: CLImage[];
+// }
 
-interface UploadProductMutation {
-  ok: boolean;
-  products: Product;
-}
+// interface UploadProductMutation {
+//   ok: boolean;
+//   products: Product;
+// }
 
-interface PreviewImage {
-  id: string; // 고유 ID 필드
-  kind: "Local" | "Cloudflare";
-  url: string;
-  file?: File | null;
-  CLurl?: string;
-}
+// interface PreviewImage {
+//   id: string; // 고유 ID 필드
+//   kind: "Local" | "Cloudflare";
+//   url: string;
+//   file?: File | null;
+//   CLurl?: string;
+// }
 
 const SortableItem = ({ id, children }: { id: string; children: React.ReactNode }) => {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
@@ -92,22 +100,31 @@ const Upload: NextPage = () => {
   const [formSize, setFormSize] = useState({ width: 0, height: 0 }); // form 크기 저장
 
   // const [uploadProduct, { loading, data }] = useMutation<UploadProductMutation>("/api/products");
-  const uploadProduct = async (
-    // formData: UploadProductForm & { imageIds?: string[] }
-    uploadProduct: UploadProduct
-  ) => {
-    const response = await axios.post("/api/products", uploadProduct, {
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    return response.data;
-  };
+  // const uploadProduct = async (
+  //   // formData: UploadProductForm & { imageIds?: string[] }
+  //   uploadProduct: UploadProduct
+  // ) => {
+  //   const response = await axios.post("/api/products", uploadProduct, {
+  //     headers: {
+  //       "Content-Type": "application/json",
+  //     },
+  //   });
+  //   return response.data;
+  // };
 
-  const { mutate, isLoading, data } = useMutation(uploadProduct, {
-    onSuccess: () => {
+  const {
+    mutate,
+    isPending: isLoading,
+    data,
+  } = useMutation({
+    mutationFn: writeProduct,
+    onSuccess: (data) => {
       console.log("onSuccess-----------: data", data);
-      // queryClient.invalidateQueries("products");
+      // 쿼리 무효화 (v5 방식)
+      //queryClient.invalidateQueries({ queryKey: ["products"] });
+    },
+    onError: (error) => {
+      console.error("상품 업로드 실패:", error);
     },
   });
 

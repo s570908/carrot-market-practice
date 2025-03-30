@@ -5,21 +5,26 @@ import Layout from "@components/Layout";
 import useUser from "@libs/client/useUser";
 import { useForm } from "react-hook-form";
 import { useEffect, useState } from "react";
-import useMutation from "@libs/client/useMutation";
+//import useMutation from "@libs/client/useMutation";
 import gravatar from "gravatar";
+import { useMutation } from "@tanstack/react-query";
+import { EditProfileForm, EditProfileResponse } from "@/types";
+import { updateMe } from "@/apiLibs/users";
+import { toast } from "react-toastify";
 
-interface EditProfileForm {
-  email?: string;
-  phone?: string;
-  name?: string;
-  avatar?: FileList;
-  formErrors?: string;
-}
+// interface EditProfileForm {
+//   email?: string;
+//   phone?: string;
+//   name?: string;
+//   avatar?: FileList;
+//   avatarId?: string;
+//   formErrors?: string;
+// }
 
-interface EditProfileResponse {
-  ok: boolean;
-  error?: string;
-}
+// interface EditProfileResponse {
+//   ok: boolean;
+//   error?: string;
+// }
 
 const EditProfile: NextPage = () => {
   const { user, mutate: mutateUser } = useUser();
@@ -53,7 +58,17 @@ const EditProfile: NextPage = () => {
     }
   }, [user, setValue]);
 
-  const [editProfile, { data, loading }] = useMutation<EditProfileResponse>(`/api/users/me`);
+  const {
+    mutate: editProfile,
+    data,
+    isPending: loading,
+  } = useMutation({
+    mutationFn: updateMe,
+    onError: (error: any) => {
+      console.error("프로필 업데이트 중 오류 발생:", error);
+      toast.error("프로필 업데이트에 실패했습니다. 다시 시도해주세요.");
+    },
+  });
 
   const onValid = async ({ email, phone, name, avatar }: EditProfileForm) => {
     console.log("pages/profile/edit: email, name, phone, avatar: ", email, name, phone, avatar);

@@ -1,8 +1,14 @@
+import {
+  UpdateProduct,
+  UploadProduct,
+  UploadProductMutation,
+  UpdateProductResponse,
+  ProductsPagingResponse,
+  ProductDetailResponse,
+} from "@/types";
 import aclient from "./aclient";
 import {
-  ItemDetailResponse,
-  ProductDetailResponse,
-  ProductsPagingResponse,
+  //ProductsPagingResponse,
   ReservationResponse,
   ReviewData,
   ReviewResponse,
@@ -10,8 +16,11 @@ import {
   SellCompleteResponse,
   ToggleFavResponse,
   ToggleReservationResponse,
+  // BuyResponse, // Removed as it is not exported from "./atypes"
+  //WriteProductResponse, // Added to resolve the error
 } from "./atypes";
 import { ReviewType } from "@prisma/client";
+//import { FavResponse, ChatResponse, BuyResponse } from "@/types";
 
 export async function getProductsPaging(page: number, limit: number) {
   const response = await aclient.get<ProductsPagingResponse>(
@@ -72,5 +81,24 @@ export async function writeReview(params: { reviewData: ReviewData; productId: n
     `/api/products/${productId}/review`,
     reviewData
   );
+  return response.data;
+}
+
+export async function toggleProductFav(productId: number) {
+  const response = await aclient.post<ToggleFavResponse>(`/api/products/${productId}/fav`);
+  return response.data;
+}
+
+export async function updateProduct(params: { productId: number; updateProduct: UpdateProduct }) {
+  const { productId, updateProduct } = params;
+  const response = await aclient.put<UpdateProductResponse>(
+    `/api/products/${productId}`,
+    updateProduct
+  );
+  return response.data;
+}
+
+export async function writeProduct(uploadProduct: UploadProduct) {
+  const response = await aclient.post<UploadProductMutation>(`/api/products`, uploadProduct);
   return response.data;
 }

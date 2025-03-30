@@ -2,14 +2,11 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { useForm } from "react-hook-form";
-//import useSWR from "swr";
 import Layout from "@/components/Layout";
 import ModButton from "@/components/ModButton";
 import Input from "@/components/Input";
 import TextArea from "@/components/TextArea";
-//import useMutation from "@/lib/useMutation";
 import MapLocation from "@/components/MapLocation";
-import { User } from "@prisma/client";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import { getAppointment, getFriends, updateAppointment } from "@/apiLibs/appointments";

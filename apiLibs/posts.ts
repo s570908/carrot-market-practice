@@ -1,3 +1,4 @@
+import { WriteForm, WritePostParams, WriteResponse } from "@/types";
 import aclient from "./aclient";
 import {
   AnswerForm,
@@ -19,5 +20,10 @@ export async function writeCommunityPost(id: number) {
 export async function writeCommunityAnswer(params: { id: number; answerData: AnswerForm }) {
   const { id, answerData } = params;
   const response = await aclient.post<AnswerResponse>(`/api/posts/${id}/answer`, answerData);
+  return response.data;
+}
+
+export async function writePost(validForm: WriteForm) {
+  const response = await aclient.post<WriteResponse>(`/api/posts`, validForm);
   return response.data;
 }

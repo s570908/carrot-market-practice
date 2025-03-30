@@ -6,39 +6,53 @@ import TextArea from "@components/TextArea";
 import useUser from "@libs/client/useUser";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/router";
-import useMutation from "@libs/client/useMutation";
+//import useMutation from "@libs/client/useMutation";
 import { useEffect, useState } from "react";
 import { Stream } from "@prisma/client";
 import FormError from "@components/FormError";
+import { useMutation } from "@tanstack/react-query";
+import { CreateForm, CreateResponse } from "@/types/streams";
+import { writeStream } from "@/apiLibs/streams";
 
-interface CreateForm {
-  name: string;
-  price: number;
-  description: string;
-}
+// interface CreateForm {
+//   name: string;
+//   price: number;
+//   description: string;
+// }
 
-interface CreateResponse {
-  ok: boolean;
-  error: string;
-  stream: Stream;
-}
+// interface CreateResponse {
+//   ok: boolean;
+//   error: string;
+//   stream: Stream;
+// }
 
 const Create: NextPage = () => {
   const { user } = useUser();
   const router = useRouter();
   const [duplicateName, setDuplicateName] = useState(false);
   const { register, handleSubmit } = useForm<CreateForm>();
-  const [createStream, { loading, data }] = useMutation<CreateResponse>(`/api/streams`);
+
+  //const [createStream, { loading, data }] = useMutation<CreateResponse>(`/api/streams`);
+  const {
+    mutate: createStream,
+    isPending: isLoading,
+    data,
+  } = useMutation({
+    mutationFn: (form: CreateForm) => writeStream(form),
+  });
+
   const onValid = (form: CreateForm) => {
     setDuplicateName(false);
-    if (loading) return;
+    if (isLoading) return;
     createStream(form);
   };
   useEffect(() => {
     if (data) {
       console.log("streamcreate.tsx---data: ", JSON.stringify(data, null, 2));
       if (data.ok) {
-        router.push(`/stream/${data.stream.id}`);
+        if (data.stream) {
+          router.push(`/stream/${data.stream.id}`);
+        }
       } else {
         if (data.error === "이미 존재하는 스트리밍 제목입니다.") {
           setDuplicateName(true);
@@ -76,7 +90,7 @@ const Create: NextPage = () => {
           name="description"
           label="Description"
         />
-        <Button text={loading ? "Loading..." : "Go live"} />
+        <Button text={isLoading ? "Loading..." : "Go live"} />
       </form>
     </Layout>
   );

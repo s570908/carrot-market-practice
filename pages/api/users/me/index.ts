@@ -130,6 +130,49 @@ const handler: NextApiHandler = async (req: NextApiRequest, res: NextApiResponse
     }
     res.status(200).json({ ok: true });
   }
+
+  if (req.method === "PUT") {
+    const {
+      session: { user },
+      body: { email, phone, name, avatarId },
+    } = req;
+
+    // 사용자 ID가 없으면 에러 반환
+    if (!user?.id) {
+      return res.status(401).json({ ok: false, error: "로그인이 필요합니다." });
+    }
+
+    // 업데이트할 데이터를 준비
+    const updateData: any = {};
+    if (email !== undefined) updateData.email = email;
+    if (phone !== undefined) updateData.phone = phone;
+    if (name !== undefined) updateData.name = name;
+    if (avatarId !== undefined) updateData.avatar = avatarId;
+
+    try {
+      // 사용자 정보 업데이트
+      const updatedUser = await client.user.update({
+        where: {
+          id: user.id,
+        },
+        data: updateData,
+      });
+
+      // 성공 응답 반환 - 업데이트된 사용자 정보 포함
+      return res.status(200).json({
+        ok: true,
+        profile: updatedUser, // 업데이트된 사용자 정보 반환
+      });
+    } catch (error) {
+      console.error("사용자 정보 업데이트 오류:", error);
+      return res.status(500).json({
+        ok: false,
+        error: "사용자 정보를 업데이트하는 중에 오류가 발생했습니다.",
+      });
+    }
+  }
 };
 
-export default withApiSession(withHandler({ methods: ["GET", "POST"], handler, isPrivate: true }));
+export default withApiSession(
+  withHandler({ methods: ["GET", "POST", "PUT"], handler, isPrivate: true })
+);

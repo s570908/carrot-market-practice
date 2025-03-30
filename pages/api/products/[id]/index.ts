@@ -406,7 +406,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
     try {
       // 업데이트할 데이터 추출
-      const { name, price, description, status, images, deletedImageIds } = body;
+      const { name, price, description, images, deletedImageIds } = body;
 
       // 1. 삭제된 이미지들을 Cloudflare에서 먼저 삭제
       // if (deletedImageIds && deletedImageIds.length > 0) {
