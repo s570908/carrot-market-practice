@@ -8,6 +8,7 @@ import {
   EditProfileResponse,
   EnterForm,
   ProductListResponse,
+  SellerRatingResponse,
 } from "@/types";
 
 export async function getProducts(kind: Kind) {
@@ -40,5 +41,10 @@ export async function writeEnter(validForm: EnterForm) {
 
 export async function updateMe(profileData: EditProfileForm) {
   const response = await aclient.put<EditProfileResponse>(`/api/users/me`, profileData);
+  return response.data;
+}
+
+export async function getSellerRating(sellerId: number) {
+  const response = await aclient.get<SellerRatingResponse>(`/api/users/${sellerId}/rating`);
   return response.data;
 }

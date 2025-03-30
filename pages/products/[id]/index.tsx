@@ -37,6 +37,9 @@ import { handleLoadingAndError } from "@components/LoadingError";
 //import { ProductDetailResponse } from "apiLibs/atypes";
 import useSocket from "@libs/client/useSocket";
 import { ProductDetailResponse } from "@/types";
+import StarRating from "@components/StarRating";
+import { getSellerRating } from "@/apiLibs/users";
+//import { getSellerRating } from "@/apiLibs/reviews";
 
 interface ProductWithReview extends Review {
   createdBy: User;
@@ -98,6 +101,13 @@ const ItemDetail: NextPage = () => {
     enabled: !!id, // query.id가 있을 때만 쿼리 실행
   });
 
+  // 판매자 평점 가져오기
+  const { data: sellerRatingData, isLoading: isLoadingRating } = useQuery({
+    queryKey: ["sellerRating", data?.product?.user?.id],
+    queryFn: () => getSellerRating(data?.product?.user?.id!),
+    enabled: !!data?.product?.user?.id,
+  });
+
   const {
     data: reservationData,
     refetch: refetchReservation,
@@ -156,10 +166,6 @@ const ItemDetail: NextPage = () => {
         queryClient.setQueryData(["product", id], context.previousData);
       }
     },
-    // 서버 요청이 완료되면 (성공 또는 실패) 데이터를 무효화하여 최신 상태로 업데이트
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["product", id] });
-    },
   });
 
   const {
@@ -184,7 +190,7 @@ const ItemDetail: NextPage = () => {
       // }
       // if (data.isNew) {
       //   if (socket) {
-      //     socket.emit("chatRoomCreated", { chatRoom: data.chatRoom });
+      //     socket.emit("chatRoomCreated", {chatRoom: data.chatRoom });
       //   }
       // }
     },
@@ -201,6 +207,7 @@ const ItemDetail: NextPage = () => {
     if (!data) return;
     toggleFavMutate(id!);
   };
+
   const onChatRoomList = () => {
     //console.log("onChatRoomList--chatRoomData: ", chatRoomData);
 
@@ -255,8 +262,13 @@ const ItemDetail: NextPage = () => {
     //console.log("onBuyClick clicked.");
     if (
       confirm(
-        "정말 구매하시겠어요?  <<ToDo: 구매의사를 표시했을 경우 처리에 대한 코딩이 필요하다. 판매자에게 알림을 발송하고 판매자는 판매에 관한 절차를 진행한다.>>"
+        '정말 구매하시겠어요?  \n \
+        ToDo: 구매의사를 표시했을 경우 처리에 대한 코딩이 필요하다. \n\
+         1. 판메자에게 알림을 발송하고 \n \
+         2. 관련 채팅방이 존재하면 그 채팅방으로 이동한다. 존재하지 않으면 채팅방을 생성하고 그 채팅방으로 이동한다. \n \
+         3. 토스트 메시지 "판매자에게 구매하겠다고 말해주세요." 라는 메시지를 띄운다. '
       )
+      // 아래의 eventEmitter.emit("buyerAction", payload) 를 제거하는 것이 좋을 것 같다.
     ) {
       // if (buyItemLoading) return;
       // buyItem({});
@@ -370,7 +382,7 @@ const ItemDetail: NextPage = () => {
   };
 
   const isLoadingAny =
-    isLoading || isLoadingReservation || isLoadingChatRoom || isLoadingFav || isLoadingTalkToSeller;
+    isLoading || isLoadingReservation || isLoadingChatRoom || isLoadingTalkToSeller;
   const isErrorAny =
     isError || isErrorReservation || isErrorChatRoom || isErrorFav || isErrorTalkToSeller;
   const errorAny = error || errorReservation || errorChatRoom || errorFav || errorTalkToSeller;
@@ -467,42 +479,16 @@ const ItemDetail: NextPage = () => {
                 <p className="text-sm font-medium text-gray-700">
                   {data ? data?.product?.user?.name : "Now Loading..."}
                 </p>
-                <div className="flex items-center">
-                  {Array.from({ length: 5 }, (_, index) => {
-                    const rating = 4.7; // 예시로 4.68을 사용
-                    const fillPercentage = Math.max(0, Math.min(100, (rating - index) * 100));
-
-                    return (
-                      <div key={index} className="relative inline-block h-6 w-6">
-                        {/* 회색 별 */}
-                        <svg
-                          viewBox="0 0 24 24"
-                          fill="currentColor"
-                          className="h-full w-full text-gray-300"
-                        >
-                          <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-                        </svg>
-
-                        {/* 노란색 별 */}
-                        <div
-                          className="absolute left-0 top-0 h-full overflow-hidden"
-                          style={{
-                            clipPath: `inset(0 ${100 - fillPercentage}% 0 0)`,
-                          }}
-                        >
-                          <svg
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                            className="h-full w-full text-yellow-400"
-                          >
-                            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-                          </svg>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  (4.3)
-                </div>
+                <StarRating
+                  score={sellerRatingData?.averageScore || 0}
+                  size={"lg"}
+                  showScore={true}
+                />
+                {(sellerRatingData?.reviewCount ?? 0) > 0 && (
+                  <span className="text-xs text-gray-500">
+                    ({sellerRatingData?.reviewCount ?? 0}개 리뷰)
+                  </span>
+                )}
               </div>
               <Link
                 // href={
@@ -516,7 +502,12 @@ const ItemDetail: NextPage = () => {
                     : `/reviewForSeller/${data?.product?.user?.id}`
                 }
               >
-                <a className="text-xs font-medium text-gray-500">판매자에 대한 후기 보기&rarr;</a>
+                <a className="text-xs font-medium text-gray-500">
+                  판매자에 대한 후기 보기{" "}
+                  <span style={{ fontSize: "1.5rem", position: "relative", top: "2px" }}>
+                    &rarr;
+                  </span>
+                </a>
               </Link>
             </div>
           </div>
@@ -575,23 +566,8 @@ const ItemDetail: NextPage = () => {
                       </div> */}
                       <div className="flex flex-row items-center justify-evenly space-x-20">
                         <div className="mb-2 flex flex-col items-start">
-                          <div className="flex items-center">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <svg
-                                key={star}
-                                className={cls(
-                                  "h-5 w-5",
-                                  review.score >= star ? "text-yellow-400" : "text-gray-300"
-                                )}
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                                aria-hidden="true"
-                              >
-                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8-2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                              </svg>
-                            ))}
-                          </div>
+                          Test
+                          <StarRating score={review.score} />
                           <p className="mt-2 text-lg text-gray-700">{review.review}</p>
                           <span className="space-x-4 text-xs font-extralight text-gray-900">
                             <RegDate regDate={review.createdAt} />
@@ -636,15 +612,18 @@ const ItemDetail: NextPage = () => {
               {isProvider ? null : (
                 <button
                   onClick={onFavClick}
-                  disabled={data?.product?.userId === user?.id}
+                  disabled={data?.product?.userId === user?.id || isLoadingFav}
                   className={cls(
                     data?.isLike
-                      ? " text-red-400 hover:text-red-500"
+                      ? "text-red-400 hover:text-red-500"
                       : "text-gray-400 hover:text-gray-500",
-                    "flex items-center justify-center rounded-md p-3 hover:bg-gray-100 "
+                    "flex items-center justify-center rounded-md p-3 hover:bg-gray-100"
                   )}
                 >
-                  {data?.isLike ? (
+                  {isLoadingFav ? (
+                    // 버튼 내부에만 로딩 표시
+                    <div className="h-6 w-6 animate-pulse rounded-full bg-gray-300"></div>
+                  ) : data?.isLike ? (
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       className="h-6 w-6"
@@ -659,7 +638,7 @@ const ItemDetail: NextPage = () => {
                     </svg>
                   ) : (
                     <svg
-                      className="h-6 w-6 "
+                      className="h-6 w-6"
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"

@@ -21,3 +21,9 @@ export interface EditProfileResponse {
     // 기타 사용자 관련 필드
   };
 }
+
+export interface SellerRatingResponse {
+  ok: boolean;
+  averageScore: number;
+  reviewCount: number;
+}

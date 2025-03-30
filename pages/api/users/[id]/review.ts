@@ -19,10 +19,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   let whereKey;
 
   if (filterType === FilterType.CreatedFor) {
+    // 특정 사용자가 "받은" 리뷰만 조회
     whereKey = { createdForId: +id };
   } else if (filterType === FilterType.CreatedFor) {
+    // 여기 오류 있음! CreatedBy여야 함
+    // 특정 사용자가 "작성한" 리뷰만 조회
     whereKey = { createdById: +id };
   } else {
+    // 특정 사용자가 작성했거나 받은 모든 리뷰 조회
     whereKey = {
       OR: [{ createdForId: +id }, { createdById: +id }],
     };
