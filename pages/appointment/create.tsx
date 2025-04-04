@@ -3,6 +3,7 @@ import Layout from "@components/Layout";
 import TimePicker from "@components/TimePicker";
 import useUser from "@libs/client/useUser";
 import axios from "axios";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import { useState } from "react";
 import { useQuery } from "react-query";
@@ -41,7 +42,7 @@ const CreateAppointment = () => {
       ? data?.chatRoomOfSeller?.seller?.name
       : data?.chatRoomOfSeller?.buyer?.name;
 
-  console.log(data);
+  // console.log(data);
 
   const handleSubmit = () => {
     if (!date || !time || !place) {
@@ -67,18 +68,28 @@ const CreateAppointment = () => {
           <DatePicker value={date} onChange={(newDate) => setDate(newDate)} />
 
           {/* 시간 */}
-          <TimePicker selectedTime={time} onChange={setTime} />
+          <TimePicker value={time} onChange={setTime} />
 
           {/* 장소 */}
-          <div className="flex items-center justify-between">
+          <div className="flex w-full items-center justify-between">
             <span className="font-medium text-gray-700">장소</span>
-            <input
-              type="text"
-              placeholder="장소 선택"
-              value={place}
-              onChange={(e) => setPlace(e.target.value)}
-              className="w-2/3 rounded-md border border-gray-300 px-3 py-2 text-gray-700"
-            />
+            <div className="flex items-center gap-1">
+              <Link href="/appointment/place-selection">
+                <span className="cursor-pointer text-gray-500">장소 선택</span>
+              </Link>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 text-gray-400"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="9 6 15 12 9 18"></polyline>
+              </svg>
+            </div>
           </div>
 
           {/* 알림 시간 */}

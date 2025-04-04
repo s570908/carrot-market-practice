@@ -8,44 +8,19 @@ import "react-toastify/dist/ReactToastify.css";
 import { SWRConfig } from "swr";
 
 // QueryClient 생성
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 function MyApp({ Component, pageProps }: AppProps) {
   // console.log("APP IS RUNNING");
 
   return (
-    // <SWRConfig
-    //   value={{
-    //     refreshInterval: 3000,
-    //     fetcher: (url: string) => {
-    //       fetch(url).then((response) => response.json());
-    //     },
-    //   }}
-    // >    </SWRConfig>
-
-    // <div>
-    //   <div className="w-full max-w-xl mx-auto">
-    //     <Component {...pageProps} />
-    //   </div>
-    //   <Script src="https://developers.kakao.com/sdk/js/kakao.js" strategy="lazyOnload" />
-    //   <Script
-    //     src="https://connect.facebook.net/en_US/sdk.js"
-    //     onLoad={() => {
-    //       console.log("facebook SDK loaded.");
-    //       // @ts-ignore
-    //       window.fbAsyncInit = function () {
-    //         // @ts-ignore
-    //         // FB.init({
-    //         //   appId: "your-app-id",
-    //         //   autoLogAppEvents: true,
-    //         //   xfbml: true,
-    //         //   version: "v14.0",
-    //         // });
-    //       };
-    //     }}
-    //   />
-    // </div>
-
     <QueryClientProvider client={queryClient}>
       <SWRConfig
         value={{
