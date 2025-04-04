@@ -6,8 +6,9 @@ interface InputProps {
   kind?: "text" | "phone" | "price";
   type: string;
   register: UseFormRegisterReturn;
+  required?: boolean;
   placeholder?: string;
-  value?: string;
+  error?: string; // error 속성 추가
 }
 
 export default function Input({
@@ -16,8 +17,9 @@ export default function Input({
   kind = "text",
   register,
   type,
+  required,
   placeholder,
-  value,
+  error, // error 매개변수 추가
 }: InputProps) {
   return (
     <div>
@@ -28,10 +30,11 @@ export default function Input({
         <div className="relative flex items-center rounded-md shadow-sm">
           <input
             id={name}
+            required={required}
             {...register}
             type={type}
+            placeholder={placeholder}
             className="w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-orange-500"
-            value={value}
           />
         </div>
       ) : null}
@@ -42,14 +45,12 @@ export default function Input({
           </div>
           <input
             id={name}
+            required={required}
             {...register}
             type={type}
             placeholder={placeholder}
             className="w-full appearance-none rounded-md border border-gray-300 px-3 py-2 pl-7 placeholder-gray-400 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-orange-500"
           />
-          <div className="pointer-events-none absolute right-0 flex items-center pr-3">
-            <span className="text-gray-500">KRW</span>
-          </div>
         </div>
       ) : null}
       {kind === "phone" ? (
@@ -59,12 +60,17 @@ export default function Input({
           </span>
           <input
             id={name}
+            required={required}
             {...register}
             type={type}
+            placeholder={placeholder}
             className="w-full appearance-none rounded-md rounded-l-none border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-orange-500"
           />
         </div>
       ) : null}
+
+      {/* 오류 메시지 표시 부분 추가 */}
+      {error && <div className="mt-1 text-sm text-red-600">{error}</div>}
     </div>
   );
 }

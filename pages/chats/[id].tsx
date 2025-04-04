@@ -33,8 +33,9 @@ import {
   writeSellComplete,
   writeToggleReservation,
 } from "apiLibs/products";
-import { ChatFormResponse, ProductWithImages } from "apiLibs/atypes";
+import { ChatFormResponse } from "apiLibs/atypes";
 import { useAwaitableModal } from "@libs/client/useAwaitableModal";
+import { ProductWithImages } from "@/types";
 
 type Option = {
   value: string;

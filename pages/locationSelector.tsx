@@ -4,12 +4,19 @@ import MapModal from "../components/MapModal";
 import ModButton from "../components/ModButton";
 import Layout from "../components/Layout";
 import { useAwaitableModal } from "@libs/client/useAwaitableModal";
+import { TmapAddressInfo } from "@/types";
 
 const LocationSelectorPage: NextPage = () => {
-  const [selectedLocation, setSelectedLocation] = useState<{
+  // const [selectedLocation, setSelectedLocation] = useState<{
+  //   latitude: number;
+  //   longitude: number;
+  //   address: string;
+  // } | null>(null);
+
+  const [selectedLocationByAddressInfo, setSelectedLocationByAddressInfo] = useState<{
     latitude: number;
     longitude: number;
-    address: string;
+    addressInfo: TmapAddressInfo | null;
   } | null>(null);
 
   const { openModal: openMapModal, renderModal } = useAwaitableModal((modal, params) => {
@@ -18,8 +25,21 @@ const LocationSelectorPage: NextPage = () => {
         isOpen={modal.isVisible}
         onClose={() => modal.closeWithResult(null)} // null 값을 반환하여 선택된 위치를 초기화
         onLocationSelect={(latitude: number, longitude: number, address: string) =>
-          modal.closeWithResult({ latitude, longitude, address })
+          //modal.closeWithResult({ latitude, longitude, address })
+          console.log(
+            "onLocationSelect--latitude: ",
+            latitude,
+            "longitude: ",
+            longitude,
+            "address: ",
+            address
+          )
         }
+        onLocationSelectAddressInfo={(
+          latitude: number,
+          longitude: number,
+          addressInfo: TmapAddressInfo | null
+        ) => modal.closeWithResult({ latitude, longitude, addressInfo })}
       />
     );
   });
@@ -29,11 +49,12 @@ const LocationSelectorPage: NextPage = () => {
       const result = await openMapModal(null);
       console.log("Modal closed--result: ", result);
       if (result) {
-        const { latitude, longitude, address } = result;
-        setSelectedLocation({ latitude, longitude, address });
+        const { latitude, longitude, addressInfo } = result;
+        //setSelectedLocation({ latitude, longitude, address });
+        setSelectedLocationByAddressInfo({ latitude, longitude, addressInfo });
       } else {
         console.log("Modal closed without selecting a location.");
-        setSelectedLocation(null); // 선택된 위치를 초기화
+        setSelectedLocationByAddressInfo(null); // 선택된 위치를 초기화
       }
     } catch (error) {
       console.error("Error opening modal:", error);
@@ -58,17 +79,22 @@ const LocationSelectorPage: NextPage = () => {
             </div>
 
             {/* 선택된 위치 표시 */}
-            {selectedLocation === null ? (
+            {selectedLocationByAddressInfo === null ? (
               <div className="mt-6 rounded-md bg-gray-50 p-4">
                 <h3 className="text-lg font-medium">선택된 위치가 없습니다.</h3>
               </div>
             ) : (
               <div className="mt-6 rounded-md bg-gray-50 p-4">
                 <h3 className="text-lg font-medium">선택된 위치</h3>
-                <p className="mt-2 text-sm text-gray-600">주소: {selectedLocation.address}</p>
+                <p className="mt-2 text-sm text-gray-600">
+                  명칭: {selectedLocationByAddressInfo.addressInfo?.buildingName || "정보 없음"}
+                </p>
+                <p className="mt-2 text-sm text-gray-600">
+                  주소: {selectedLocationByAddressInfo.addressInfo?.fullAddress || "정보 없음"}
+                </p>
                 <p className="text-sm text-gray-600">
-                  좌표: {selectedLocation.latitude?.toFixed(6)},{" "}
-                  {selectedLocation.longitude?.toFixed(6)}
+                  좌표: {selectedLocationByAddressInfo.latitude?.toFixed(6)},{" "}
+                  {selectedLocationByAddressInfo.longitude?.toFixed(6)}
                 </p>
               </div>
             )}
@@ -78,5 +104,3 @@ const LocationSelectorPage: NextPage = () => {
     </>
   );
 };
-
-export default LocationSelectorPage;

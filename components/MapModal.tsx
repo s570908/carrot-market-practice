@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, ReactNode, useMemo, memo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/queries";
 import { useMap } from "@libs/client/useMap";
+import { TmapAddressInfo } from "@/types";
 
 // Input 컴포넌트
 function Input({ label = "", errorMessage = "", ...rest }: InputProps) {
@@ -159,10 +160,20 @@ AddressList.displayName = "AddressList";
 interface MapModalProps {
   isOpen: boolean;
   onClose: (selectedLocation?: null) => void;
-  onLocationSelect: (latitude: number, longitude: number, address: string) => void;
+  //onLocationSelect: (latitude: number, longitude: number, address: string) => void;
+  onLocationSelectAddressInfo: (
+    latitude: number,
+    longitude: number,
+    addressInfo: TmapAddressInfo | null
+  ) => void;
 }
 
-export function MapModal({ isOpen, onClose, onLocationSelect }: MapModalProps) {
+export function MapModal({
+  isOpen,
+  onClose,
+  //onLocationSelect,
+  onLocationSelectAddressInfo,
+}: MapModalProps) {
   const [searchKeyword, setSearchKeyword] = useState("");
   const debouncedSearchKeyword = useDebounce(searchKeyword);
   const mapRef = useRef<HTMLDivElement>(null);
@@ -172,6 +183,7 @@ export function MapModal({ isOpen, onClose, onLocationSelect }: MapModalProps) {
     setCoord,
     updateMarker,
     currentAddress: selectedAddress,
+    addressInfo,
     initMapModal,
   } = useMap(mapRef);
 
@@ -226,7 +238,11 @@ export function MapModal({ isOpen, onClose, onLocationSelect }: MapModalProps) {
     console.log("선택한 주소:", selectedAddress);
     console.log("latitude:", latitude);
     console.log("longitude:", longitude);
-    onLocationSelect(latitude, longitude, selectedAddress); // 선택된 위치를 전달
+    //onLocationSelect(latitude, longitude, selectedAddress); // 선택된 위치를 부모에게 전달
+    //if (addressInfo) {
+    onLocationSelectAddressInfo(latitude, longitude, addressInfo ?? null); // 선택된 위치를 부모에게 전달
+    //}
+
     onClose(); // 모달 닫기
   };
 

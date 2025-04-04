@@ -5,30 +5,14 @@ import Layout from "@components/Layout";
 import useUser from "@libs/client/useUser";
 import { useForm } from "react-hook-form";
 import { useEffect, useState } from "react";
-//import useMutation from "@libs/client/useMutation";
 import gravatar from "gravatar";
 import { useMutation } from "@tanstack/react-query";
 import { EditProfileForm, EditProfileResponse } from "@/types";
 import { updateMe } from "@/apiLibs/users";
 import { toast } from "react-toastify";
 
-// interface EditProfileForm {
-//   email?: string;
-//   phone?: string;
-//   name?: string;
-//   avatar?: FileList;
-//   avatarId?: string;
-//   formErrors?: string;
-// }
-
-// interface EditProfileResponse {
-//   ok: boolean;
-//   error?: string;
-// }
-
 const EditProfile: NextPage = () => {
   const { user, mutate: mutateUser } = useUser();
-  //const { data: imageData } = useSWR<any>("/api/images/29-1684643304941-3158620.png", fetcher);
   const {
     register,
     setValue,
@@ -47,7 +31,6 @@ const EditProfile: NextPage = () => {
       setAvatarPreview(
         `https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${user?.avatar}/public`
       );
-      //setAvatarPreview(`${user?.avatar}`);
     } else {
       setAvatarPreview(
         `https:${gravatar.url(user?.email ? user?.email : "anonymous@email.com", {
@@ -96,22 +79,6 @@ const EditProfile: NextPage = () => {
     } else {
       editProfile({ email, phone, name });
     }
-
-    // if (avatar && avatar.length > 0 && user) {
-    //   const form = new FormData();
-    //   form.append("file", avatar[0], user?.id + "");
-    //   const result = await (
-    //     await fetch("/api/images/file-upload", {
-    //       method: "POST",
-    //       body: form,
-    //     })
-    //   ).json();
-    //   editProfile({ email, phone, name, avatarId: result.data.url });
-    //   //mutateUser();
-    // } else {
-    //   editProfile({ email, phone, name });
-    //   //mutateUser();
-    // }
   };
 
   useEffect(() => {
@@ -131,59 +98,58 @@ const EditProfile: NextPage = () => {
 
   return (
     <Layout seoTitle="프로필 수정" canGoBack title="프로필 수정" backUrl={"/profile"}>
-      <form onSubmit={handleSubmit(onValid)} className="space-y-4 px-4 py-10">
-        <div className="flex items-center space-x-3">
-          {avatarPreview ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={avatarPreview}
-              //src="/uploads/29-1684987306491-540260167.png"
-              className="h-14 w-14 rounded-full bg-slate-500"
-              alt="avatarPreview"
-            />
-          ) : (
-            <div className="h-14 w-14 rounded-full bg-slate-500" />
+        <form onSubmit={handleSubmit(onValid)} className="px-4 py-10 space-y-4">
+          <div className="flex items-center space-x-3">
+            {avatarPreview ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={avatarPreview}
+                className="rounded-full h-14 w-14 bg-slate-500"
+                alt="avatarPreview"
+              />
+            ) : (
+              <div className="rounded-full h-14 w-14 bg-slate-500" />
+            )}
+            <label
+              htmlFor="picture"
+              className="px-3 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-md shadow-sm cursor-pointer hover:bg-gray-50 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+            >
+              Change
+              <input
+                {...register("avatar")}
+                id="picture"
+                type="file"
+                className="hidden"
+                accept="image/*"
+              />
+            </label>
+          </div>
+          <Input
+            register={register("name", { required: false })}
+            label="Name"
+            name="name"
+            type="text"
+          />
+          <Input
+            register={register("email", { required: false })}
+            label="Email address"
+            name="email"
+            type="email"
+          />
+          <Input
+            register={register("phone", { required: false })}
+            label="Phone number"
+            name="phone"
+            type="number"
+            kind="phone"
+          />
+          {errors.formErrors && (
+            <span className="block font-bold text-center text-red-600">
+              {`${errors.formErrors.message}`}
+            </span>
           )}
-          <label
-            htmlFor="picture"
-            className="cursor-pointer rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
-          >
-            Change
-            <input
-              {...register("avatar")}
-              id="picture"
-              type="file"
-              className="hidden"
-              accept="image/*"
-            />
-          </label>
-        </div>
-        <Input
-          register={register("name", { required: false })}
-          label="Name"
-          name="name"
-          type="text"
-        />
-        <Input
-          register={register("email", { required: false })}
-          label="Email address"
-          name="email"
-          type="email"
-        />
-        <Input
-          register={register("phone", { required: false })}
-          label="Phone number"
-          name="phone"
-          type="number"
-          kind="phone"
-        />
-        {errors.formErrors && (
-          <span className="block text-center font-bold text-red-600">
-            {`${errors.formErrors.message}`}
-          </span>
-        )}
-        <Button text={loading ? "Loading..." : "Update profile"} />
-      </form>
+          <Button text={loading ? "Loading..." : "Update profile"} />
+        </form>
     </Layout>
   );
 };

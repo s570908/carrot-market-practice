@@ -92,7 +92,7 @@ enum Status {
 model Fav {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    Int
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -102,7 +102,7 @@ model Fav {
 model Sale {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    Int
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade, map: "SaleToProduct")
@@ -319,13 +319,7 @@ model Appointment {
   startTime   DateTime // 시작 시간
   endTime     DateTime // 종료 시간
 
-  // 장소 정보 (TMap API 연동)
-  locationName    String // 장소명 
-  locationAddress String // 전체 주소
-  roadAddress     String? // 도로명 주소
-  latitude        Float // 위도
-  longitude       Float // 경도
-  zoomLevel       Int     @default(15) // 지도 줌 레벨
+  locationTmap LocationTmap? // 약속 장소 (Tmap API 사용)
 
   // 상태 및 기본 정보
   status    AppointmentStatus @default(PENDING)
@@ -377,6 +371,40 @@ model AppointmentNotification {
 
   @@index([appointmentId])
   @@index([isSent, minutesBefore]) // 미발송 알림 조회 성능 향상
+}
+
+// 위치 정보를 위한 기본 모델
+model LocationTmap {
+  id            Int          @id @default(autoincrement())
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  appointmentId Int?         @unique // 1:1 관계 설정
+
+  // TMap 특화 필드
+  locationName String // 사용자 표시용 장소명 (buildingName과 동일)
+  latitude     Float // 위도
+  longitude    Float // 경도
+
+  // TMap API 특화 필드들
+  addressType     String? // A04 등
+  adminDong       String?
+  adminDongCode   String?
+  buildingIndex   String?
+  buildingName    String? // TMap API 응답의 buildingName (locationName과 동일)
+  bunji           String? // 번지
+  city_do         String? // 시/도 (예: "서울특별시")
+  eup_myun        String? // 읍/면
+  fullAddress     String? // 전체 주소
+  gu_gun          String? // 구/군 (예: "중구")
+  legalDong       String? // 법정동
+  legalDongCode   String? // 법정동 코드
+  mappingDistance String? // 매핑 거리 (예: "21.32")
+  ri              String? // 리
+  roadCode        String? // 도로 코드
+  roadName        String? // 도로명 (예: "남대문로")
+
+  // 기타 메타데이터
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // Friendship 모델 수정

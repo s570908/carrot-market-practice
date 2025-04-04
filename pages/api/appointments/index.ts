@@ -7,6 +7,14 @@ import { NextApiRequest, NextApiResponse } from "next";
 import withHandler from "@libs/server/withHandler";
 import client from "@libs/client/client";
 import { withApiSession } from "@libs/server/withSession";
+//import { AppointmentCreateRequest } from "@/pages/appointments/create";
+import { convertTmapAddressToLocationInput } from "@/apiLibs/locations";
+import { AppointmentCreateRequest } from "@/types";
+
+// 유효한 알림 타입인지 확인하는 함수
+function isValidNotificationType(type: string): type is "PUSH" | "EMAIL" | "SMS" {
+  return ["PUSH", "EMAIL", "SMS"].includes(type);
+}
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   // 사용자 세션 확인
@@ -159,82 +167,113 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
   } else if (req.method === "POST") {
     // 약속 생성
+    const body = req.body as AppointmentCreateRequest;
+    console.log("약속 생성 요청 api/appointment--Post body:", body);
     const { title, description, date, startTime, endTime, location, participants, notifications } =
-      req.body;
+      body;
 
     if (!title || !date || !startTime || !endTime || !location) {
       return res.status(400).json({ ok: false, error: "필수 정보가 누락되었습니다." });
     }
 
     try {
-      // 약속 생성
-      const appointment = await client.appointment.create({
-        data: {
-          title,
-          description,
-          date: new Date(date),
-          startTime: new Date(startTime),
-          endTime: new Date(endTime),
-          locationName: location.name,
-          locationAddress: location.address,
-          roadAddress: location.fullAddressRoad,
-          latitude: location.latitude,
-          longitude: location.longitude,
-          zoomLevel: location.zoomLevel || 15,
-          organizer: {
-            connect: {
-              id: userId,
+      // Prisma 트랜잭션 사용하여 약속과 위치 정보를 원자적으로 생성
+      const result = await client.$transaction(async (tx) => {
+        // 1. 약속 기본 정보 생성
+        const appointment = await tx.appointment.create({
+          data: {
+            title,
+            description: description || "",
+            date: new Date(date),
+            startTime: new Date(startTime),
+            endTime: new Date(endTime),
+            // status는 기본값 PENDING 사용
+            organizer: {
+              connect: {
+                id: userId,
+              },
             },
           },
-        },
+        });
+
+        // 2. 위치 정보 저장 (LocationTmap 모델 사용)
+        if (location && location.addressInfo) {
+          // 위치 정보 입력 형식으로 변환
+          const locationInput = convertTmapAddressToLocationInput(location.addressInfo, {
+            locationName: location.addressInfo?.buildingName || "선택한 장소",
+            latitude: location.latitude,
+            longitude: location.longitude,
+            // appointmentId is omitted as it is not required
+          });
+
+          // LocationTmap 생성시 appointmentId 속성이 들어가지 않도록 처리
+          const { appointmentId, ...locationDataWithoutAppointmentId } = locationInput;
+
+          // LocationTmap 생성
+          await tx.locationTmap.create({
+            data: {
+              ...locationDataWithoutAppointmentId,
+              appointment: {
+                connect: {
+                  id: appointment.id,
+                },
+              },
+            },
+          });
+          console.log("api/appointment--POST 위치 정보 저장 완료:", locationInput);
+        }
+
+        // 3. 참가자 추가
+        if (participants && participants.length > 0) {
+          await Promise.all(
+            participants.map((participantId: number) =>
+              tx.appointmentParticipant.create({
+                data: {
+                  appointment: {
+                    connect: {
+                      id: appointment.id,
+                    },
+                  },
+                  user: {
+                    connect: {
+                      id: participantId,
+                    },
+                  },
+                  status: "PENDING", // 기본 상태 설정
+                },
+              })
+            )
+          );
+        }
+
+        // 4. 알림 설정 추가
+        if (notifications && notifications.length > 0) {
+          await Promise.all(
+            notifications.map((notification) =>
+              tx.appointmentNotification.create({
+                data: {
+                  appointment: {
+                    connect: {
+                      id: appointment.id,
+                    },
+                  },
+                  title: notification.title || `${title} 약속 알림`,
+                  message: "", // 기본값 설정
+                  // 타입 검증 후 사용
+                  type: isValidNotificationType(notification.type) ? notification.type : "PUSH",
+                  minutesBefore: notification.minutesBefore,
+                },
+              })
+            )
+          );
+        }
+
+        return appointment;
       });
-
-      // 참가자 추가
-      if (participants && participants.length > 0) {
-        await Promise.all(
-          participants.map((participantId: number) =>
-            client.appointmentParticipant.create({
-              data: {
-                appointment: {
-                  connect: {
-                    id: appointment.id,
-                  },
-                },
-                user: {
-                  connect: {
-                    id: participantId,
-                  },
-                },
-              },
-            })
-          )
-        );
-      }
-
-      // 알림 설정 추가
-      if (notifications && notifications.length > 0) {
-        await Promise.all(
-          notifications.map((notification: any) =>
-            client.appointmentNotification.create({
-              data: {
-                appointment: {
-                  connect: {
-                    id: appointment.id,
-                  },
-                },
-                title: notification.title || `${title} 약속 알림`,
-                message: notification.message,
-                type: notification.type || "PUSH",
-                minutesBefore: notification.minutesBefore,
-              },
-            })
-          )
-        );
-      }
 
       return res.status(201).json({
         ok: true,
-        appointment,
+        appointment: result,
       });
     } catch (error) {
       console.error("약속 생성 오류:", error);

@@ -1,7 +1,7 @@
 import React from "react";
 import { twMerge } from "tailwind-merge"; // tailwind-merge를 사용하면 클래스 충돌을 방지할 수 있습니다
 
-export type ButtonVariant = "primary" | "secondary" | "danger" | "outline";
+export type ButtonVariant = "primary" | "secondary" | "danger" | "outline" | "light"; // "light" 추가
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -38,6 +38,8 @@ export const ModButton: React.FC<ButtonProps> = ({
     danger: "bg-red-600 hover:bg-red-700 text-white focus:ring-red-300 disabled:opacity-60",
     outline:
       "bg-transparent border border-blue-600 text-blue-600 hover:bg-blue-50 focus:ring-blue-300 disabled:opacity-60",
+    light:
+      "bg-transparent text-gray-700 hover:bg-gray-100 border border-gray-300 focus:ring-gray-500", // "light" 스타일 추가
   };
 
   // 너비에 따른 스타일

@@ -3,8 +3,9 @@ import { useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import Layout from "@/components/Layout";
-import { useFetch } from "@libs/client/useFetch";
 import ModButton from "@/components/ModButton";
+import { useQuery } from "@tanstack/react-query";
+import { getAppointments } from "@/apiLibs/appointments";
 
 // 날짜 포맷 함수
 const formatDate = (dateStr: string) => {
@@ -28,7 +29,16 @@ export default function AppointmentList() {
   const [tab, setTab] = useState<"all" | "organized" | "participating">("all");
 
   // 약속 목록 가져오기
-  const { data, loading, fetch: refetch } = useFetch(`/api/appointments?type=${tab}`);
+  const {
+    data,
+    isLoading: loading,
+    refetch,
+  } = useQuery({
+    queryKey: ["appointments", tab],
+    queryFn: () => getAppointments(tab),
+    staleTime: 60000, // 1분 동안 캐시 데이터 유지 (필요에 따라 조정)
+  });
+  console.log("AppointmentList: data: ", data);
 
   // 날짜별로 약속 그룹화
   const groupAppointmentsByDate = (appointments: any[]) => {
@@ -88,21 +98,24 @@ export default function AppointmentList() {
     let appointments: any[] = [];
 
     if (tab === "all") {
-      appointments = [
-        ...(data.appointments.organized || []),
-        ...(data.appointments.participating || []),
-      ];
+      if (Array.isArray(data.appointments)) {
+        appointments = data.appointments;
+      } else {
+        appointments = [
+          ...(data.appointments.organized || []),
+          ...(data.appointments.participating || []),
+        ];
+      }
     } else {
-      appointments = data.appointments || [];
+      appointments = Array.isArray(data.appointments)
+        ? data.appointments
+        : [...(data.appointments.organized || []), ...(data.appointments.participating || [])];
     }
 
     if (appointments.length === 0) {
       return (
         <div className="py-8 text-center">
           <p className="text-gray-500">약속이 없습니다.</p>
-          <ModButton onClick={() => router.push("/appointments/create")} className="mt-4">
-            약속 만들기
-          </ModButton>
         </div>
       );
     }

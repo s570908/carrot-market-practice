@@ -11,7 +11,16 @@ declare global {
   }
 }
 
-export const useMap = (mapRef: React.RefObject<HTMLDivElement>) => {
+// useMap 매개변수에 옵션 추가
+interface UseMapOptions {
+  isClickable?: boolean;
+  isZummable?: boolean; // 줌 기능 제어 옵션 추가
+}
+
+export const useMap = (
+  mapRef: React.RefObject<HTMLDivElement>,
+  { isClickable = true, isZummable = true }: UseMapOptions = {}
+) => {
   const [mapInstance, setMapInstance] = useState<TMap | null>(null);
   const [currentCoord, setCurrentCoord] = useState<TMapLatLng | null>(null);
 
@@ -50,6 +59,10 @@ export const useMap = (mapRef: React.RefObject<HTMLDivElement>) => {
   });
 
   const currentAddress = addressData?.addressInfo?.fullAddress || "";
+  const addressInfo = addressData?.addressInfo || null;
+
+  console.log("useMap--fullAddress: ", currentAddress);
+  console.log("useMap--addressInfo: ", addressInfo);
 
   const setCenterToSelectedCoord = useCallback(
     (position: TMapLatLng) => {
@@ -136,11 +149,22 @@ export const useMap = (mapRef: React.RefObject<HTMLDivElement>) => {
 
   // 맵 이벤트 처리
   useEffect(() => {
-    if (!mapInstance || !TmapRef.current) {
+    if (!mapInstance || !TmapRef.current || !mapRef.current) {
       return;
     }
 
     const Tmapv2 = TmapRef.current;
+
+    // 수정된 휠 이벤트 핸들러
+    const handleWheel = (e: WheelEvent) => {
+      if (!isZummable) {
+        console.log("handleMouseWheel 이벤트 발생");
+        e.preventDefault();
+        e.stopPropagation();
+
+        return false;
+      }
+    };
 
     const handleMapClick = (e: TMapEvent) => {
       console.log("맵 클릭 이벤트:");
@@ -204,22 +228,42 @@ export const useMap = (mapRef: React.RefObject<HTMLDivElement>) => {
       }
     };
 
-    // 이벤트 리스너 등록 - 올바른 이벤트 이름 사용
+    // 이벤트 리스너 등록 - isClickable에 따라 click 이벤트 조건부 등록
     console.log("이벤트 리스너 등록 시도");
-    //mapInstance.addListener("click", onClick);
-    mapInstance.addListener("click", handleMapClick);
+    if (isClickable) {
+      mapInstance.addListener("click", handleMapClick);
+    }
     mapInstance.addListener("zoom_changed", handleZoomChanged);
     mapInstance.addListener("dragstart", handleDragStart);
     mapInstance.addListener("dragend", () => console.log("드래그 종료"));
+    // 이벤트 리스너 등록
+    if (!isZummable && mapRef.current) {
+      // 캡처 단계에서 이벤트 처리
+      mapRef.current.addEventListener("wheel", handleWheel, {
+        passive: false,
+        capture: true,
+      });
+    }
+
+    const mapElement = mapRef.current; // Copy mapRef.current to a local variable
 
     return () => {
-      //mapInstance.removeListener("click", onClick);
-      mapInstance.removeListener("click", handleMapClick);
+      if (isClickable) {
+        mapInstance.removeListener("click", handleMapClick);
+      }
       mapInstance.removeListener("zoom_changed", handleZoomChanged);
       mapInstance.removeListener("dragstart", handleDragStart);
       mapInstance.removeListener("dragend", () => {});
+
+      // 줌 제어 이벤트 리스너 제거
+      if (!isZummable && mapElement) {
+        mapElement.removeEventListener("wheel", handleWheel, {
+          passive: false,
+          capture: true,
+        } as any);
+      }
     };
-  }, [currentCoord, mapInstance]);
+  }, [currentCoord, mapInstance, isClickable, isZummable, mapRef]);
 
   // 마커 업데이트 함수
   const updateMarker = useCallback(
@@ -318,10 +362,10 @@ export const useMap = (mapRef: React.RefObject<HTMLDivElement>) => {
     lastZoomCenterRef.current = null;
   }, []);
 
-  console.log("useMap--mapInstance: ", mapInstance);
-  console.log("useMap--coord: ", coord);
-  console.log("useMap--currentAddress: ", currentAddress);
-  console.log("useMap--currentMarker: ", currentMarkerRef.current);
+  // console.log("useMap--mapInstance: ", mapInstance);
+  // console.log("useMap--coord: ", coord);
+  // console.log("useMap--currentAddress: ", currentAddress);
+  // console.log("useMap--currentMarker: ", currentMarkerRef.current);
 
   return {
     mapInstance,
@@ -329,7 +373,10 @@ export const useMap = (mapRef: React.RefObject<HTMLDivElement>) => {
     coord,
     setCoord,
     currentAddress,
+    addressInfo,
     initMapModal,
     currentMarker: currentMarkerRef.current, // 마커 참조 반환 (필요시 사용)
+    isClickable, // API의 일부로 isClickable 상태 노출
+    isZummable, // API로 isZummable 상태 노출
   };
 };

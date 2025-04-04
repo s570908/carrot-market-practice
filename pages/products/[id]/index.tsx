@@ -12,7 +12,6 @@ import {
   Status,
   User,
 } from "@prisma/client";
-// import useMutation from "@libs/client/useMutation";
 import { cls, parseId } from "@libs/utils";
 import useUser from "@libs/client/useUser";
 import ImgComponent from "@components/ImgComponent";
@@ -671,7 +670,7 @@ const ItemDetail: NextPage = () => {
                         imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${product?.images[0]?.imageId}/public`}
                         isLayout={true}
                         layoutHeight="h-56"
-                        clsProps="mt-6 mb-4 bg-slate-300"
+                        clsProps="mt-6 mb-4 bg-slate-300 object-cover"
                         imgName={product.name}
                       />
                       <h3 className="-mb-1 text-base text-gray-700">{product.name}</h3>

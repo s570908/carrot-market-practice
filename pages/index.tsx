@@ -12,12 +12,13 @@ import client from "@libs/client/client";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import useSocket from "@libs/client/useSocket";
-import { ChatRoomType, ProductPaging, ProductWithFav, UserID } from "apiLibs/atypes";
+import { ChatRoomType, UserID } from "apiLibs/atypes";
 import { getChatRoomIDs } from "apiLibs/chatRooms";
 import { getProductsPaging } from "apiLibs/products";
 import { ClipLoader } from "react-spinners"; // react-spinners에서 ClipLoader 가져오기
 import { getUnreadMessagesForUser } from "apiLibs/chats"; // 새로운 API 함수 가져오기
 import React from "react";
+import { ProductPaging } from "@/types";
 
 export interface ProductWithCount extends Product {
   favs: Fav[];

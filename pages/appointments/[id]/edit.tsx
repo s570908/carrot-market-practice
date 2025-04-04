@@ -1,179 +1,246 @@
-// c:\Users\Song\Documents\DebugJS\appointment-nextjs\pages\appointments\[id]\edit.tsx
-import { useState, useEffect } from "react";
-import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useRouter } from "next/router";
 import Layout from "@/components/Layout";
+import Button from "@/components/Button";
 import ModButton from "@/components/ModButton";
 import Input from "@/components/Input";
 import TextArea from "@/components/TextArea";
-import MapLocation from "@/components/MapLocation";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import Image from "next/image";
-import { getAppointment, getFriends, updateAppointment } from "@/apiLibs/appointments";
 import { parseId } from "@libs/utils";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { getAppointment, updateAppointment, getFriends } from "@/apiLibs/appointments";
+import { toast } from "react-toastify";
+import useUser from "@libs/client/useUser";
+import MapViewer from "@/components/MapViewer";
+import { useAwaitableModal } from "@libs/client/useAwaitableModal";
+import MapModal from "@/components/MapModal";
+import { TmapAddressInfo } from "@/types";
+import ImgComponent from "@components/ImgComponent";
+import { AppointmentUpdateRequest } from "@/types";
 
-// DatePicker, TimePicker 컴포넌트 (실제 앱에서는 기존 구현을 사용)
-const DatePicker = ({ onChange, value, className }: any) => (
+// 참가자 타입
+interface User {
+  id: number;
+  name: string;
+  avatar?: string;
+}
+
+// 위치 데이터 인터페이스 추가
+interface LocationData {
+  latitude: number;
+  longitude: number;
+  locationName: string;
+  fullAddress?: string;
+  zoomLevel: number;
+  addressInfo?: TmapAddressInfo | null;
+}
+
+// 간소화된 DatePicker, TimePicker 컴포넌트 (실제로는 기존 구현된 컴포넌트 사용)
+const DatePicker = ({ onChange, className, value }: any) => (
   <input
     type="date"
     onChange={(e) => onChange(new Date(e.target.value))}
-    value={value ? new Date(value).toISOString().split("T")[0] : ""}
     className={className}
+    value={value ? value.toISOString().split("T")[0] : ""}
   />
 );
 
-const TimePicker = ({ onChange, value, className }: any) => (
+const TimePicker = ({ onChange, className, value }: any) => (
   <input
     type="time"
     onChange={(e) => onChange(new Date(`2000-01-01T${e.target.value}`))}
-    value={value ? new Date(value).toISOString().substr(11, 5) : ""}
     className={className}
+    value={value ? value.toTimeString().split(" ")[0].substring(0, 5) : ""}
   />
 );
 
-interface EditForm {
+// 약속 수정 폼 인터페이스
+export interface EditAppointmentForm {
   title: string;
   description: string;
   date: Date;
   startTime: Date;
   endTime: Date;
-}
-
-interface LocationData {
-  name: string;
-  address: string;
-  fullAddressRoad: string;
-  latitude: number;
-  longitude: number;
-  zoomLevel: number;
+  location?: LocationData;
 }
 
 export default function EditAppointment() {
   const router = useRouter();
-  const id = (router.query.id !== undefined ? parseId(router.query.id) : 0) ?? 0;
+  const id = parseId(router.query.id);
+  const { user } = useUser();
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [startTime, setStartTime] = useState<Date | null>(null);
+  const [endTime, setEndTime] = useState<Date | null>(null);
+  const [dateError, setDateError] = useState<string>("");
+  const [timeError, setTimeError] = useState<string>("");
+  const [location, setLocation] = useState<LocationData | null>(null);
+  const [selectedParticipants, setSelectedParticipants] = useState<number[]>([]);
+  const [notifications, setNotifications] = useState<{ title: string; minutesBefore: number }[]>(
+    []
+  );
+
+  const [selectedLocationByAddressInfo, setSelectedLocationByAddressInfo] = useState<{
+    latitude: number;
+    longitude: number;
+    addressInfo: TmapAddressInfo | null;
+  } | null>(null);
+
+  const selectedLocation = selectedLocationByAddressInfo;
+
+  console.log("edit--selectedLocation: ", selectedLocation);
+
+  const { openModal: openMapModal, renderModal } = useAwaitableModal((modal, params) => {
+    return (
+      <MapModal
+        isOpen={modal.isVisible}
+        onClose={() => modal.closeWithResult(null)}
+        onLocationSelectAddressInfo={(
+          latitude: number,
+          longitude: number,
+          addressInfo: TmapAddressInfo | null
+        ) => modal.closeWithResult({ latitude, longitude, addressInfo })}
+      />
+    );
+  });
+
   const {
     register,
     handleSubmit,
-    formState: { errors },
     setValue,
+    formState: { errors },
     watch,
-  } = useForm<EditForm>();
-  const [location, setLocation] = useState<LocationData | null>(null);
-  const [showMapModal, setShowMapModal] = useState(false);
-  const [selectedParticipants, setSelectedParticipants] = useState<number[]>([]);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  } = useForm<EditAppointmentForm>();
 
-  // 약속 정보 조회
-  // const { data: appointmentData, error: appointmentError } = useSWR(
-  //   id ? `/api/appointments/${id}` : null
-  // );
+  // selectedLocationByAddressInfo가 변경될 때마다 form의 location 값을 업데이트
+  useEffect(() => {
+    if (selectedLocationByAddressInfo) {
+      const { latitude, longitude, addressInfo } = selectedLocationByAddressInfo;
+      const locationData: LocationData = {
+        latitude,
+        longitude,
+        locationName: addressInfo?.buildingName || "선택된 위치",
+        fullAddress: addressInfo?.fullAddress,
+        zoomLevel: 15,
+        addressInfo, // Include the addressInfo property
+      };
+      setValue("location", locationData);
+    }
+  }, [selectedLocationByAddressInfo, setValue]);
 
-  // 약속 정보 조회
-  const {
-    data: appointmentData,
-    error: appointmentError,
-    isLoading,
-  } = useQuery({
-    queryKey: ["appointment", id], // 쿼리 키
-    queryFn: () => getAppointment(id!), // 리팩토링된 함수 사용
-    enabled: !!id, // id가 존재할 때만 쿼리 실행
+  // 약속 정보 가져오기
+  const { data, error, isLoading } = useQuery({
+    queryKey: ["appointment", id],
+    queryFn: () => getAppointment(id!),
+    enabled: !!id,
   });
 
-  // 친구 목록 조회
-  // const { data: friendsData } = useSWR<{ ok: boolean; friends: User[] }>("/api/users/friends");
-  // 친구 목록 조회
-  const {
-    data: friendsData,
-    error: friendsError,
-    isLoading: isFriendsLoading,
-  } = useQuery({
-    queryKey: ["friends"], // 쿼리 키
-    queryFn: () => getFriends(), // 리팩토링된 함수 사용
+  // 친구 목록 가져오기
+  const { data: friendsData, isLoading: friendsLoading } = useQuery({
+    queryKey: ["friends"],
+    queryFn: getFriends,
   });
 
-  // 약속 수정 뮤테이션
-  const {
-    mutate: updateAppointmentMutation,
-    isPending: loading,
-    data,
-    error,
-  } = useMutation({
-    mutationFn: (appointmentData: any) => updateAppointment(id, appointmentData), // API 함수 호출
-    onSuccess: (data) => {
-      if (data.ok) {
-        router.push(`/appointments/${id}`); // 성공 시 리다이렉트
-      }
+  const friends = friendsData?.friends || [];
+
+  // 약속 업데이트 뮤테이션
+  const { mutate: update, isPending: updateLoading } = useMutation({
+    mutationFn: (appointmentData: any) => updateAppointment(id!, appointmentData),
+    onSuccess: () => {
+      toast.success("약속이 성공적으로 수정되었습니다.");
+      router.push(`/appointments/${id}`);
     },
     onError: (error) => {
-      console.error("약속 수정 중 오류 발생:", error); // 오류 처리
+      toast.error("약속 수정 중 오류가 발생했습니다.");
+      console.error(error);
     },
   });
 
-  // 약속 정보로 폼 초기화
   useEffect(() => {
-    if (appointmentData?.appointment) {
-      const { appointment } = appointmentData;
-
+    // 데이터가 로드되면 폼 채우기
+    if (data?.appointment) {
+      const appointment = data.appointment;
       setValue("title", appointment.title);
       setValue("description", appointment.description || "");
-      setValue("date", new Date(appointment.date));
-      setValue("startTime", new Date(appointment.startTime));
-      setValue("endTime", new Date(appointment.endTime));
 
-      setLocation({
-        name: appointment.locationName,
-        address: appointment.locationAddress,
-        fullAddressRoad: appointment.roadAddress || "",
-        latitude: appointment.latitude,
-        longitude: appointment.longitude,
-        zoomLevel: appointment.zoomLevel || 15,
-      });
+      const dateObj = new Date(appointment.date);
+      const startTimeObj = new Date(appointment.startTime);
+      const endTimeObj = new Date(appointment.endTime);
 
-      setSelectedParticipants(appointment.participants.map((p: any) => p.user.id));
+      setSelectedDate(dateObj);
+      setStartTime(startTimeObj);
+      setEndTime(endTimeObj);
 
-      setNotifications(
-        appointment.notifications.map((n: any) => ({
-          id: n.id,
-          title: n.title,
-          minutesBefore: n.minutesBefore,
-          type: n.type,
-          message: n.message,
-        }))
-      );
+      // 위치 정보가 있는 경우 - locationData 인터페이스 맞춤
+      if (appointment.locationTmap) {
+        const locationData: LocationData = {
+          locationName: appointment.locationTmap.locationName || "선택된 위치",
+          latitude: appointment.locationTmap.latitude,
+          longitude: appointment.locationTmap.longitude,
+          fullAddress: appointment.locationTmap.fullAddress,
+          zoomLevel: appointment.locationTmap.zoomLevel || 15,
+          addressInfo: (appointment.locationTmap as any).addressInfo ?? null,
+        };
+
+        setLocation(locationData);
+        setValue("location", locationData);
+      }
+
+      // 참가자 정보가 있는 경우
+      if (appointment.participants) {
+        setSelectedParticipants(appointment.participants.map((p: any) => p.userId));
+      }
+
+      // 알림 정보가 있는 경우
+      if (appointment.notifications) {
+        setNotifications(
+          appointment.notifications.map((n: any) => ({
+            title: n.title,
+            minutesBefore: n.minutesBefore,
+          }))
+        );
+      }
     }
-  }, [appointmentData, setValue]);
+  }, [data, setValue]);
 
-  // 수정 결과 처리
+  // 사용자가 약속 주최자인지 확인
   useEffect(() => {
-    if (data?.ok) {
+    if (data && user && data.userRole !== "organizer") {
+      toast.error("약속 주최자만 수정할 수 있습니다.");
       router.push(`/appointments/${id}`);
     }
-  }, [data, router, id]);
+  }, [data, user, router, id]);
 
-  // 지도에서 위치 선택
-  const handleLocationSelect = (locationData: LocationData) => {
-    setLocation(locationData);
-    setShowMapModal(false);
-  };
-
-  // 참가자 선택 처리
-  const handleParticipantToggle = (userId: number) => {
-    setSelectedParticipants((prev) => {
-      if (prev.includes(userId)) {
-        return prev.filter((id) => id !== userId);
+  // 지도 모달 열기 핸들러
+  const handleOpenMapModal = async () => {
+    try {
+      const result = await openMapModal(null);
+      console.log("Modal closed--result: ", result);
+      if (result) {
+        const { latitude, longitude, addressInfo } = result;
+        setSelectedLocationByAddressInfo({ latitude, longitude, addressInfo });
       } else {
-        return [...prev, userId];
+        console.log("Modal closed without selecting a location.");
+        setSelectedLocationByAddressInfo(null); // 선택된 위치를 초기화
       }
-    });
+    } catch (error) {
+      console.error("Error opening modal:", error);
+    }
   };
 
-  // 알림 추가
+  // 참가자 선택 토글 핸들러
+  const handleParticipantToggle = (userId: number) => {
+    setSelectedParticipants((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+    );
+  };
+
+  // 알림 추가 핸들러
   const addNotification = () => {
-    setNotifications([...notifications, { title: "약속 알림", minutesBefore: 30, type: "PUSH" }]);
+    setNotifications([...notifications, { title: "", minutesBefore: 30 }]);
   };
 
-  // 알림 수정
-  const updateNotification = (index: number, field: string, value: any) => {
+  // 알림 업데이트 핸들러
+  const updateNotification = (index: number, field: string, value: string | number) => {
     const updatedNotifications = [...notifications];
     updatedNotifications[index] = {
       ...updatedNotifications[index],
@@ -182,216 +249,299 @@ export default function EditAppointment() {
     setNotifications(updatedNotifications);
   };
 
-  // 알림 삭제
+  // 알림 제거 핸들러
   const removeNotification = (index: number) => {
     setNotifications(notifications.filter((_, i) => i !== index));
   };
 
-  // 수정 제출
-  const onSubmit = (formData: EditForm) => {
-    if (!location) {
-      alert("약속 장소를 선택해주세요.");
+  const onSubmit = (formData: EditAppointmentForm) => {
+    setDateError("");
+    setTimeError("");
+
+    if (!selectedDate) {
+      setDateError("날짜를 선택해주세요.");
       return;
     }
 
-    updateAppointmentMutation({
-      ...formData,
-      location,
+    if (!startTime || !endTime) {
+      setTimeError("시작 시간과 종료 시간을 모두 선택해주세요.");
+      return;
+    }
+
+    // 시작 시간이 종료 시간보다 늦으면 오류
+    if (startTime >= endTime) {
+      setTimeError("시작 시간은 종료 시간보다 빨라야 합니다.");
+      return;
+    }
+
+    // 업데이트 데이터 정확하게 구성 - 위치 정보는 선택적으로 포함
+    const baseUpdateData = {
+      title: formData.title,
+      description: formData.description,
+      date: selectedDate!,
+      startTime: startTime!,
+      endTime: endTime!,
       participants: selectedParticipants,
-      notifications,
-    });
+      notifications: notifications.map((notification) => ({
+        title: notification.title,
+        minutesBefore: notification.minutesBefore,
+        type: "PUSH",
+      })),
+    };
+
+    // 위치 정보가 있는 경우에만 포함
+    const updateData: AppointmentUpdateRequest = selectedLocationByAddressInfo
+      ? {
+          ...baseUpdateData,
+          location: {
+            latitude: selectedLocationByAddressInfo.latitude,
+            longitude: selectedLocationByAddressInfo.longitude,
+            //locationName: selectedLocationByAddressInfo.addressInfo?.buildingName || "선택된 위치",
+            //fullAddress: selectedLocationByAddressInfo.addressInfo?.fullAddress,
+            //zoomLevel: 15,
+            addressInfo: selectedLocationByAddressInfo.addressInfo ?? null,
+          },
+        }
+      : baseUpdateData; // 위치 정보가 없으면 기존 위치 유지
+
+    console.log("onSubmit--약속 수정 데이터:", updateData);
+    update(updateData);
   };
 
-  // 권한 확인
-  if (appointmentData && appointmentData.userRole !== "organizer") {
-    return (
-      <Layout seoTitle="접근 거부" title="접근 거부">
-        <div className="p-4">
-          <p>이 약속을 수정할 권한이 없습니다.</p>
-          <ModButton onClick={() => router.back()} className="mt-4">
-            돌아가기
-          </ModButton>
-        </div>
-      </Layout>
-    );
-  }
+  if (isLoading) return <Layout seoTitle="로딩 중">약속 정보를 불러오는 중입니다...</Layout>;
+  if (error) return <Layout seoTitle="오류">약속 정보를 불러오는 중 오류가 발생했습니다.</Layout>;
 
-  if (appointmentError) {
-    return (
-      <Layout seoTitle="오류" title="오류">
-        <div className="p-4">
-          <p>약속 정보를 불러오는 중 오류가 발생했습니다.</p>
-          <ModButton onClick={() => router.back()} className="mt-4">
-            돌아가기
-          </ModButton>
-        </div>
-      </Layout>
-    );
-  }
+  const currentLocation = watch("location");
 
   return (
-    <Layout seoTitle="약속 수정" title="약속 수정">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 p-4">
-        <Input
-          register={register("title", { required: "제목은 필수입니다." })}
-          name="title"
-          label="약속 제목"
-          type="text"
-          placeholder="약속 제목을 입력하세요"
-          //error={errors.title?.message}
-        />
+    <>
+      {renderModal()}
+      <Layout seoTitle="약속 수정" title="약속 수정" canGoBack backUrl={`/appointments/${id}`}>
+        {/* 스크롤 구조 수정 */}
+        <div className="pb-20">
+          <div className="space-y-8 px-4 py-6">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              {/* 약속 제목 */}
+              <Input
+                label="약속 제목"
+                name="title"
+                type="text"
+                register={register("title", { required: "약속 제목은 필수입니다" })}
+                placeholder="약속 제목을 입력하세요"
+                error={errors.title?.message}
+              />
 
-        <TextArea
-          register={register("description")}
-          name="description"
-          label="약속 설명"
-          placeholder="약속에 대한 자세한 내용을 입력하세요"
-        />
+              {/* 약속 설명 */}
+              <TextArea
+                label="약속 설명"
+                name="description"
+                register={register("description")}
+                placeholder="약속에 대한 자세한 설명을 입력하세요 (선택사항)"
+              />
 
-        <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">날짜</label>
-          <DatePicker
-            onChange={(date: Date) => setValue("date", date)}
-            value={watch("date")}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">시작 시간</label>
-            <TimePicker
-              onChange={(time: Date) => setValue("startTime", time)}
-              value={watch("startTime")}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">종료 시간</label>
-            <TimePicker
-              onChange={(time: Date) => setValue("endTime", time)}
-              value={watch("endTime")}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">약속 장소</label>
-
-          {location ? (
-            <div className="rounded-md border border-gray-300 p-4">
-              <p className="font-medium">{location.name}</p>
-              <p className="text-sm text-gray-600">{location.address}</p>
-              <div className="mt-2 flex space-x-2">
-                <ModButton onClick={() => setShowMapModal(true)}>장소 변경</ModButton>
-              </div>
-            </div>
-          ) : (
-            <ModButton onClick={() => setShowMapModal(true)} size="large">
-              지도에서 장소 선택
-            </ModButton>
-          )}
-        </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">참석자</label>
-          <div className="max-h-40 overflow-y-auto rounded-md border border-gray-300 p-2">
-            {friendsData?.friends?.map((friend) => (
-              <div key={friend.id} className="flex items-center p-2 hover:bg-gray-100">
-                <input
-                  type="checkbox"
-                  id={`friend-${friend.id}`}
-                  checked={selectedParticipants.includes(friend.id)}
-                  onChange={() => handleParticipantToggle(friend.id)}
-                  className="mr-2"
+              {/* 날짜 선택 */}
+              <div className="space-y-2">
+                <label className="mb-1 block text-sm font-medium text-gray-700">날짜</label>
+                <DatePicker
+                  onChange={(date: Date) => setSelectedDate(date)}
+                  value={selectedDate}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
-                <label htmlFor={`friend-${friend.id}`} className="flex items-center">
-                  {friend.avatar ? (
-                    <Image
-                      src={friend.avatar}
-                      alt={friend.name}
-                      width={32}
-                      height={32}
-                      className="mr-2 rounded-full"
-                    />
-                  ) : (
-                    <div className="mr-2 h-8 w-8 rounded-full bg-gray-300"></div>
+                {dateError && <p className="mt-1 text-sm text-red-600">{dateError}</p>}
+              </div>
+
+              {/* 시간 선택 */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="mb-1 block text-sm font-medium text-gray-700">시작 시간</label>
+                  <TimePicker
+                    onChange={(time: Date) => setStartTime(time)}
+                    value={startTime}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                  {timeError && !startTime && (
+                    <p className="mt-1 text-sm text-red-600">{timeError}</p>
                   )}
-                  <span>{friend.name}</span>
-                </label>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="mb-1 block text-sm font-medium text-gray-700">종료 시간</label>
+                  <TimePicker
+                    onChange={(time: Date) => setEndTime(time)}
+                    value={endTime}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                  {timeError && startTime && !endTime && (
+                    <p className="mt-1 text-sm text-red-600">{timeError}</p>
+                  )}
+                </div>
               </div>
-            ))}
-            {(!friendsData?.friends || friendsData.friends.length === 0) && (
-              <p className="py-2 text-center text-gray-500">선택 가능한 친구가 없습니다.</p>
-            )}
-          </div>
-        </div>
 
-        <div>
-          <div className="mb-1 flex items-center justify-between">
-            <label className="text-sm font-medium text-gray-700">알림 설정</label>
-            <button type="button" onClick={addNotification} className="text-sm text-blue-500">
-              + 알림 추가
-            </button>
-          </div>
-
-          <div className="space-y-2">
-            {notifications.map((notification, index) => (
-              <div
-                key={index}
-                className="flex items-center space-x-2 rounded-md border border-gray-300 p-2"
-              >
-                <input
-                  type="text"
-                  value={notification.title}
-                  onChange={(e) => updateNotification(index, "title", e.target.value)}
-                  className="flex-1 rounded-md border border-gray-300 px-3 py-2"
-                  placeholder="알림 제목"
-                />
-                <select
-                  value={notification.minutesBefore}
-                  onChange={(e) =>
-                    updateNotification(index, "minutesBefore", Number(e.target.value))
-                  }
-                  className="rounded-md border border-gray-300 px-3 py-2"
-                >
-                  <option value="5">5분 전</option>
-                  <option value="15">15분 전</option>
-                  <option value="30">30분 전</option>
-                  <option value="60">1시간 전</option>
-                  <option value="1440">하루 전</option>
-                </select>
-                <button
-                  type="button"
-                  onClick={() => removeNotification(index)}
-                  className="text-red-500"
-                >
-                  삭제
-                </button>
+              {/* 위치 정보 표시 섹션 */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="mb-1 block text-sm font-medium text-gray-700">약속 장소</h3>
+                  <ModButton
+                    onClick={handleOpenMapModal}
+                    variant="outline"
+                    size="small"
+                    className="flex items-center"
+                    type="button"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                      className="mr-1 h-4 w-4"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
+                      />
+                    </svg>
+                    장소 변경
+                  </ModButton>
+                </div>
+                {selectedLocationByAddressInfo || currentLocation ? (
+                  <div className="space-y-4">
+                    <div className="rounded-md border border-gray-300 bg-white p-4">
+                      <h4 className="font-medium text-gray-900">
+                        {selectedLocationByAddressInfo
+                          ? selectedLocationByAddressInfo.addressInfo?.buildingName || "선택된 위치"
+                          : currentLocation?.locationName ?? "위치 정보 없음"}
+                      </h4>
+                      <p className="text-sm text-gray-600">
+                        {selectedLocationByAddressInfo
+                          ? selectedLocationByAddressInfo.addressInfo?.fullAddress
+                          : currentLocation?.fullAddress ?? "위치 정보 없음"}
+                      </p>
+                    </div>
+                    {/* 선택한 위치를 지도에 표시 */}
+                    <div className="h-60 w-full overflow-hidden rounded-lg">
+                      <MapViewer
+                        lat={
+                          selectedLocationByAddressInfo?.latitude ?? currentLocation?.latitude ?? 0
+                        }
+                        lng={
+                          selectedLocationByAddressInfo?.longitude ??
+                          currentLocation?.longitude ??
+                          0
+                        }
+                        name={
+                          selectedLocationByAddressInfo?.addressInfo?.buildingName ||
+                          currentLocation?.locationName
+                        }
+                        zoomLevel={15}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-4 text-center text-sm text-gray-500">
+                    <p>
+                      등록된 위치 정보가 없습니다. &apos;장소 변경&apos; 버튼을 눌러 위치를
+                      설정해주세요.
+                    </p>
+                  </div>
+                )}
               </div>
-            ))}
+
+              {/* 참석자 섹션 */}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">참석자</label>
+                {friendsLoading ? (
+                  <p className="py-2 text-center text-gray-500">참가자 목록을 불러오는 중...</p>
+                ) : friends.length > 0 ? (
+                  friends.map((friend: User) => (
+                    <div key={friend.id} className="flex items-center p-2 hover:bg-gray-100">
+                      <input
+                        type="checkbox"
+                        id={`friend-${friend.id}`}
+                        checked={selectedParticipants.includes(friend.id)}
+                        onChange={() => handleParticipantToggle(friend.id)}
+                        className="mr-2"
+                      />
+                      {friend.avatar ? (
+                        <ImgComponent
+                          width={32}
+                          height={32}
+                          clsProps="mr-2 rounded-full"
+                          imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${friend.avatar}/public`}
+                          imgName={friend.name}
+                        />
+                      ) : (
+                        <div className="mr-2 h-8 w-8 rounded-full bg-gray-300"></div>
+                      )}
+                      <span>{friend.name}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="py-2 text-center text-gray-500">선택 가능한 친구가 없습니다.</p>
+                )}
+              </div>
+
+              {/* 알림 설정 섹션 */}
+              <div>
+                <div className="mb-1 flex items-center justify-between">
+                  <label className="text-sm font-medium text-gray-700">알림 설정</label>
+                  <button type="button" onClick={addNotification} className="text-sm text-blue-500">
+                    + 알림 추가
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {notifications.map((notification, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center space-x-2 rounded-md border border-gray-300 p-2"
+                    >
+                      <input
+                        type="text"
+                        value={notification.title}
+                        onChange={(e) => updateNotification(index, "title", e.target.value)}
+                        className="flex-1 rounded-md border border-gray-300 px-3 py-2"
+                        placeholder="알림 제목"
+                      />
+                      <select
+                        value={notification.minutesBefore}
+                        onChange={(e) =>
+                          updateNotification(index, "minutesBefore", Number(e.target.value))
+                        }
+                        className="rounded-md border border-gray-300 py-2 pl-3 pr-9"
+                      >
+                        <option value="5">5분 전</option>
+                        <option value="15">15분 전</option>
+                        <option value="30">30분 전</option>
+                        <option value="60">1시간 전</option>
+                        <option value="1440">하루 전</option>
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => removeNotification(index)}
+                        className="text-red-500"
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 제출 버튼 */}
+              <div className="pt-4">
+                <Button text={updateLoading ? "저장 중..." : "변경 내용 저장하기"} />
+              </div>
+            </form>
           </div>
         </div>
-
-        <div className="flex justify-between">
-          <ModButton
-            onClick={() => router.back()}
-            type="button"
-            className="bg-gray-500 hover:bg-gray-600"
-          >
-            취소
-          </ModButton>
-          <ModButton type="submit" isLoading={true}>
-            약속 수정
-          </ModButton>
-        </div>
-      </form>
-
-      {showMapModal && (
-        <MapLocation onClose={() => setShowMapModal(false)} onSelect={handleLocationSelect} />
-      )}
-    </Layout>
+      </Layout>
+    </>
   );
 }

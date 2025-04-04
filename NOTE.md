@@ -474,6 +474,166 @@ const currentAddress = addressData?.addressInfo?.fullAddress || "";
 6. API 요청: useQuery를 통해 좌표→주소 변환 API 호출
 7. UI 반영: 받아온 주소 정보를 selectedAddress로 화면에 표시
 
+# useFetch 훅 사용법 가이드
+
+useFetch 훅은 React Query v5를 활용한 데이터 요청 커스텀 훅으로, API 요청을 간편하게 관리할 수 있습니다.
+
+## 기본 사용법
+
+```tsx
+import useFetch from "@libs/client/useFetch";
+
+function ProductList() {
+  // 기본 GET 요청
+  const { data, loading, error } = useFetch("/api/products");
+
+  if (loading) return <p>로딩 중...</p>;
+  if (error) return <p>오류가 발생했습니다</p>;
+
+  return (
+    <div>
+      <h1>상품 목록</h1>
+      <ul>
+        {data?.products?.map((product) => (
+          <li key={product.id}>{product.name}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+## 타입 지정하기
+
+```tsx
+interface ProductsResponse {
+  ok: boolean;
+  products: {
+    id: number;
+    name: string;
+    price: number;
+  }[];
+}
+
+// 제네릭을 사용하여 응답 타입 지정
+const { data, loading, error } = useFetch<ProductsResponse>("/api/products");
+```
+
+## 요청 옵션 설정하기
+
+```tsx
+// POST 요청 설정
+const { data, loading, error } = useFetch("/api/products/create", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({ name: "새 상품", price: 10000 }),
+});
+```
+
+## mutate로 요청 업데이트하기
+
+```tsx
+function ProductSearch() {
+  const [keyword, setKeyword] = useState("");
+  const { data, loading, error, mutate } = useFetch("/api/products");
+
+  const handleSearch = () => {
+    // URL 변경하여 새 요청 보내기
+    mutate({ url: `/api/products/search?q=${keyword}` });
+  };
+
+  const handleFilter = (category: string) => {
+    // 옵션 변경하여 새 요청 보내기
+    mutate({
+      options: {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category }),
+      },
+    });
+  };
+
+  return (
+    <div>
+      <input value={keyword} onChange={(e) => setKeyword(e.target.value)} />
+      <button onClick={handleSearch}>검색</button>
+      {/* UI 구현 */}
+    </div>
+  );
+}
+```
+
+## fetcher 함수에 axios 버전 추가하기
+
+fetch와 axios 두 가지 방식으로 데이터를 가져올 수 있도록 코드를 개선하겠습니다.
+
+### 사용 예시
+
+```tsx
+// fetch API 사용 (기본)
+const { data, loading } = useFetch<UserData>("/api/users");
+
+// axios 사용
+const { data, loading } = useFetch<UserData>("/api/users", {
+  fetcherType: "axios",
+});
+
+// POST 요청 (axios 사용)
+const { data, loading } = useFetch<CreateUserResponse>("/api/users/create", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ name: "홍길동" }),
+  fetcherType: "axios",
+});
+```
+
+이 방식으로 사용자는 기존 fetch API와 axios 중에서 선택하여 데이터를 요청할 수 있습니다.
+
+## 주의사항
+
+1. enabled: !!reqUrl로 설정되어 있어 URL이 없으면 자동으로 요청하지 않습니다.
+2. 에러 발생 시 자동으로 에러 객체를 제공합니다.
+3. mutate 함수를 통해 URL이나 옵션을 변경하면 자동으로 데이터를 다시 가져옵니다.
+4. React Query의 캐싱 기능을 활용하므로 동일한 URL과 옵션의 요청은 캐싱됩니다.
+
+이 훅을 사용하면 컴포넌트 내에서 API 요청을 더 쉽게 관리할 수 있습니다.
+
+# 리버스 지오코딩(Reverse Geocoding)의 의미
+
+리버스 지오코딩(Reverse Geocoding)은 지리적 좌표(위도/경도)를 실제 주소나 장소 이름으로 변환하는 과정입니다.
+
+## 기본 개념
+
+- 일반 지오코딩(Forward Geocoding): 주소 → 좌표 변환
+
+* 예: "서울특별시 중구 남대문로 73" → (37.5665, 126.9780)
+
+## 리버스 지오코딩(Reverse Geocoding): 좌표 → 주소 변환
+
+\*\* 예: (37.5665, 126.9780) → "서울특별시 중구 남대문로 73"
+
+## 주요 용도
+
+1. 현재 위치 표시: 모바일 앱에서 사용자의 GPS 위치를 주소로 표시
+2. 지도 클릭 기능: 지도에서 특정 지점을 클릭했을 때 해당 위치의 주소 정보 제공
+3. 내비게이션: 목적지 좌표를 실제 주소로 표시
+4. 위치 데이터 분석: 수집된 GPS 데이터를 의미 있는 주소로 변환
+
+## 구현 방법
+
+일반적으로 리버스 지오코딩은 다음과 같은 API 서비스를 통해 구현됩니다:
+
+- Google Maps Geocoding API
+- Kakao Maps API
+- Naver Maps API
+- OpenStreetMap Nominatim
+- TMap API
+  이러한 서비스들은 좌표값을 받아 해당 좌표에 가장 가까운 주소 정보를 다양한 상세 수준(도/시/군/구/동/번지 등)으로 제공합니다.
+
+# 목차
+
 - [useIntersectionObserver hook](#useintersectionobserver-hook)
 - [Why This Error Occurred](#why-this-error-occurred)
 - [how to remove firefox's Default Dropdown for input html](#how-to-remove-firefoxs-default-dropdown-for-input-html)
@@ -493,3 +653,17 @@ const currentAddress = addressData?.addressInfo?.fullAddress || "";
   - [주소 검색 항목 클릭 과정 흐름도](#주소-검색-항목-클릭-과정-흐름도)
   - [상세 단계별 설명](#상세-단계별-설명)
   - [데이터 흐름 요약](#데이터-흐름-요약)
+- [useFetch 훅 사용법 가이드](#usefetch-훅-사용법-가이드)
+  - [기본 사용법](#기본-사용법)
+  - [타입 지정하기](#타입-지정하기)
+  - [요청 옵션 설정하기](#요청-옵션-설정하기)
+  - [mutate로 요청 업데이트하기](#mutate로-요청-업데이트하기)
+  - [fetcher 함수에 axios 버전 추가하기](#fetcher-함수에-axios-버전-추가하기)
+    - [사용 예시](#사용-예시)
+  - [주의사항](#주의사항)
+- [리버스 지오코딩(Reverse Geocoding)의 의미](#리버스-지오코딩reverse-geocoding의-의미)
+  - [기본 개념](#기본-개념)
+  - [리버스 지오코딩(Reverse Geocoding): 좌표 → 주소 변환](#리버스-지오코딩reverse-geocoding-좌표--주소-변환)
+  - [주요 용도](#주요-용도)
+  - [구현 방법](#구현-방법)
+- [목차](#목차)
