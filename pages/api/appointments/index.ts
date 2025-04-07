@@ -51,15 +51,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
                 },
               },
             },
+            locationTmap: true, // locationTmap 데이터 포함
           },
           orderBy: {
             date: "asc",
           },
         });
 
+        // type === "organized"일 때
         return res.json({
           ok: true,
-          appointments,
+          organized: appointments,
+          participating: [], // 빈 배열 추가
         });
       } else if (type === "participating") {
         // 내가 참여하는 약속
@@ -88,14 +91,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
                     },
                   },
                 },
+                locationTmap: true, // locationTmap 데이터 포함
               },
             },
           },
         });
 
+        // type === "participating"일 때
         return res.json({
           ok: true,
-          appointments: participations.map((p) => p.appointment),
+          organized: [], // 빈 배열 추가
+          participating: participations.map((p) => p.appointment),
         });
       } else {
         // 모든 관련 약속
@@ -116,6 +122,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
                   },
                 },
               },
+              locationTmap: true, // locationTmap 데이터 포함
             },
           }),
           client.appointmentParticipant.findMany({
@@ -143,6 +150,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
                       },
                     },
                   },
+                  locationTmap: true, // locationTmap 데이터 포함
                 },
               },
             },
@@ -153,10 +161,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
         return res.json({
           ok: true,
-          appointments: {
-            organized,
-            participating: participating_appointments,
-          },
+          organized,
+          participating: participating_appointments,
         });
       }
     } catch (error) {

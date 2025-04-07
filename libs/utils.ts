@@ -1,3 +1,11 @@
+import {
+  AppointmentForCalendarEvent,
+  AppointmentListResponse,
+  AppointmentResponse,
+  AppointmentWithRelations,
+  FullCalendarEvent,
+  statusColors,
+} from "@/types";
 import { Fav, Kind } from "@prisma/client";
 import { useEffect, useState } from "react";
 
@@ -160,4 +168,35 @@ export function getRecurrenceText(frequency: string, interval: number): string {
   };
 
   return `${interval}${frequencyMap[frequency]}마다 반복`;
+}
+
+// 약속 데이터를 FullCalendar 이벤트 형식으로 변환하는 함수
+export function formatAppointmentsForAll(
+  data: AppointmentListResponse<"all">
+): FullCalendarEvent[] {
+  const combinedAppointments = [...data.organized, ...data.participating];
+  return combinedAppointments.map((appointment) => {
+    // locationTmap 처리: locationName이 없을 경우 buildingName을 기본값으로 설정
+    let locationTmap = appointment.locationTmap;
+    if (locationTmap && !locationTmap.locationName && locationTmap.buildingName) {
+      locationTmap = {
+        ...locationTmap,
+        locationName: locationTmap.buildingName,
+      };
+    }
+
+    return {
+      id: String(appointment.id),
+      title: appointment.title,
+      start: new Date(appointment.startTime).toISOString(),
+      end: new Date(appointment.endTime).toISOString(),
+      backgroundColor: statusColors[appointment.status],
+      textColor: "white",
+      allDay: false,
+      extendedProps: {
+        locationTmap,
+        status: appointment.status,
+      },
+    };
+  });
 }

@@ -160,7 +160,7 @@ AddressList.displayName = "AddressList";
 interface MapModalProps {
   isOpen: boolean;
   onClose: (selectedLocation?: null) => void;
-  //onLocationSelect: (latitude: number, longitude: number, address: string) => void;
+  onOverlayClick?: () => void; // 어두운 배경 클릭 핸들러
   onLocationSelectAddressInfo: (
     latitude: number,
     longitude: number,
@@ -171,7 +171,7 @@ interface MapModalProps {
 export function MapModal({
   isOpen,
   onClose,
-  //onLocationSelect,
+  onOverlayClick,
   onLocationSelectAddressInfo,
 }: MapModalProps) {
   const [searchKeyword, setSearchKeyword] = useState("");
@@ -238,10 +238,7 @@ export function MapModal({
     console.log("선택한 주소:", selectedAddress);
     console.log("latitude:", latitude);
     console.log("longitude:", longitude);
-    //onLocationSelect(latitude, longitude, selectedAddress); // 선택된 위치를 부모에게 전달
-    //if (addressInfo) {
     onLocationSelectAddressInfo(latitude, longitude, addressInfo ?? null); // 선택된 위치를 부모에게 전달
-    //}
 
     onClose(); // 모달 닫기
   };
@@ -254,9 +251,6 @@ export function MapModal({
       longitude: Number(e.currentTarget.getAttribute("data-lon")),
     };
 
-    //console.log("onClickAddressListItem--coordinate: ", coordinate);
-
-    // 기존 마커 업데이트 (제거 후 새로 생성)
     updateMarker(coordinate, "red");
 
     // 마커 즉시 업데이트를 위해 플래그 재설정
@@ -292,7 +286,12 @@ export function MapModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="w-full max-w-4xl rounded-lg bg-white p-6 shadow-lg">
+      {/* 어두운 배경 */}
+      <div
+        className="absolute inset-0 bg-black bg-opacity-50"
+        onClick={onOverlayClick || closeModal} // 배경 클릭 시 닫기
+      ></div>
+      <div className="relative z-10 w-full max-w-4xl rounded-lg bg-white p-6 shadow-lg">
         <div className="flex flex-col space-y-4">
           <div className="flex items-center justify-center space-x-2">
             <span className="text-sm font-normal">선택한 주소: </span>

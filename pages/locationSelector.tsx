@@ -7,12 +7,6 @@ import { useAwaitableModal } from "@libs/client/useAwaitableModal";
 import { TmapAddressInfo } from "@/types";
 
 const LocationSelectorPage: NextPage = () => {
-  // const [selectedLocation, setSelectedLocation] = useState<{
-  //   latitude: number;
-  //   longitude: number;
-  //   address: string;
-  // } | null>(null);
-
   const [selectedLocationByAddressInfo, setSelectedLocationByAddressInfo] = useState<{
     latitude: number;
     longitude: number;
@@ -24,22 +18,12 @@ const LocationSelectorPage: NextPage = () => {
       <MapModal
         isOpen={modal.isVisible}
         onClose={() => modal.closeWithResult(null)} // null 값을 반환하여 선택된 위치를 초기화
-        onLocationSelect={(latitude: number, longitude: number, address: string) =>
-          //modal.closeWithResult({ latitude, longitude, address })
-          console.log(
-            "onLocationSelect--latitude: ",
-            latitude,
-            "longitude: ",
-            longitude,
-            "address: ",
-            address
-          )
-        }
         onLocationSelectAddressInfo={(
           latitude: number,
           longitude: number,
           addressInfo: TmapAddressInfo | null
         ) => modal.closeWithResult({ latitude, longitude, addressInfo })}
+        onOverlayClick={() => modal.closeWithResult(null)} // 어두운 배경 클릭 시 모달 닫기
       />
     );
   });
@@ -50,7 +34,6 @@ const LocationSelectorPage: NextPage = () => {
       console.log("Modal closed--result: ", result);
       if (result) {
         const { latitude, longitude, addressInfo } = result;
-        //setSelectedLocation({ latitude, longitude, address });
         setSelectedLocationByAddressInfo({ latitude, longitude, addressInfo });
       } else {
         console.log("Modal closed without selecting a location.");
@@ -104,3 +87,5 @@ const LocationSelectorPage: NextPage = () => {
     </>
   );
 };
+
+export default LocationSelectorPage;

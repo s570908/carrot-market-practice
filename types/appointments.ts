@@ -70,8 +70,6 @@ interface BaseLocation {
 // Tmap 기반 위치 정보 인터페이스
 export interface LocationTmap extends BaseLocation, TmapAddressInfo {
   id: number;
-  latitude: number;
-  longitude: number;
   locationName: string;
   zoomLevel?: number;
   appointmentId?: number;
@@ -141,22 +139,45 @@ export interface FriendsResponse extends ApiResponse {
   friends?: UserBasic[];
 }
 
-// 특정 타입의 약속 목록 응답 (organized, participating)
-export interface AppointmentListTypeResponse extends ApiResponse {
-  appointments: AppointmentWithRelations[];
+// 전체 약속 목록 응답으로 통일 (모든 타입에 대해 동일한 구조 사용)
+export interface AppointmentListResponse<T extends "organized" | "participating" | "all" = "all">
+  extends ApiResponse {
+  organized: AppointmentWithRelations[];
+  participating: AppointmentWithRelations[];
 }
 
-// 전체 약속 목록 응답 (type=all 또는 미지정)
-export interface AppointmentListAllResponse extends ApiResponse {
-  appointments: {
-    organized: AppointmentWithRelations[];
-    participating: AppointmentWithRelations[];
-  };
+// 약속 상태별 색상 정의
+export const statusColors: Record<AppointmentStatus, string> = {
+  PENDING: "#FFA000", // 황색
+  CONFIRMED: "#4CAF50", // 녹색
+  CANCELLED: "#F44336", // 적색
+  COMPLETED: "#9E9E9E", // 회색
+};
+
+// 약속 상태별 텍스트
+export const statusText = {
+  PENDING: "대기중",
+  CONFIRMED: "확정됨",
+  CANCELLED: "취소됨",
+  COMPLETED: "완료됨",
+};
+
+// FullCalendar 이벤트 타입 정의
+export interface FullCalendarEvent {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  backgroundColor: string;
+  textColor: string;
+  allDay: boolean;
 }
 
-// 응답 타입 통합 (제네릭으로 타입 감지)
-export type AppointmentListResponse<T extends string = "all"> = T extends
-  | "organized"
-  | "participating"
-  ? AppointmentListTypeResponse
-  : AppointmentListAllResponse;
+// Prisma에서 가져온 약속 데이터 타입 정의
+export interface AppointmentForCalendarEvent {
+  id: number;
+  title: string;
+  startTime: Date;
+  endTime: Date;
+  status: AppointmentStatus;
+}

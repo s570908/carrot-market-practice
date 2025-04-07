@@ -1,31 +1,32 @@
-약속 생성 요청 api/appointment--Post body: {
-  title: '약속5',
-  description: '선명5',
-  date: '2025-04-07T00:00:00.000Z',
-  startTime: '1999-12-31T22:36:00.000Z',
-  endTime: '2000-01-01T01:36:00.000Z',
-  location: {
-    latitude: 37.51107402,
-    longitude: 127.10489997,
-    addressInfo: {
-      fullAddress: '서울특별시 송파구 송파나루길 206 송파관광정보센터',
-      addressType: 'A04',
-      city_do: '서울특별시',
-      gu_gun: '송파구',
-      eup_myun: '',
-      adminDong: '',
-      adminDongCode: '',
-      legalDong: '',
-      legalDongCode: '',
-      ri: '',
-      bunji: '',
-      roadName: '송파나루길',
-      buildingIndex: '206',
-      buildingName: '송파관광정보센터',
-      mappingDistance: '108.37',
-      roadCode: '117104857713'
+//약속 생성 요청 api/appointment--Post body:
+{
+  "title": "약속5",
+  "description": "선명5",
+  "date": "2025-04-07T00:00:00.000Z",
+  "startTime": "1999-12-31T22:36:00.000Z",
+  "endTime": "2000-01-01T01:36:00.000Z",
+  "location": {
+    "latitude": 37.51107402,
+    "longitude": 127.10489997,
+    "addressInfo": {
+      "fullAddress": "서울특별시 송파구 송파나루길 206 송파관광정보센터",
+      "addressType": "A04",
+      "city_do": "서울특별시",
+      "gu_gun": "송파구",
+      "eup_myun": "",
+      "adminDong": "",
+      "adminDongCode": "",
+      "legalDong": "",
+      "legalDongCode": "",
+      "ri": "",
+      "bunji": "",
+      "roadName": "송파나루길",
+      "buildingIndex": "206",
+      "buildingName": "송파관광정보센터",
+      "mappingDistance": "108.37",
+      "roadCode": "117104857713"
     }
   },
-  participants: [ 2 ],
-  notifications: [ { title: '약속 알림', minutesBefore: 30, type: 'PUSH' } ]
+  "participants": [2],
+  "notifications": [{ "title": "약속 알림", "minutesBefore": 30, "type": "PUSH" }]
 }

@@ -18,7 +18,17 @@ import { toast } from "react-toastify";
 
 export default function AppointmentDetail() {
   const router = useRouter();
-  const id = (router.query.id !== undefined ? parseId(router.query.id) : 0) ?? 0;
+  const { id: rawId, from, view } = router.query;
+  const id = (rawId !== undefined ? parseId(rawId) : 0) ?? 0;
+
+  // 뒤로 가기 URL 설정: 캘린더에서 온 경우 view 파라미터 사용
+  const backUrl =
+    from === "calendar"
+      ? view
+        ? `/appointments/calendar?view=${view}` // 원래 보던 뷰로 돌아가기
+        : "/appointments/calendar" // view 정보가 없으면 기본 캘린더 페이지
+      : "/appointments"; // 캘린더가 아닌 다른 페이지에서 온 경우
+
   const { user } = useUser();
   const [status, setStatus] = useState("");
   const queryClient = useQueryClient();
@@ -113,15 +123,16 @@ export default function AppointmentDetail() {
       seoTitle={`약속: ${appointment?.title || "상세 정보"}`}
       title={appointment?.title || "약속 상세"}
       canGoBack
+      backUrl={backUrl}
     >
       <div className="pb-20">
-        <div className="relative p-6 mb-6 overflow-hidden text-white shadow-lg rounded-xl bg-gradient-to-r from-orange-400 to-orange-600">
-          <div className="absolute w-40 h-40 bg-white rounded-full -right-10 -top-10 opacity-10"></div>
-          <div className="absolute bottom-0 w-32 h-32 bg-white rounded-full -left-10 opacity-10"></div>
+        <div className="relative mb-6 overflow-hidden rounded-xl bg-gradient-to-r from-orange-400 to-orange-600 p-6 text-white shadow-lg">
+          <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white opacity-10"></div>
+          <div className="absolute -left-10 bottom-0 h-32 w-32 rounded-full bg-white opacity-10"></div>
 
           <div className="relative z-10">
             <h1 className="mb-2 text-2xl font-bold tracking-tight">{appointment.title}</h1>
-            <div className="flex flex-wrap items-center gap-2 mb-3">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
               <span
                 className={`inline-flex items-center rounded-full bg-white bg-opacity-20 px-3 py-1 text-sm font-medium backdrop-blur-sm`}
               >
@@ -147,7 +158,7 @@ export default function AppointmentDetail() {
                     <span className="flex items-center">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="w-4 h-4 mr-1"
+                        className="mr-1 h-4 w-4"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -172,7 +183,7 @@ export default function AppointmentDetail() {
                       <span className="flex items-center">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
-                          className="w-4 h-4 mr-1"
+                          className="mr-1 h-4 w-4"
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
@@ -197,7 +208,7 @@ export default function AppointmentDetail() {
                     <span className="flex items-center">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="w-4 h-4 mr-1"
+                        className="mr-1 h-4 w-4"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -236,16 +247,16 @@ export default function AppointmentDetail() {
           </div>
         </div>
 
-        <div className="max-w-3xl mx-auto">
+        <div className="mx-auto max-w-3xl">
           <div className="flex flex-col items-center space-y-6">
             {appointment.description && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="w-full p-5 bg-white border-2 border-gray-200 shadow-sm rounded-xl"
+                className="w-full rounded-xl border-2 border-gray-200 bg-white p-5 shadow-sm"
               >
                 <h2 className="mb-3 text-lg font-medium text-gray-800">약속 설명</h2>
-                <p className="text-gray-600 whitespace-pre-wrap">{appointment.description}</p>
+                <p className="whitespace-pre-wrap text-gray-600">{appointment.description}</p>
               </motion.div>
             )}
 
@@ -253,11 +264,11 @@ export default function AppointmentDetail() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="w-full p-5 bg-white border-2 border-gray-200 shadow-sm rounded-xl"
+              className="w-full rounded-xl border-2 border-gray-200 bg-white p-5 shadow-sm"
             >
-              <div className="flex items-center mb-4">
+              <div className="mb-4 flex items-center">
                 <svg
-                  className="w-5 h-5 mr-2 text-orange-500"
+                  className="mr-2 h-5 w-5 text-orange-500"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -280,7 +291,7 @@ export default function AppointmentDetail() {
               </div>
               {appointment.locationTmap && (
                 <>
-                  <div className="p-1 mb-4 border-2 border-gray-200">
+                  <div className="mb-4 border-2 border-gray-200 p-1">
                     <p className="font-medium text-gray-900">
                       {appointment.locationTmap.locationName}
                     </p>
@@ -305,11 +316,11 @@ export default function AppointmentDetail() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="w-full p-5 bg-white border-2 border-gray-200 shadow-sm rounded-xl"
+              className="w-full rounded-xl border-2 border-gray-200 bg-white p-5 shadow-sm"
             >
-              <div className="flex items-center mb-3">
+              <div className="mb-3 flex items-center">
                 <svg
-                  className="w-5 h-5 mr-2 text-orange-500"
+                  className="mr-2 h-5 w-5 text-orange-500"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -324,7 +335,7 @@ export default function AppointmentDetail() {
                 </svg>
                 <h2 className="text-lg font-medium text-gray-800">주최자</h2>2
               </div>
-              <div className="flex items-center px-2 py-3 space-x-3 border-2 border-gray-200 ">
+              <div className="flex items-center space-x-3 border-2 border-gray-200 px-2 py-3 ">
                 {appointment.organizer.avatar ? (
                   <ImgComponent
                     imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${appointment.organizer.avatar}/public`}
@@ -334,9 +345,9 @@ export default function AppointmentDetail() {
                     imgName={appointment.organizer.name}
                   />
                 ) : (
-                  <div className="flex items-center justify-center w-12 h-12 text-orange-500 bg-orange-100 rounded-full">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-orange-100 text-orange-500">
                     <svg
-                      className="w-6 h-6"
+                      className="h-6 w-6"
                       xmlns="http://www.w3.org/2000/svg"
                       viewBox="0 0 24 24"
                       fill="currentColor"
@@ -360,12 +371,12 @@ export default function AppointmentDetail() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="w-full p-5 bg-white border-2 border-gray-200 shadow-sm rounded-xl"
+              className="w-full rounded-xl border-2 border-gray-200 bg-white p-5 shadow-sm"
             >
-              <div className="flex items-center justify-between mb-3">
+              <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center">
                   <svg
-                    className="w-5 h-5 mr-2 text-orange-500"
+                    className="mr-2 h-5 w-5 text-orange-500"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -380,13 +391,13 @@ export default function AppointmentDetail() {
                   </svg>
                   <h2 className="text-lg font-medium text-gray-800">참가자</h2>
                 </div>
-                <span className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full">
+                <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
                   {appointment.participants.length}명
                 </span>
               </div>
 
               <div className="max-h-[300px] overflow-y-auto">
-                <ul className="border-2 border-gray-200 divide-y divide-gray-100 rounded-lg">
+                <ul className="divide-y divide-gray-100 rounded-lg border-2 border-gray-200">
                   {appointment.participants.map((participant: any) => (
                     <li
                       key={participant.user.id}
@@ -402,9 +413,9 @@ export default function AppointmentDetail() {
                             imgName={participant.user.name}
                           />
                         ) : (
-                          <div className="flex items-center justify-center w-10 h-10 text-gray-500 bg-gray-100 rounded-full">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-500">
                             <svg
-                              className="w-5 h-5"
+                              className="h-5 w-5"
                               xmlns="http://www.w3.org/2000/svg"
                               viewBox="0 0 24 24"
                               fill="currentColor"
@@ -450,11 +461,11 @@ export default function AppointmentDetail() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
-                className="w-full p-5 bg-white border-2 border-gray-200 shadow-sm rounded-xl"
+                className="w-full rounded-xl border-2 border-gray-200 bg-white p-5 shadow-sm"
               >
-                <div className="flex items-center mb-3">
+                <div className="mb-3 flex items-center">
                   <svg
-                    className="w-5 h-5 mr-2 text-orange-500"
+                    className="mr-2 h-5 w-5 text-orange-500"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -474,7 +485,7 @@ export default function AppointmentDetail() {
                   {appointment.notifications.map((notification: any) => (
                     <li
                       key={notification.id}
-                      className="flex items-center justify-between p-3 border-2 border-gray-200 rounded-lg shadow-sm bg-gray-50"
+                      className="flex items-center justify-between rounded-lg border-2 border-gray-200 bg-gray-50 p-3 shadow-sm"
                     >
                       <div>
                         <p className="font-medium text-gray-800">{notification.title}</p>
@@ -491,7 +502,7 @@ export default function AppointmentDetail() {
                       >
                         {notification.isSent ? (
                           <svg
-                            className="w-4 h-4 text-green-600"
+                            className="h-4 w-4 text-green-600"
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
                             fill="currentColor"
@@ -504,7 +515,7 @@ export default function AppointmentDetail() {
                           </svg>
                         ) : (
                           <svg
-                            className="w-4 h-4 text-gray-400"
+                            className="h-4 w-4 text-gray-400"
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 24 24"
                             fill="currentColor"
