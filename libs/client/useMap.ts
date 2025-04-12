@@ -39,33 +39,6 @@ export const useMap = (mapRef: React.RefObject<HTMLDivElement>) => {
     }
   }, []);
 
-  // currentCoord가 변경되면 주소 요청
-  // const { data: addressData } = useQuery({
-  //   queryKey: ["getAddressFromCoord", coord.latitude, coord.longitude],
-  //   queryFn: () => 
-  //     queryKeys.tmap.getAddressFromCoord({
-  //       latitude: coord.latitude,
-  //       longitude: coord.longitude,
-  //     }),
-  //   enabled: !!coord.latitude && !!coord.longitude,
-  //   staleTime: 3000,
-  // });
-
-  // const addressQuery = queryKeys.tmap.getAddressFromCoord({
-  //   latitude: coord.latitude,
-  //   longitude: coord.longitude,
-  // });
-  
-  // // 2. useQuery의 인자 형식에 맞게 전달 (React Query v3 스타일)
-  // const { data: addressData } = useQuery(
-  //   addressQuery.queryKey, 
-  //   addressQuery.queryFn,
-  //   {
-  //     enabled: !!coord.latitude && !!coord.longitude,
-  //     staleTime: 3000
-  //   }
-  // );
-
   const { data: addressData } = useQuery(
     ['tmap-address', coord.latitude, coord.longitude],
     async () => {
@@ -338,6 +311,47 @@ console.log("addressData: ", addressData);
     [mapInstance, setCenterToSelectedCoord]
   );
 
+  const getCurrentPosition = useCallback(() => {
+    return new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error("브라우저가 위치 정보를 지원하지 않습니다."));
+        return;
+      }
+  
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        },
+        (error) => {
+          let errorMessage = "위치 정보를 가져오는데 실패했습니다.";
+          
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = "위치 접근 권한이 거부되었습니다.";
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = "위치 정보를 사용할 수 없습니다.";
+              break;
+            case error.TIMEOUT:
+              errorMessage = "위치 정보 요청 시간이 초과되었습니다.";
+              break;
+          }
+          
+          console.error(errorMessage, error);
+          reject(new Error(errorMessage));
+        },
+        { 
+          enableHighAccuracy: true, 
+          timeout: 50000,
+          maximumAge: 0 
+        }
+      );
+    });
+  }, []);
+
   // 초기화 함수
   const initMapModal = useCallback(() => {
     // 기존 마커 제거 (ref 사용)
@@ -349,6 +363,7 @@ console.log("addressData: ", addressData);
     setCurrentCoord(null);
     lastCoordRef.current = null;
     lastZoomCenterRef.current = null;
+    
   }, []);
 
   return {
@@ -358,6 +373,7 @@ console.log("addressData: ", addressData);
     setCoord,
     currentAddress,
     initMapModal,
+    getCurrentPosition,
     currentMarker: currentMarkerRef.current, // 마커 참조 반환 (필요시 사용)
   };
 };
