@@ -11,6 +11,11 @@ interface PlaceSelectionModalProps {
     longitude: number,
     address: string
   ) => void;
+  initialLocation?: {
+    latitude: number;
+    longitude: number;
+    address: string;
+  } | null;
 }
 
 interface SelectedPlace {
@@ -41,7 +46,7 @@ function Input({ label = "", errorMessage = "", ...rest }: InputProps) {
       } ${disabled ? "cursor-not-allowed bg-gray-100" : ""}`}
     >
       {label && (
-        <div className="flex items-center justify-between mb-1">
+        <div className="mb-1 flex items-center justify-between">
           <FieldLabel label={label} required={required} />
           {maxLength && (
             <span className="text-xs text-gray-500">
@@ -51,7 +56,7 @@ function Input({ label = "", errorMessage = "", ...rest }: InputProps) {
         </div>
       )}
       <input
-        className="w-full p-2 border rounded"
+        className="w-full rounded border p-2"
         disabled={disabled}
         maxLength={maxLength}
         {...rest}
@@ -102,7 +107,7 @@ const AddressList = React.memo(
     if (!addressData?.length) return null;
 
     return (
-      <div className="h-full p-2 overflow-y-auto border border-gray-300 rounded-md">
+      <div className="h-full overflow-y-auto rounded-md border border-gray-300 p-2">
         <ul className="space-y-2">
           {addressData.map((address) => {
             const fullAddress =
@@ -113,7 +118,7 @@ const AddressList = React.memo(
               <li
                 role="option"
                 aria-selected={false}
-                className="p-2 border rounded cursor-pointer hover:bg-gray-100"
+                className="cursor-pointer rounded border p-2 hover:bg-gray-100"
                 key={address.pkey}
                 value={`${fullAddress} ${addressName}`}
                 data-lat={lat}
@@ -137,6 +142,7 @@ const PlaceSelectionModal: React.FC<PlaceSelectionModalProps> = ({
   isVisible,
   onClose,
   onLocationSelect,
+  initialLocation,
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [searchKeyword, setSearchKeyword] = useState("");
@@ -152,6 +158,7 @@ const PlaceSelectionModal: React.FC<PlaceSelectionModalProps> = ({
     currentAddress,
     initMapModal,
     getCurrentPosition,
+    setCoord,
   } = useMap(mapRef);
 
   // 주소 검색 쿼리
@@ -192,23 +199,69 @@ const PlaceSelectionModal: React.FC<PlaceSelectionModalProps> = ({
   // 컴포넌트 마운트 시 지도 초기화
   useEffect(() => {
     if (isVisible) {
-      // initMapModal();
+      initMapModal();
+
+      // 이전에 선택한 위치가 있으면 그 위치를 사용
+      if (initialLocation?.latitude && initialLocation?.longitude) {
+        console.log("이전에 선택한 위치로 초기화:", initialLocation);
+        updateMarker(
+          {
+            latitude: initialLocation.latitude,
+            longitude: initialLocation.longitude,
+          },
+          "red"
+        );
+        setSelectedAddress(initialLocation.address);
+      } else {
+        // 초기 위치가 없으면 현재 위치 가져오기
+        const fetchCurrentPosition = async () => {
+          try {
+            if (typeof getCurrentPosition === "function") {
+              const currentPosition = await getCurrentPosition();
+              updateMarker(currentPosition, "red");
+              console.log("현재 위치로 지도 초기화:", currentPosition);
+            }
+          } catch (error) {
+            console.error("현재 위치를 가져오지 못했습니다:", error);
+            // 위치 정보를 가져오지 못한 경우 기본 위치 사용 (서울시청)
+            updateMarker(
+              {
+                latitude: 37.5666805,
+                longitude: 126.9784147,
+              },
+              "red"
+            );
+          }
+        };
+
+        fetchCurrentPosition();
+      }
+    }
+    initMapModal();
+
+    // 이전에 선택한 위치가 있으면 그 위치를 사용
+    if (initialLocation?.latitude && initialLocation?.longitude) {
+      console.log("이전에 선택한 위치로 초기화:", initialLocation);
+      updateMarker(
+        {
+          latitude: initialLocation.latitude,
+          longitude: initialLocation.longitude,
+        },
+        "red"
+      );
+      setSelectedAddress(initialLocation.address);
+    } else {
+      // 초기 위치가 없으면 현재 위치 가져오기
       const fetchCurrentPosition = async () => {
         try {
           if (typeof getCurrentPosition === "function") {
-            // 위치 권한 요청 및 현재 위치 가져오기
             const currentPosition = await getCurrentPosition();
-            console.log("현재 위치로 지도 초기화A:", currentPosition);
-            // 지도 초기화 전에 위치를 기반으로 설정
-            initMapModal();
             updateMarker(currentPosition, "red");
-            console.log("현재 위치로 지도 초기화B:", currentPosition);
+            console.log("현재 위치로 지도 초기화:", currentPosition);
           }
         } catch (error) {
           console.error("현재 위치를 가져오지 못했습니다:", error);
-
           // 위치 정보를 가져오지 못한 경우 기본 위치 사용 (서울시청)
-          initMapModal();
           updateMarker(
             {
               latitude: 37.5666805,
@@ -218,9 +271,16 @@ const PlaceSelectionModal: React.FC<PlaceSelectionModalProps> = ({
           );
         }
       };
+
       fetchCurrentPosition();
     }
-  }, [isVisible, initMapModal, getCurrentPosition, updateMarker]);
+  }, [
+    isVisible,
+    initMapModal,
+    getCurrentPosition,
+    updateMarker,
+    initialLocation,
+  ]);
 
   // 검색 결과 항목 클릭 핸들러
   const onClickAddressListItem = (
@@ -289,17 +349,17 @@ const PlaceSelectionModal: React.FC<PlaceSelectionModalProps> = ({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
       onClick={handleOverlayClick}
     >
-      <div className="flex flex-col w-full max-w-4xl bg-white rounded-lg shadow-xl">
+      <div className="flex w-full max-w-4xl flex-col rounded-lg bg-white shadow-xl">
         {/* 헤더 영역 */}
         <div className="flex items-center justify-between p-4">
           <h2 className="text-lg font-semibold">장소 선택</h2>
           <button
             onClick={onClose}
-            className="p-1 rounded-full hover:bg-gray-100"
+            className="rounded-full p-1 hover:bg-gray-100"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="w-6 h-6"
+              className="h-6 w-6"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -335,7 +395,7 @@ const PlaceSelectionModal: React.FC<PlaceSelectionModalProps> = ({
             </div>
 
             {/* 검색 결과 컨테이너 */}
-            <div className="flex flex-col h-full overflow-hidden">
+            <div className="flex h-full flex-col overflow-hidden">
               <h3 className="mb-2 text-sm font-medium">검색 결과</h3>
 
               {/* 스크롤 가능한 영역 */}
@@ -346,8 +406,8 @@ const PlaceSelectionModal: React.FC<PlaceSelectionModalProps> = ({
                     onClickAddressListItem={onClickAddressListItem}
                   />
                 ) : (
-                  <div className="flex items-center justify-center h-full p-2 border border-gray-300 rounded-md">
-                    <p className="text-sm text-center text-gray-500">
+                  <div className="flex h-full items-center justify-center rounded-md border border-gray-300 p-2">
+                    <p className="text-center text-sm text-gray-500">
                       {debouncedSearchKeyword
                         ? "검색 결과가 없습니다"
                         : "검색어를 입력하세요"}
@@ -359,17 +419,17 @@ const PlaceSelectionModal: React.FC<PlaceSelectionModalProps> = ({
           </div>
 
           {/* 지도 컨테이너 */}
-          <div className="relative flex-grow h-full">
-            <div id="map" className="w-full h-full rounded" ref={mapRef} />
+          <div className="relative h-full flex-grow">
+            <div id="map" className="h-full w-full rounded" ref={mapRef} />
 
             {/* 현재 위치 버튼 */}
             <button
               onClick={handleMyLocationClick}
-              className="absolute p-2 bg-white rounded-full shadow-md bottom-6 right-4"
+              className="absolute bottom-6 right-4 rounded-full bg-white p-2 shadow-md"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="w-5 h-5"
+                className="h-5 w-5"
                 viewBox="0 0 20 20"
                 fill="currentColor"
               >
@@ -384,23 +444,23 @@ const PlaceSelectionModal: React.FC<PlaceSelectionModalProps> = ({
         </div>
 
         {/* 선택한 주소 표시 */}
-        <div className="px-4 text-center bg-gray-50">
-          <span className="inline-block mr-2 text-sm">선택한 주소: </span>
-          <span className="flex-grow inline-block text-sm font-bold">
+        <div className="bg-gray-50 px-4 text-center">
+          <span className="mr-2 inline-block text-sm">선택한 주소: </span>
+          <span className="inline-block flex-grow text-sm font-bold">
             {selectedAddress}
           </span>
         </div>
 
-        <div className="flex justify-end p-4 space-x-2">
+        <div className="flex justify-end space-x-2 p-4">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
+            className="rounded-md border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
           >
             취소
           </button>
           <button
             onClick={handleConfirm}
-            className="px-4 py-2 text-white bg-orange-500 rounded-md hover:bg-orange-600"
+            className="rounded-md bg-orange-500 px-4 py-2 text-white hover:bg-orange-600"
             disabled={!selectedPlace}
           >
             선택 완료

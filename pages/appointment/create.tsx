@@ -60,6 +60,7 @@ const CreateAppointment = () => {
         onLocationSelect={(latitude, longitude, address) =>
           modal.closeWithResult({ latitude, longitude, address })
         }
+        initialLocation={params?.initialLocation} // 이전에 선택한 위치 전달
       />
     );
   });
@@ -67,8 +68,8 @@ const CreateAppointment = () => {
   // 장소 선택 버튼 클릭 핸들러
   const handleOpenModal = async () => {
     try {
-      // let params = selectedLocation;
-      const result = await openModal(null);
+      // 모달을 열 때 현재 선택된 위치 정보를 전달
+      const result = await openModal({ initialLocation: selectedLocation });
       console.log("선택된 위치:", result);
 
       if (result) {
@@ -77,6 +78,11 @@ const CreateAppointment = () => {
     } catch (error) {
       console.log("장소 선택이 취소되었습니다:", error);
     }
+  };
+
+  // 선택한 장소 초기화
+  const handleClearLocation = () => {
+    setSelectedLocation(null);
   };
 
   const handleSubmit = () => {
@@ -132,26 +138,57 @@ const CreateAppointment = () => {
             {/* 장소 */}
             <div className="flex w-full items-center justify-between">
               <span className="font-medium text-gray-700">장소</span>
-              <div className="flex items-center gap-1">
-                <span
-                  className="cursor-pointer text-gray-500"
-                  onClick={handleOpenModal}
-                >
-                  {selectedLocation ? selectedLocation.address : "장소 선택"}
-                </span>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 text-gray-400"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polyline points="9 6 15 12 9 18"></polyline>
-                </svg>
-              </div>
+              {selectedLocation ? (
+                <div className="flex w-2/3 flex-col space-y-2">
+                  {/* 선택된 장소 정보와 X 버튼 */}
+                  <div className="flex cursor-pointer items-center justify-end gap-1">
+                    <span className="text-gray-700" onClick={handleOpenModal}>
+                      {selectedLocation.address}
+                    </span>
+                    <button
+                      onClick={handleClearLocation}
+                      className="rounded-full hover:bg-gray-100"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="ml-1 h-5 w-5 text-gray-500"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* 미니 맵 뷰어 */}
+                  {/* <div 
+                    ref={miniMapRef} 
+                    className="w-full h-32 border border-gray-300 rounded-md"
+                  /> */}
+                </div>
+              ) : (
+                <div className="flex cursor-pointer items-center justify-end gap-1">
+                  <span className="text-gray-500" onClick={handleOpenModal}>
+                    장소 선택
+                  </span>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="ml-1 h-5 w-5 text-gray-400"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="9 6 15 12 9 18"></polyline>
+                  </svg>
+                </div>
+              )}
             </div>
 
             {/* 알림 시간 */}
