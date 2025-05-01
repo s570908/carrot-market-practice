@@ -1,3 +1,7 @@
+//Selected address: 
+{name: '롯데호텔 월드 호텔백화점주차장', address: '서울 송파구 올림픽로 240', lat: 37.51224047, lon: 127.1004559}
+
+
 //약속 수정 api/appointment/[id]--Put body:
 {
   "title": "약속4",

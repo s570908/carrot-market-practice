@@ -1,0 +1,21 @@
+<!-- filepath: c:\Users\Song\Documents\DebugJS\carrot-market-practice\public\soy-icon.svg -->
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 배경 원 -->
+  <circle cx="256" cy="256" r="248" fill="#95CDBF" stroke="#78A599" stroke-width="4"/>
+  
+  <!-- 부드러운 그림자 효과 -->
+  <circle cx="256" cy="276" r="180" fill="#78A599" fill-opacity="0.2"/>
+  
+  <!-- 지브리 스타일 장식적 요소 -->
+  <circle cx="256" cy="256" r="210" fill="#FFFFFF" fill-opacity="0.3"/>
+  
+  <!-- 대문자 S - 부드러운 곡선 -->
+  <path d="M340 160C340 122 316 95 268 95H196C159 95 134 122 134 159C134 197 159 224 214 234L267 243C310 252 328 270 328 299C328 332 298 355 258 355C214 355 184 330 184 291H142C142 364 190 395 258 395C325 395 370 356 370 298C370 246 338 219 282 208L232 199C192 191 176 176 176 146C176 123 191 114 231 114C271 114 298 131 298 160H340Z" fill="white"/>
+  
+  <!-- 부드러운 윤곽선 효과 -->
+  <path d="M340 160C340 122 316 95 268 95H196C159 95 134 122 134 159C134 197 159 224 214 234L267 243C310 252 328 270 328 299C328 332 298 355 258 355C214 355 184 330 184 291H142C142 364 190 395 258 395C325 395 370 356 370 298C370 246 338 219 282 208L232 199C192 191 176 176 176 146C176 123 191 114 231 114C271 114 298 131 298 160H340Z" stroke="#78A599" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- 하이라이트 효과 -->
+  <path d="M183 137C173 154 173 176 190 188C207 200 226 181 226 181" stroke="white" stroke-width="6" stroke-linecap="round" stroke-opacity="0.5"/>
+  <path d="M309 300C318 282 310 258 289 250C268 242 250 265 250 265" stroke="white" stroke-width="6" stroke-linecap="round" stroke-opacity="0.5"/>
+</svg>

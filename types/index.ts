@@ -7,3 +7,4 @@ export * from "./users";
 export * from "./streams";
 export * from "./files";
 export * from "./appointments";
+export * from "./socket";

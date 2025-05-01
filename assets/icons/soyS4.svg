@@ -1,0 +1,9 @@
+<!-- filepath: c:\Users\Song\Documents\DebugJS\carrot-market-practice\assets\icons\soyS.svg -->
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- 배경 원 -->
+  <circle cx="256" cy="256" r="248" fill="#A8D5BA" />
+
+  <!-- 대문자 S -->
+  <path d="M340 160C340 120 310 90 260 90H200C160 90 130 120 130 160C130 200 160 230 220 240L270 250C310 260 330 280 330 310C330 350 300 380 250 380C200 380 170 350 170 310H130C130 370 180 410 250 410C320 410 370 370 370 310C370 260 340 230 290 220L240 210C200 200 180 180 180 150C180 120 200 100 240 100C280 100 310 120 310 160H340Z" 
+        fill="#FFFFFF" />
+</svg>

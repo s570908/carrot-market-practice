@@ -19,6 +19,7 @@ import { ClipLoader } from "react-spinners"; // react-spinners에서 ClipLoader 
 import { getUnreadMessagesForUser } from "apiLibs/chats"; // 새로운 API 함수 가져오기
 import React from "react";
 import { ProductPaging } from "@/types";
+import ServiceWorkerStatus from "@components/ServiceWorkerStatus";
 
 export interface ProductWithCount extends Product {
   favs: Fav[];
@@ -258,6 +259,9 @@ const Home: NextPage = () => {
   //console.log("===data: ", data);
   return (
     <Layout seoTitle="Home" title="홈" hasTabBar notice={isNew}>
+      {/* 서비스 워커 상태 컴포넌트는 개발 환경에서만 표시 */}
+      {process.env.NODE_ENV === "development" && <ServiceWorkerStatus />}
+
       <div className="flex flex-col space-y-5 divide-y px-4">
         {isLoading ? (
           <div className="flex h-64 items-center justify-center">

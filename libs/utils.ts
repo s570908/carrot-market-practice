@@ -86,35 +86,21 @@ export function getKindString(kind: Kind): string {
   }
 }
 
-// 날짜 포맷팅 함수
-export function formatDate(dateStr: string): string {
-  try {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString("ko-KR", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      weekday: "short",
-    });
-  } catch (error) {
-    console.error("날짜 변환 오류:", error);
-    return dateStr;
-  }
+// 날짜를 포맷팅합니다. (YYYY년 M월 D일 형식)
+export function formatDate(dateString: string | Date): string {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
 }
 
-// 시간 포맷팅 함수
-export function formatTime(timeStr: string): string {
-  try {
-    const time = new Date(timeStr);
-    return time.toLocaleTimeString("ko-KR", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
-  } catch (error) {
-    console.error("시간 변환 오류:", error);
-    return timeStr;
-  }
+// 시간을 포맷팅합니다. (HH:MM 형식)
+export function formatTime(dateString: string | Date): string {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  return `${date.getHours().toString().padStart(2, "0")}:${date
+    .getMinutes()
+    .toString()
+    .padStart(2, "0")}`;
 }
 
 // 약속 상태 텍스트 변환
@@ -124,6 +110,8 @@ export function getStatusText(status: string): string {
     CONFIRMED: "확정됨",
     CANCELLED: "취소됨",
     COMPLETED: "완료됨",
+    DECLINED: "거절",
+    // 하위 호환성을 위해 소문자 키도 유지
     confirmed: "수락",
     pending: "대기중",
     declined: "거절",
@@ -172,31 +160,36 @@ export function getRecurrenceText(frequency: string, interval: number): string {
 
 // 약속 데이터를 FullCalendar 이벤트 형식으로 변환하는 함수
 export function formatAppointmentsForAll(
-  data: AppointmentListResponse<"all">
+  appointments: AppointmentWithRelations[]
 ): FullCalendarEvent[] {
-  const combinedAppointments = [...data.organized, ...data.participating];
-  return combinedAppointments.map((appointment) => {
-    // locationTmap 처리: locationName이 없을 경우 buildingName을 기본값으로 설정
-    let locationTmap = appointment.locationTmap;
-    if (locationTmap && !locationTmap.locationName && locationTmap.buildingName) {
-      locationTmap = {
-        ...locationTmap,
-        locationName: locationTmap.buildingName,
-      };
-    }
-
+  return appointments.map((appointment) => {
     return {
-      id: String(appointment.id),
+      id: appointment.id.toString(),
       title: appointment.title,
-      start: new Date(appointment.startTime).toISOString(),
-      end: new Date(appointment.endTime).toISOString(),
+      start: appointment.startTime,
+      end: appointment.endTime,
       backgroundColor: statusColors[appointment.status],
       textColor: "white",
-      allDay: false,
+      borderColor: statusColors[appointment.status],
+      allDay: false, // allDay 속성 추가
       extendedProps: {
-        locationTmap,
         status: appointment.status,
+        locationTmap: appointment.locationTmap,
       },
     };
   });
+}
+
+// 추가: 날짜 형식을 검증하는 유틸리티 함수
+export function validateDateForCalendar(date: string | Date): Date {
+  const parsedDate = new Date(date);
+
+  // 날짜가 유효하지 않거나 2010년 이전인 경우 현재 시간으로 대체
+  if (isNaN(parsedDate.getTime()) || parsedDate.getFullYear() < 2010) {
+    console.warn("유효하지 않은 날짜 감지:", date);
+    console.error("유효하지 않은 날짜 감지:", date);
+    return new Date();
+  }
+
+  return parsedDate;
 }

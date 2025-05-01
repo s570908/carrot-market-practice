@@ -861,7 +861,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   const handleAppointmentClick = () => {
     const chatroomId = router.query.id; // 현재 채팅방방 ID
-    router.push(`/appointment/create?chatroomId=${chatroomId}`); // 채팅방 ID를 URL로 전달
+    router.push(`/appointments/create?chatroomId=${chatroomId}`); // 채팅방 ID를 URL로 전달
   };
 
   // 상태 표시 컴포넌트

@@ -1,0 +1,10 @@
+<!-- filepath: c:\Users\Song\Documents\DebugJS\carrot-market-practice\assets\icons\soyS.svg -->
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 지브리 스타일의 부드러운 S 곡선 -->
+  <path d="M352 155C352 115 325 85 270 85H190C150 85 120 118 120 160C120 205 155 235 215 245L270 255C315 265 335 285 335 315C335 350 300 375 255 375C205 375 170 345 170 300H128C128 375 180 410 255 410C330 410 380 365 380 305C380 245 345 215 285 205L230 195C185 185 165 170 165 140C165 115 185 100 230 100C275 100 310 120 310 155H352Z" 
+        fill="#88C0A8" 
+        stroke="#6A9A83" 
+        stroke-width="10" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
+</svg>

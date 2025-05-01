@@ -14,6 +14,36 @@ import { ChatRoomType } from "apiLibs/atypes";
 const queryClient = new QueryClient();
 
 function MyApp(appProps: AppProps) {
+  useEffect(() => {
+    // 서비스 워커 등록 - 로드 이벤트 대신 즉시 등록
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      // 이미 등록된 서비스 워커가 있는지 확인
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        if (registrations.length === 0) {
+          // 등록된 서비스 워커가 없을 경우 새로 등록
+          navigator.serviceWorker
+            .register("/service-worker.js", { scope: "/" })
+            .then((registration) => {
+              console.log("서비스 워커 등록 성공:", registration.scope);
+              // 등록 후 새로고침하여 서비스 워커가 활성화되도록 함
+              if (registration.installing) {
+                registration.installing.addEventListener("statechange", (e) => {
+                  if ((e.target as any).state === "activated") {
+                    console.log("서비스 워커 활성화됨");
+                  }
+                });
+              }
+            })
+            .catch((error) => {
+              console.error("서비스 워커 등록 실패:", error);
+            });
+        } else {
+          console.log("이미 등록된 서비스 워커가 있습니다:", registrations);
+        }
+      });
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <AppContent {...appProps} />

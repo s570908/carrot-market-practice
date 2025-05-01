@@ -17,6 +17,7 @@ import { getAppointments } from "@/apiLibs/appointments";
 import { FullCalendarEvent, statusColors, statusText } from "@/types";
 import { AppointmentForCalendarEvent } from "@/types"; // 타입 정의 가져오기
 import { formatAppointmentsForAll } from "@libs/utils";
+import AppointmentStatusBadge from "@components/appointments/AppointmentStatusBadge"; // 새로운 컴포넌트 import
 
 // 정적 테스트 이벤트 10개 생성 - 컴포넌트 외부로 이동
 const testEvents = [
@@ -63,9 +64,16 @@ export default function AppointmentCalendar() {
   // API 데이터와 정적 테스트 이벤트를 합쳐서 캘린더 이벤트로 설정
   useEffect(() => {
     if (data) {
-      const formattedEvents = formatAppointmentsForAll(data || []); // API 데이터 변환
-      const combinedEvents = [...formattedEvents, ...testEvents]; // 정적 테스트 이벤트와 합침
-      setEvents(combinedEvents); // 캘린더 이벤트 설정
+      // organized와 participating 배열을 합침
+      const allAppointments = [...data.organized, ...data.participating];
+      // 중복 제거 (같은 약속이 두 배열에 모두 있을 수 있음)
+      const uniqueAppointments = Array.from(
+        new Map(allAppointments.map((item) => [item.id, item])).values()
+      );
+
+      const formattedEvents = formatAppointmentsForAll(uniqueAppointments);
+      const combinedEvents = [...formattedEvents, ...testEvents];
+      setEvents(combinedEvents);
     }
   }, [data]);
 
@@ -110,182 +118,220 @@ export default function AppointmentCalendar() {
       canGoBack
       backUrl="/appointments"
     >
-      <div className="flex h-full flex-col p-4">
-        {/* 헤더 영역: 제목 및 버튼 */}
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-medium">약속 캘린더</h2>
-          <div className="flex space-x-2">
-            <Link href="/appointments/create" legacyBehavior passHref>
-              <a className="block">
-                <ModButton variant="primary" size="small">
-                  약속 만들기
-                </ModButton>
-              </a>
-            </Link>
+      {/* 헤더를 fixed로 변경, 캘린더 영역에 padding-top 추가 */}
+      <div className="flex flex-col h-full overflow-hidden">
+        {/* 고정 헤더 */}
+        <div
+          className="fixed left-0 right-0 z-40 max-w-xl mx-auto bg-white"
+          style={{ top: 48 /* Layout 헤더 높이(px) */ }}
+        >
+          <div className="flex items-center justify-between px-4 pt-4 pb-2">
+            <h2 className="text-lg font-medium">약속 캘린더</h2>
+            <div className="flex space-x-2">
+              <Link href="/appointments/create" legacyBehavior passHref>
+                <a className="block">
+                  <ModButton variant="primary" size="small">
+                    약속 만들기
+                  </ModButton>
+                </a>
+              </Link>
+            </div>
+          </div>
+          <div className="p-3 mx-4 mb-2 bg-white border border-gray-200 rounded-lg shadow-sm">
+            <p className="mb-2 text-sm font-medium text-gray-500">약속 상태</p>
+            <div className="flex flex-wrap gap-3">
+              {Object.entries(statusColors).map(([status, color]) => (
+                <div key={status} className="flex items-center text-sm">
+                  <div
+                    className="w-3 h-3 mr-1 rounded-full"
+                    style={{ backgroundColor: color }}
+                  ></div>
+                  <span>{statusText[status as AppointmentStatus]}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
+        {/* 캘린더 영역에 헤더 높이만큼 padding-top 추가 (ex: 140px) */}
+        <div className="min-h-0 flex-1 overflow-auto p-4 pt-[140px]">
+          <div className="h-full bg-white border border-gray-200 rounded-lg shadow-sm">
+            <div className="calendar-container h-[calc(100vh-220px)] max-h-[800px] min-h-[500px] w-full bg-white lg:h-[650px]">
+              <FullCalendar
+                ref={calendarRef}
+                plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
+                initialView={calendarView} // 초기 뷰를 상태 값으로 설정
+                headerToolbar={{
+                  left: "prev,next today",
+                  center: "title",
+                  right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
+                }}
+                dayHeaderContent={(args) => {
+                  const day = dayjs(args.date).format("dd"); // 요일 (일, 월, 화 등)
+                  const date = dayjs(args.date).format("D"); // 날짜 (6, 7, 8 등)
+                  const month = dayjs(args.date).format("M"); // 월 (4, 5, 6 등)
 
-        {/* 상태 범례 - 상단에 카드로 분리 */}
-        <div className="mb-4 rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
-          <p className="mb-2 text-sm font-medium text-gray-500">약속 상태</p>
-          <div className="flex flex-wrap gap-3">
-            {Object.entries(statusColors).map(([status, color]) => (
-              <div key={status} className="flex items-center text-sm">
-                <div className="mr-1 h-3 w-3 rounded-full" style={{ backgroundColor: color }}></div>
-                <span>{statusText[status as AppointmentStatus]}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+                  const currentViewType = calendarRef.current?.getApi().view.type;
 
-        {/* 캘린더 영역 - 스크롤 가능한 컨테이너로 분리 */}
-        <div className="flex-1 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-          {/* 데스크톱에서는 고정 높이, 모바일에서는 뷰포트의 70%로 조정 */}
-          <div className="h-[calc(100vh-220px)] max-h-[800px] min-h-[500px] w-full overflow-auto bg-white lg:h-[650px]">
-            <FullCalendar
-              ref={calendarRef}
-              plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
-              initialView={calendarView} // 초기 뷰를 상태 값으로 설정
-              headerToolbar={{
-                left: "prev,next today",
-                center: "title",
-                right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
-              }}
-              dayHeaderContent={(args) => {
-                const day = dayjs(args.date).format("dd"); // 요일 (일, 월, 화 등)
-                const date = dayjs(args.date).format("D"); // 날짜 (6, 7, 8 등)
-                const month = dayjs(args.date).format("M"); // 월 (4, 5, 6 등)
+                  // 월별 뷰에서는 요일만 표시
+                  if (currentViewType === "dayGridMonth") {
+                    return (
+                      <div className="text-center">
+                        <div>{day}</div>
+                      </div>
+                    );
+                  }
 
-                const currentViewType = calendarRef.current?.getApi().view.type;
+                  // 다른 뷰에서는 기존 형식 유지
+                  if (currentViewType === "timeGridDay") {
+                    return (
+                      <div className="text-center">
+                        <div>{day}</div>
+                      </div>
+                    );
+                  }
 
-                if (currentViewType === "timeGridDay") {
+                  if (currentViewType === "listWeek") {
+                    return (
+                      <div className="text-center">
+                        <div>
+                          {month}월 {date}일, {day}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // 주간 뷰에서는 요일과 날짜 모두 표시 (이건 의미가 있음)
                   return (
                     <div className="text-center">
                       <div>{day}</div>
+                      <div>{date}</div>
                     </div>
                   );
-                }
+                }}
+                titleFormat={(date) => {
+                  const currentViewType = calendarView;
 
-                if (currentViewType === "listWeek") {
-                  return (
-                    <div className="text-center">
-                      <div>
-                        {month}월 {date}일, {day}
-                      </div>
-                    </div>
-                  );
-                }
+                  if (currentViewType === "timeGridDay") {
+                    return dayjs(date.date.marker).format("M월 D일");
+                  }
 
-                return (
-                  <div className="text-center">
-                    <div>{day}</div>
-                    <div>{date}</div>
-                  </div>
-                );
-              }}
-              titleFormat={(date) => {
-                const currentViewType = calendarView;
+                  return dayjs(date.date.marker).format("M월");
+                }}
+                buttonText={{
+                  today: "오늘",
+                  month: "월",
+                  week: "주",
+                  day: "일",
+                  list: "일정목록",
+                }}
+                events={events.map((event) => ({
+                  ...event,
+                  start: new Date(event.start),
+                  end: new Date(event.end),
+                  allDay: false,
+                }))}
+                timeZone="local"
+                eventDisplay="auto"
+                displayEventTime={true}
+                displayEventEnd={true}
+                eventTimeFormat={{
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  hour12: true,
+                }}
+                eventClick={handleEventClick}
+                dateClick={handleDateClick}
+                datesSet={(dateInfo) => {
+                  setCalendarView(dateInfo.view.type);
+                }}
+                eventContent={(eventInfo) => {
+                  const event = eventInfo.event;
+                  const viewType = calendarRef.current?.getApi().view.type;
 
-                if (currentViewType === "timeGridDay") {
-                  return dayjs(date.date.marker).format("M월 D일");
-                }
+                  const startDay = dayjs(event.start).format("YYYY-MM-DD");
+                  const endDay = dayjs(event.end).format("YYYY-MM-DD");
 
-                return dayjs(date.date.marker).format("M월");
-              }}
-              buttonText={{
-                today: "오늘",
-                month: "월",
-                week: "주",
-                day: "일",
-                list: "일정목록",
-              }}
-              events={events.map((event) => ({
-                ...event,
-                start: new Date(event.start),
-                end: new Date(event.end),
-                allDay: false,
-              }))}
-              timeZone="local"
-              eventDisplay="auto"
-              displayEventTime={true}
-              displayEventEnd={true}
-              eventTimeFormat={{
-                hour: "2-digit",
-                minute: "2-digit",
-                hour12: true,
-              }}
-              eventClick={handleEventClick}
-              dateClick={handleDateClick}
-              datesSet={(dateInfo) => {
-                setCalendarView(dateInfo.view.type);
-              }}
-              eventContent={(eventInfo) => {
-                const event = eventInfo.event;
-                const viewType = calendarRef.current?.getApi().view.type;
+                  const isMultiDayEvent = startDay !== endDay;
+                  const locationName = event.extendedProps?.locationTmap?.locationName;
+                  const status = event.extendedProps?.status || "PENDING";
 
-                const startDay = dayjs(event.start).format("YYYY-MM-DD");
-                const endDay = dayjs(event.end).format("YYYY-MM-DD");
+                  const containerClass = viewType.includes("dayGrid")
+                    ? "event-content-month"
+                    : viewType.includes("timeGrid")
+                    ? "event-content-day"
+                    : "event-content-list";
 
-                const isMultiDayEvent = startDay !== endDay;
-                const locationName = event.extendedProps?.locationTmap?.locationName;
+                  const multiDayClass = isMultiDayEvent ? "multi-day-event" : "";
 
-                const containerClass = viewType.includes("dayGrid")
-                  ? "event-content-month"
-                  : viewType.includes("timeGrid")
-                  ? "event-content-day"
-                  : "event-content-list";
-
-                const multiDayClass = isMultiDayEvent ? "multi-day-event" : "";
-
-                // 일정목록 뷰에 대한 특별 처리
-                if (viewType === "listWeek") {
-                  return (
-                    <div className={`w-full ${containerClass} ${multiDayClass}`}>
-                      <div className="flex flex-col">
-                        <span className="event-title">
-                          {event.title}
-                          {isMultiDayEvent && (
-                            <span className="date-range-text ml-1 text-xs font-normal">
-                              ({dayjs(event.start).format("M/D")}~{dayjs(event.end).format("M/D")})
-                            </span>
-                          )}
-                        </span>
-                        {locationName && (
-                          <div className="location-text mt-1 text-gray-600">
-                            <svg
-                              className="mr-1 inline-block h-3 w-3"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                              />
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                              />
-                            </svg>
-                            <span className="text-xs">{locationName}</span>
+                  // 일정목록 뷰에 대한 특별 처리
+                  if (viewType === "listWeek") {
+                    return (
+                      <div className={`w-full ${containerClass} ${multiDayClass}`}>
+                        <div className="flex flex-col">
+                          <div className="flex items-center justify-between">
+                            <span className="event-title">{event.title}</span>
+                            {/* 상태 배지 추가 */}
+                            <div className="ml-2">
+                              <AppointmentStatusBadge status={status} size="small" />
+                            </div>
                           </div>
-                        )}
+                          {locationName && (
+                            <div className="mt-1 text-gray-600 location-text">
+                              <svg
+                                className="inline-block w-3 h-3 mr-1"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                                />
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                                />
+                              </svg>
+                              <span className="text-xs">{locationName}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                }
+                    );
+                  }
 
-                // 월별 뷰 또는 주별 뷰
-                if (viewType === "dayGridMonth" || viewType === "timeGridWeek") {
+                  // 월별 뷰 또는 주별 뷰
+                  if (viewType === "dayGridMonth" || viewType === "timeGridWeek") {
+                    // 상태별 배경색 적용 (단일 약속에만)
+                    const eventBgColor =
+                      !isMultiDayEvent && statusColors[status as AppointmentStatus]
+                        ? statusColors[status as AppointmentStatus]
+                        : undefined;
+
+                    return (
+                      <div
+                        className={`w-full overflow-hidden p-1 ${containerClass} ${multiDayClass}`}
+                        style={
+                          eventBgColor
+                            ? { backgroundColor: eventBgColor, color: "#fff", borderRadius: "4px" }
+                            : undefined
+                        }
+                      >
+                        <div className="pl-2 event-title-month">{event.title}</div>
+                      </div>
+                    );
+                  }
+
+                  // 일별 뷰 등 기타 뷰
                   return (
                     <div
                       className={`w-full overflow-hidden p-1 ${containerClass} ${multiDayClass}`}
                     >
-                      <div className="event-title-month">
+                      <div className="event-title">
                         {event.title}
                         {isMultiDayEvent && (
                           <span className="ml-1 text-xs font-normal">
@@ -293,107 +339,171 @@ export default function AppointmentCalendar() {
                           </span>
                         )}
                       </div>
+                      <div className="event-time">
+                        {dayjs(event.start).format("HH:mm")} - {dayjs(event.end).format("HH:mm")}
+                      </div>
+                      {/* <div className="event-location">
+                        {event.extendedProps?.location || "위치 미정"}
+                      </div> */}
                     </div>
                   );
-                }
+                }}
+                eventDidMount={(info) => {
+                  // 이벤트가 다일 약속인지 확인
+                  const startDay = dayjs(info.event.start).format("YYYY-MM-DD");
+                  const endDay = dayjs(info.event.end).format("YYYY-MM-DD");
+                  const isMultiDayEvent = startDay !== endDay;
 
-                // 일별 뷰 등 기타 뷰
-                return (
-                  <div className={`w-full overflow-hidden p-1 ${containerClass} ${multiDayClass}`}>
-                    <div className="event-title">
-                      {event.title}
-                      {isMultiDayEvent && (
-                        <span className="ml-1 text-xs font-normal">
-                          ({dayjs(event.start).format("M/D")}~{dayjs(event.end).format("M/D")})
-                        </span>
-                      )}
-                    </div>
-                    <div className="event-time">
-                      {dayjs(event.start).format("HH:mm")} - {dayjs(event.end).format("HH:mm")}
-                    </div>
-                    <div className="event-location">
-                      {event.extendedProps?.location || "위치 미정"}
-                    </div>
-                  </div>
-                );
-              }}
-              eventDidMount={(info) => {
-                // 이벤트가 다일 약속인지 확인
-                const startDay = dayjs(info.event.start).format("YYYY-MM-DD");
-                const endDay = dayjs(info.event.end).format("YYYY-MM-DD");
-                const isMultiDayEvent = startDay !== endDay;
+                  if (isMultiDayEvent) {
+                    // 다일 약속인 경우 클래스 추가
+                    info.el.classList.add("multi-day-event");
 
-                if (isMultiDayEvent) {
-                  // 다일 약속인 경우 클래스 추가
-                  info.el.classList.add("multi-day-event");
+                    // 일정목록 뷰에서 시간 컬럼 변경
+                    if (info.view.type === "listWeek") {
+                      // 시간 컬럼 찾기
+                      const timeCell = info.el.querySelector(".fc-list-event-time");
+                      if (timeCell) {
+                        // 기존 시간 텍스트 백업
+                        const originalTimeText = timeCell.textContent || "";
 
-                  // 일정목록 뷰에서 타이틀 내부 스팬 선택
-                  if (info.view.type === "listWeek") {
-                    // 날짜 범위 텍스트가 포함된 span을 찾기
-                    const dateRangeSpans = info.el.querySelectorAll(".date-range-text");
-                    if (dateRangeSpans.length > 0) {
-                      // 이미 있다면 날짜 범위 스팬 색상 직접 설정
-                      dateRangeSpans.forEach((span) => {
-                        (span as HTMLElement).style.color = "#4285f4";
-                      });
-                    } else {
-                      // 없다면 새로 생성하여 날짜 범위 추가
-                      const titleElement = info.el.querySelector(".fc-list-event-title a");
-                      if (titleElement) {
-                        const dateRangeText = document.createElement("span");
-                        dateRangeText.className = "date-range-text ml-1 text-xs font-normal";
-                        dateRangeText.style.color = "#4285f4";
-                        dateRangeText.textContent = `(${dayjs(info.event.start).format(
-                          "M/D"
-                        )}~${dayjs(info.event.end).format("M/D")})`;
-                        titleElement.appendChild(dateRangeText);
+                        // 새로운 내용으로 교체
+                        timeCell.innerHTML = `
+                          <div class="flex flex-col">
+                            <div class="flex items-center text-blue-500 font-medium">
+                              <svg class="w-3.5 h-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                              기간 약속
+                            </div>
+                            <div class="text-xs mt-1">
+                              ${dayjs(info.event.start).format("M/D")} ~ ${dayjs(
+                          info.event.end
+                        ).format("M/D")}
+                            </div>
+                          </div>
+                        `;
                       }
                     }
                   }
-                }
-              }}
-              height="auto"
-              locale={koLocale}
-              allDaySlot={false}
-              slotMinTime="00:00:00"
-              slotMaxTime="24:00:00"
-              slotDuration="00:30:00"
-              nowIndicator={true}
-              selectable={true}
-              selectMirror={true}
-              dayMaxEvents={true}
-              views={{
-                timeGrid: {
-                  nowIndicator: true,
-                  eventMinHeight: 20,
-                },
-                dayGridMonth: {
-                  weekNumbers: false,
-                },
-                timeGridWeek: {
-                  nowIndicator: true,
-                  weekNumbers: true,
-                  weekNumberCalculation: "ISO",
-                  weekText: "주",
-                },
-                listWeek: {
-                  listDayFormat: {
-                    month: "numeric",
-                    day: "numeric",
+                }}
+                height="auto"
+                locale={koLocale}
+                allDaySlot={false}
+                slotMinTime="00:00:00"
+                slotMaxTime="24:00:00"
+                slotDuration="00:30:00"
+                nowIndicator={true}
+                selectable={true}
+                selectMirror={true}
+                dayMaxEvents={true}
+                views={{
+                  timeGrid: {
+                    nowIndicator: true,
+                    eventMinHeight: 20,
                   },
-                  listDaySideFormat: {
-                    weekday: "short",
+                  dayGridMonth: {
+                    weekNumbers: false,
                   },
-                },
-              }}
-            />
+                  timeGridWeek: {
+                    nowIndicator: true,
+                    weekNumbers: true,
+                    weekNumberCalculation: "ISO",
+                    weekText: "주",
+                  },
+                  listWeek: {
+                    listDayFormat: {
+                      month: "numeric",
+                      day: "numeric",
+                    },
+                    listDaySideFormat: {
+                      weekday: "short",
+                    },
+                  },
+                }}
+              />
+            </div>
           </div>
         </div>
-
-        {/* 모바일 화면에서 하단 네비게이션 바가 있을 경우를 위한 여백 */}
-        <div className="h-4 md:h-0"></div>
       </div>
       <style jsx global>{`
+        /* Layout 헤더 관련 스타일 */
+        div[data-rk] > div > div > div:first-child {
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          z-index: 50 !important;
+          background-color: white !important;
+          width: 100% !important;
+          max-width: 36rem !important;
+          margin: 0 auto !important;
+          border-bottom: 1px solid #e5e7eb !important;
+        }
+
+        /* 고정 헤더 스타일 강화 */
+        .fixed.left-0.right-0.z-40 {
+          max-width: 36rem;
+          margin-left: auto;
+          margin-right: auto;
+        }
+
+        @media (max-width: 640px) {
+          .fixed.left-0.right-0.z-40 {
+            max-width: 100vw;
+          }
+        }
+
+        /* FullCalendar 헤더 툴바 - 세로 크기 확장 및 배경 처리 */
+        .fc .fc-header-toolbar {
+          position: fixed;
+          top: 140px;
+          left: 0;
+          right: 0;
+          z-index: 45;
+          background-color: white;
+          padding: 0 0 2px 0;
+          margin-bottom: 0 !important;
+          height: 36px;
+          border-bottom: 1px solid #e5e7eb;
+          display: flex;
+          align-items: center;
+          width: calc(100% - 32px) !important;
+          max-width: calc(36rem - 32px) !important;
+          margin-left: auto !important;
+          margin-right: auto !important;
+        }
+
+        /* 헤더 툴바 아래 여백 영역 강화 - 더 긴 배경과 그림자 추가 */
+        .fc .fc-header-toolbar::after {
+          content: "";
+          position: fixed;
+          top: 176px;
+          left: 0;
+          right: 0;
+          height: 12px; /* 2px에서 12px로 증가 */
+          background-color: white;
+          box-shadow: 0 4px 6px -6px rgba(0, 0, 0, 0.1); /* 아래로 그림자 추가 */
+          z-index: 44;
+          width: calc(100% - 32px) !important;
+          max-width: calc(36rem - 32px) !important;
+          margin-left: auto !important;
+          margin-right: auto !important;
+        }
+
+        /* 캘린더 영역에 약간의 음수 마진 추가 - 틈이 없도록 */
+        .calendar-container {
+          padding-top: 38px;
+          margin-top: -2px; /* 음수 마진으로 틈 제거 */
+        }
+
+        /* 캘린더 그리드 콘텐츠에 상단 패딩 추가 */
+        .fc-view-container {
+          padding-top: 8px;
+          background-color: white;
+        }
+
+        /* 툴바 버튼 스타일(이전과 동일) */
         .fc-toolbar-chunk .fc-button {
           font-size: 11px;
           padding: 2px 5px;
@@ -404,286 +514,139 @@ export default function AppointmentCalendar() {
           color: #4285f4;
           border: 1px solid #4285f4;
           box-shadow: none;
+          border-radius: 4px;
+          margin-right: 4px;
+          margin-left: 0;
+          transition: background 0.15s, color 0.15s, border 0.15s;
         }
-
+        .fc-toolbar-chunk .fc-button:last-child {
+          margin-right: 0;
+        }
         .fc-button-active {
           background-color: transparent !important;
           color: #4285f4 !important;
           border: 2px solid #4285f4 !important;
           font-weight: 600 !important;
         }
-
         .fc-button-primary:hover {
           background-color: rgba(66, 133, 244, 0.1) !important;
           color: #4285f4 !important;
           border-color: #4285f4 !important;
         }
-
         .fc-today-button {
           background-color: #4285f4 !important;
           color: white !important;
+          border: 1px solid #4285f4 !important;
         }
-
         .fc-today-button.fc-button-active {
           background-color: #3367d6 !important;
           border-color: #3367d6 !important;
         }
-
         .fc-button-primary {
           display: inline-flex;
           align-items: center;
           justify-content: center;
         }
-
-        .event-title,
-        .event-time,
-        .event-location {
-          font-size: 0.75rem;
-          overflow: hidden;
-          text-overflow: clip;
-          white-space: normal;
-          word-break: break-word;
-          line-height: 1.2;
-        }
-
-        .event-title {
-          font-weight: 600;
-        }
-
-        /* 월별 뷰 제목 스타일 - 줄 제한 없음 */
-        .event-title-month {
-          font-size: 0.75rem;
-          font-weight: 600;
-          overflow: hidden;
-          white-space: normal;
-          word-break: break-word;
-          line-height: 1.2;
-        }
-
-        /* 그리드 셀에 맞추기 위한 컨테이너 스타일 */
-        .event-content-month {
-          overflow: hidden; /* 컨테이너를 넘어가는 내용 숨김 */
-        }
-
-        /* 다일 이벤트의 월뷰/주뷰 스타일 */
-        .multi-day-event .event-title-month {
-          display: block; /* flex에서 block으로 변경 */
-        }
-
-        .multi-day-event .event-title-month span {
-          color: #4285f4;
-          font-size: 0.65rem;
-          white-space: normal; /* nowrap 제거 */
-          display: block; /* inline에서 block으로 변경 */
-          margin-top: 2px;
-        }
-
-        /* 모든 뷰에서 날짜 범위 색상 통일 */
-        .multi-day-event .event-title-month span,
-        .multi-day-event .event-title span,
-        .date-range-text,
-        .fc-list-event .event-title span,
-        .fc-list-event .date-range-text {
-          color: #4285f4 !important;
-          font-size: 0.65rem;
-        }
-
-        /* 일정목록 뷰 날짜 범위 스타일 */
-        .fc-list-event .fc-list-event-title a {
+        .fc .fc-header-toolbar .fc-toolbar-chunk {
           display: flex;
           align-items: center;
-          flex-wrap: wrap;
         }
 
-        .fc-list-event .fc-list-event-title a span {
-          color: #4285f4 !important; /* !important로 우선순위 높임 */
-          font-size: 0.65rem;
-          margin-left: 4px;
+        /* 월별 뷰에서 약속 간 세로 간격 일관되게 설정 */
+        .fc-daygrid-day-events .fc-daygrid-event-harness {
+          margin-top: 3px !important;
+          margin-bottom: 3px !important;
         }
 
-        /* 일정목록 뷰의 다일 이벤트 배경색 강조 */
-        .fc-list-event.multi-day-event {
-          background-color: rgba(255, 87, 34, 0.05);
+        /* 두 번째와 세 번째, 그리고 그 이후의 이벤트 간격을 두배로 */
+        .fc-daygrid-day-events .fc-daygrid-event-harness:nth-child(n+3) {
+          margin-top: 6px !important;
         }
 
-        /* 일정목록 뷰의 날짜 범위 스타일 강화 */
-        .fc-list-event .fc-list-event-title a .date-range-text,
-        .fc-list-event.multi-day-event .fc-list-event-title a span,
-        .fc-list-event-title .date-range-text {
-          color: #4285f4 !important;
-          font-size: 0.65rem;
-          margin-left: 4px;
-          font-weight: normal;
+        /* 첫 번째 이벤트의 상단 마진 특별 처리 */
+        .fc-daygrid-day-events .fc-daygrid-event-harness:first-child {
+          margin-top: 1px !important; /* 첫 이벤트 상단 간격 줄임 */
         }
 
-        /* !important 규칙으로 최대한 우선순위 높임 */
-        .date-range-text {
-          color: #4285f4 !important;
+        /* 주간 테이블 구조 간격 조정 */
+        .fc-theme-standard .fc-scrollgrid {
+          border-collapse: collapse !important; /* 테이블 셀 간 간격 축소 */
         }
 
-        /* 일정목록 뷰의 장소 텍스트 스타일 */
-        .location-text {
-          display: flex;
-          align-items: center;
-          color: #666;
-          font-size: 0.7rem;
-          margin-top: 0.25rem;
+        /* 월별 뷰 셀 내부 패딩 조정 */
+        .fc .fc-daygrid-day-frame {
+          padding-top: 2px !important; /* 상단 패딩 줄임 */
+          min-height: auto !important; /* 고정 높이 제거 */
         }
 
-        /* 일정목록 뷰에서 더 나은 여백 제공 */
-        .fc-list-event td {
-          padding: 8px 14px !important;
-        }
-
-        /* 주뷰 특화 스타일 */
-        .fc-timegrid-event-harness {
-          overflow: visible !important; /* 내용이 보이도록 설정 */
-        }
-
-        .fc-timegrid-event {
-          overflow: visible !important;
-          height: auto !important;
-          min-height: auto !important;
-        }
-
-        /* 주뷰에서의 제목과 날짜 스타일 */
-        .fc-timegrid-event .event-title-month {
-          display: block;
-          word-break: break-word;
-          white-space: normal;
-        }
-
-        /* FC 이벤트 높이 조정 (주뷰에서 이벤트 높이 자동 조정) */
-        .fc-timegrid-event {
-          overflow: hidden !important;
-          min-height: auto !important;
-        }
-
-        /* 이벤트 스타일 공통 */
-        .fc-daygrid-event,
-        .fc-timegrid-event {
-          display: block;
-          overflow: hidden;
-        }
-
-        .event-content-day {
-          max-height: none;
-        }
-
-        .event-content-list {
-          max-height: none;
-        }
-
-        .fc-event-main {
-          padding: 1px;
-        }
-
-        /* 월별 뷰 이벤트 스타일 수정 */
+        /* 월별 뷰의 이벤트 컨테이너 자체 여백 감소 */
         .fc-daygrid-event {
-          min-height: 1.2rem; /* 최소 1줄 높이 */
-          max-height: 2.4rem; /* 최대 2줄 높이 */
-          overflow: hidden; /* 넘치는 내용 가림 */
-          margin: 1px 0;
-          position: relative;
-          border-top-left-radius: 0;
-          border-bottom-left-radius: 0;
+          min-height: 20px !important; /* 최소 높이 약간 축소 */
+          padding-top: 1px !important; /* 패딩 축소 */
+          padding-bottom: 1px !important;
         }
 
-        /* 월별 뷰 제목 스타일 수정 */
-        .fc-daygrid-event .event-title-month {
-          font-size: 0.75rem;
-          font-weight: 600;
-          line-height: 1.2;
-          display: -webkit-box;
-          -webkit-line-clamp: 2; /* 최대 2줄로 제한 */
-          -webkit-box-orient: vertical;
-          overflow: hidden; /* 넘치는 내용 가림 */
-          word-wrap: break-word;
-          text-overflow: clip; /* ellipsis를 clip으로 변경하여 말줄임표 제거 */
+        /* 이벤트 제목에 일관된 여백 적용 */
+        .event-title-month {
+          padding-top: 1px !important;
+          line-height: 1.3 !important; /* 줄간격 약간 축소 */
         }
 
-        /* 월별 뷰 컨테이너 스타일 */
-        .fc-daygrid-event .event-content-month {
-          height: 100%;
-          max-height: 2.4rem; /* 최대 2줄로 제한 */
-          overflow: hidden; /* 넘치는 내용 가림 */
-          padding: 1px;
+        /* 마지막 셀의 경우 하단 여백 감소 */
+        .fc-daygrid-day-events .fc-daygrid-event-harness:last-child {
+          margin-bottom: 1px !important;
         }
 
-        .fc-daygrid-event::before {
-          content: "";
-          position: absolute;
-          left: 0;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 3px;
-          height: 50%;
-          background-color: #4285f4;
+        /* 더보기 버튼과의 간격 조정 */
+        .fc-daygrid-more-link {
+          margin-top: 2px !important;
+          padding: 1px 0 !important;
         }
 
-        /* 일정목록 뷰에서 장소 텍스트 스타일 */
-        .location-text {
-          display: flex;
-          align-items: center;
-          color: #666;
-          font-size: 0.7rem;
-          margin-top: 0.25rem;
+        /* 월별 뷰에서 약속 간 세로 간격 일관되게 설정 */
+        .fc-daygrid-day-events .fc-daygrid-event-harness {
+          margin-top: 3px !important;
+          margin-bottom: 3px !important; /* 모든 이벤트 사이의 간격 균일하게 */
         }
 
-        .location-icon {
-          font-size: 0.75rem;
-          color: #f59e0b;
+        /* 월별 뷰의 이벤트 컨테이너에 일관된 높이와 여백 적용 */
+        .fc-daygrid-event {
+          min-height: 22px !important; /* 최소 높이 설정 */
+          padding-top: 2px !important;
+          padding-bottom: 2px !important;
         }
 
-        /* 일정목록 뷰의 레이아웃 개선 */
-        .fc-list-event td {
-          padding: 8px 14px !important;
+        /* 이벤트 제목에 일관된 여백 적용 - 텍스트 위치 조정 */
+        .event-title-month {
+          padding-top: 1px !important;
+          line-height: 1.4 !important; /* 줄간격 조정으로 세로 정렬 개선 */
         }
 
-        .fc-list-event-title a {
-          font-weight: 500;
+        /* 마지막 셀의 경우 하단 여백 감소 */
+        .fc-daygrid-day-events .fc-daygrid-event-harness:last-child {
+          margin-bottom: 1px !important;
         }
 
-        /* 이벤트 제목과 장소 간격 조절 */
-        .fc-list-event .fc-list-event-title {
-          padding-right: 1rem !important;
+        /* 더보기 버튼과의 간격 조정 */
+        .fc-daygrid-more-link {
+          margin-top: 2px !important;
+          padding: 1px 0 !important;
         }
 
-        /* 캘린더 컨테이너에 대한 추가 스타일 */
-        .fc {
-          height: 100% !important;
-        }
-
-        /* 모바일 최적화 스타일 */
+        /* 모바일 대응 재조정 */
         @media (max-width: 640px) {
-          .fc-header-toolbar {
-            flex-direction: column;
-            gap: 0.5rem;
+          .fixed.left-0.right-0.z-40 {
+            padding-top: 8px;
           }
-
-          .fc-toolbar-chunk {
-            display: flex;
-            justify-content: center;
-            width: 100%;
+          .fc .fc-header-toolbar {
+            top: 148px;
+            width: calc(100% - 32px) !important;
+            max-width: calc(100vw - 32px) !important;
           }
-
-          /* 모바일에서 버튼 그룹 레이아웃 */
-          .fc-toolbar-chunk:last-child {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 4px;
-          }
-
-          /* 첫 번째 줄: 월, 주 */
-          .fc-dayGridMonth-button,
-          .fc-timeGridWeek-button {
-            grid-row: 1;
-          }
-
-          /* 두 번째 줄: 일, 일정목록 */
-          .fc-timeGridDay-button,
-          .fc-listWeek-button {
-            grid-row: 2;
+          .fc .fc-header-toolbar::after {
+            top: 184px;
+            width: calc(100% - 32px) !important;
+            max-width: calc(100vw - 32px) !important;
           }
         }
       `}</style>

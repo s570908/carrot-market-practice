@@ -53,9 +53,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             },
             locationTmap: true, // locationTmap 데이터 포함
           },
-          orderBy: {
-            date: "asc",
-          },
         });
 
         // type === "organized"일 때
@@ -175,10 +172,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // 약속 생성
     const body = req.body as AppointmentCreateRequest;
     console.log("약속 생성 요청 api/appointment--Post body:", body);
-    const { title, description, date, startTime, endTime, location, participants, notifications } =
-      body;
+    const { title, description, startTime, endTime, location, participants, notifications } = body;
 
-    if (!title || !date || !startTime || !endTime || !location) {
+    if (!title || !startTime || !endTime || !location) {
       return res.status(400).json({ ok: false, error: "필수 정보가 누락되었습니다." });
     }
 
@@ -190,7 +186,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           data: {
             title,
             description: description || "",
-            date: new Date(date),
+            //date: new Date(date),
             startTime: new Date(startTime),
             endTime: new Date(endTime),
             // status는 기본값 PENDING 사용
@@ -209,7 +205,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             locationName: location.addressInfo?.buildingName || "선택한 장소",
             latitude: location.latitude,
             longitude: location.longitude,
-            // appointmentId is omitted as it is not required
+            selectedAddress: location.selectedAddress || "",
           });
 
           // LocationTmap 생성시 appointmentId 속성이 들어가지 않도록 처리

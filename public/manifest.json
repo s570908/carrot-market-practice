@@ -1,0 +1,22 @@
+{
+  "name": "Carrot Market Practice",
+  "short_name": "CarrotMarket",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ff9900",
+  "orientation": "any",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icons/soy-bean-192-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/soy-bean-512-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

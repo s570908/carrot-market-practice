@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { DEFAULT_ZOOM_LEVEL, MAX_ZOOM_LEVEL, MIN_ZOOM_LEVEL } from "@/constants";
 import { queryKeys } from "@/queries";
@@ -40,6 +40,17 @@ export const useMap = (
     longitude: currentCoord?.lng() || 0,
   };
 
+  // 사용자 상호작용 타입 추적 (맵 클릭 vs API 호출)
+  // "map": 지도를 직접 클릭했을 때 설정되는 값
+  // "api": 검색 결과를 클릭했을 때 설정되는 값
+  // null: 초기 상태 또는 상호작용 없을 때
+  const [interactionType, setInteractionType] = useState<"map" | "api" | null>(null);
+
+  // 사용자 정의 주소 추적 (검색 결과에서 선택한 주소)
+  // 검색 결과 목록에서 선택된 주소 정보를 저장
+  // 이 값이 존재하면 역지오코딩 API로 얻은 주소 대신 이 값을 사용함
+  const [customAddress, setCustomAddress] = useState<string | null>(null);
+
   // Tmapv2 초기화 (한 번만 실행)
   useEffect(() => {
     if (typeof window !== "undefined" && window.Tmapv2 && !TmapRef.current) {
@@ -60,9 +71,6 @@ export const useMap = (
 
   const currentAddress = addressData?.addressInfo?.fullAddress || "";
   const addressInfo = addressData?.addressInfo || null;
-
-  console.log("useMap--fullAddress: ", currentAddress);
-  console.log("useMap--addressInfo: ", addressInfo);
 
   const setCenterToSelectedCoord = useCallback(
     (position: TMapLatLng) => {
@@ -171,6 +179,11 @@ export const useMap = (
       const { latLng } = e;
       const position = new Tmapv2.LatLng(latLng.lat(), latLng.lng());
 
+      // 맵 클릭 상호작용 표시 - 지도를 직접 클릭하여 위치를 선택했음을 기록
+      setInteractionType("map");
+      // 사용자 정의 주소 초기화 - 지도 클릭 시 검색 결과 주소는 무시하고 역지오코딩 결과를 사용
+      setCustomAddress(null);
+
       // 새 좌표 저장 (중복 렌더링 방지)
       lastCoordRef.current = {
         latitude: position.lat(),
@@ -265,15 +278,29 @@ export const useMap = (
     };
   }, [currentCoord, mapInstance, isClickable, isZummable, mapRef]);
 
-  // 마커 업데이트 함수
+  // 마커 업데이트 함수 수정
   const updateMarker = useCallback(
     (
-      coord: { latitude: number | null; longitude: number | null },
+      coord: {
+        latitude: number | null;
+        longitude: number | null;
+        customAddressName?: string | null; // 커스텀 주소명 매개변수 추가 - 검색 결과에서 선택한 주소 전달용
+      },
       theme: "green" | "red" = "green"
     ) => {
-      const { latitude, longitude } = coord;
+      const { latitude, longitude, customAddressName } = coord;
+
       if (!(latitude && longitude) || !mapInstance || !TmapRef.current) {
         return;
+      }
+
+      // 커스텀 주소가 제공되면 API 상호작용으로 설정
+      // 검색 결과 클릭 시 customAddressName이 전달되어 이 조건이 실행됨
+      if (customAddressName) {
+        // 상호작용 타입을 API(검색 결과 클릭)로 설정
+        setInteractionType("api");
+        // 사용자 정의 주소 저장 - 이 주소가 역지오코딩 결과 대신 표시됨
+        setCustomAddress(customAddressName);
       }
 
       // 같은 좌표면 중심만 이동 (무한 렌더링 방지)
@@ -349,7 +376,18 @@ export const useMap = (
     [mapInstance, setCenterToSelectedCoord]
   );
 
-  // 초기화 함수
+  // 현재 주소 계산 로직 - 커스텀 주소 우선
+  // 검색 결과에서 선택한 주소와 맵 클릭으로 얻은 주소 중 어떤 것을 표시할지 결정하는 로직
+  const displayAddress = useMemo(() => {
+    // API(검색 결과) 상호작용이고 커스텀 주소가 있으면 커스텀 주소 사용
+    if (interactionType === "api" && customAddress) {
+      return customAddress; // 검색 결과에서 선택한 주소를 우선 표시
+    }
+    // 그렇지 않으면 역지오코딩으로 얻은 주소 사용 (맵 클릭)
+    return addressData?.addressInfo?.fullAddress || "";
+  }, [interactionType, customAddress, addressData]);
+
+  // 초기화 함수 수정
   const initMapModal = useCallback(() => {
     // 기존 마커 제거 (ref 사용)
     if (currentMarkerRef.current) {
@@ -360,21 +398,21 @@ export const useMap = (
     setCurrentCoord(null);
     lastCoordRef.current = null;
     lastZoomCenterRef.current = null;
-  }, []);
 
-  // console.log("useMap--mapInstance: ", mapInstance);
-  // console.log("useMap--coord: ", coord);
-  // console.log("useMap--currentAddress: ", currentAddress);
-  // console.log("useMap--currentMarker: ", currentMarkerRef.current);
+    // 상호작용 타입과 커스텀 주소도 초기화
+    setInteractionType(null);
+    setCustomAddress(null);
+  }, []);
 
   return {
     mapInstance,
     updateMarker,
     coord,
     setCoord,
-    currentAddress,
+    currentAddress: displayAddress, // 수정된 주소 반환 - 상호작용 타입에 따라 적절한 주소 반환
     addressInfo,
     initMapModal,
+    interactionType, // 상호작용 타입 노출 (필요시 외부에서 사용 가능)
     currentMarker: currentMarkerRef.current, // 마커 참조 반환 (필요시 사용)
     isClickable, // API의 일부로 isClickable 상태 노출
     isZummable, // API로 isZummable 상태 노출

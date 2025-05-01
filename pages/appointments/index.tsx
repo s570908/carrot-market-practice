@@ -1,210 +1,254 @@
 // c:\Users\Song\Documents\DebugJS\appointment-nextjs\pages\appointments\index.tsx
-import { useState } from "react";
-import { useRouter } from "next/router";
-import Link from "next/link";
-import Layout from "@/components/Layout";
-import ModButton from "@/components/ModButton";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/router";
+import Layout from "@/components/Layout";
 import { getAppointments } from "@/apiLibs/appointments";
-
-// 날짜 포맷 함수
-const formatDate = (dateStr: string) => {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString("ko-KR", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    weekday: "short",
-  });
-};
-
-// 시간 포맷 함수
-const formatTime = (timeStr: string) => {
-  const time = new Date(timeStr);
-  return time.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: true });
-};
+import { AppointmentStatus } from "@prisma/client";
+import Link from "next/link";
+import ModButton from "@/components/ModButton";
+import EmptyState from "@components/EmptyState";
+import AppointmentCard from "@components/appointments/AppointmentCard";
+import AppointmentStatusFilter from "@components/appointments/AppointmentStatusFilter";
+import { formatDate, formatTime } from "@libs/utils";
+import dayjs from "dayjs";
+import useSocket from "@libs/client/useSocket"; // useSocket 훅 임포트
+import useUser from "@libs/client/useUser";
 
 export default function AppointmentList() {
   const router = useRouter();
-  const [tab, setTab] = useState<"all" | "organized" | "participating">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "organized" | "participating">("all");
+  const [statusFilter, setStatusFilter] = useState<AppointmentStatus | "ALL">("ALL");
+  const [sortBy, setSortBy] = useState<"date" | "title" | "status">("date");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
-  // 약속 목록 가져오기
+  const { user } = useUser();
+
+  // useSocket 훅 사용하여 소켓 연결
+  const [socket, connected] = useSocket("market");
+
   const {
     data,
     isLoading: loading,
     refetch,
   } = useQuery({
-    queryKey: ["appointments", tab],
-    queryFn: () => getAppointments(tab),
-    staleTime: 60000, // 1분 동안 캐시 데이터 유지 (필요에 따라 조정)
+    queryKey: ["appointments", activeTab],
+    queryFn: () => getAppointments(activeTab),
+    staleTime: 1000 * 60, // 1분
   });
-  console.log("AppointmentList: data: ", data);
 
-  // 날짜별로 약속 그룹화
-  const groupAppointmentsByDate = (appointments: any[]) => {
-    return appointments.reduce((groups: any, appointment: any) => {
-      const date = appointment.date.split("T")[0];
-      if (!groups[date]) {
-        groups[date] = [];
+  // 소켓 이벤트 리스너 설정
+  useEffect(() => {
+    if (!user?.id || !connected || !socket) return;
+
+    // 개인 룸 접속
+    socket.emit("joinRoom", { room: `user-${user.id}` });
+
+    // 약속 목록 업데이트 이벤트 수신 처리
+    socket.on("appointment_list_update", (data) => {
+      console.log("약속 목록 업데이트 이벤트 수신:", data);
+
+      // 데이터 갱신
+      refetch();
+    });
+
+    return () => {
+      if (socket) {
+        socket.off("appointment_list_update");
       }
-      groups[date].push(appointment);
-      return groups;
-    }, {});
-  };
-
-  // 상태별 배지 스타일
-  const getStatusBadge = (status: string) => {
-    const statusMap: any = {
-      PENDING: "bg-yellow-100 text-yellow-800",
-      CONFIRMED: "bg-green-100 text-green-800",
-      CANCELLED: "bg-red-100 text-red-800",
-      COMPLETED: "bg-blue-100 text-blue-800",
     };
+  }, [refetch, user?.id, connected, socket]);
 
-    return (
-      <span className={`rounded-full px-2 py-1 text-xs font-medium ${statusMap[status]}`}>
-        {status === "PENDING"
-          ? "대기중"
-          : status === "CONFIRMED"
-          ? "확정됨"
-          : status === "CANCELLED"
-          ? "취소됨"
-          : "완료됨"}
-      </span>
-    );
-  };
-
-  // 약속 목록 렌더링
-  const renderAppointments = () => {
-    if (loading) {
-      return (
-        <div className="py-8 text-center">
-          <p className="text-gray-500">약속 정보를 불러오는 중입니다...</p>
-        </div>
-      );
-    }
-
-    if (!data || !data.ok) {
-      return (
-        <div className="py-8 text-center">
-          <p className="text-gray-500">약속 정보를 불러오는데 실패했습니다.</p>
-          <ModButton onClick={() => refetch()} className="mt-2">
-            다시 시도
-          </ModButton>
-        </div>
-      );
-    }
+  // 약속 데이터 정렬 및 필터링
+  const processedAppointments = useMemo(() => {
+    if (!data) return [];
 
     let appointments: any[] = [];
-
-    appointments = [...(data.organized || []), ...(data.participating || [])];
-
-    if (appointments.length === 0) {
-      return (
-        <div className="py-8 text-center">
-          <p className="text-gray-500">약속이 없습니다.</p>
-        </div>
-      );
+    if (activeTab === "all") {
+      appointments = [...(data.organized || []), ...(data.participating || [])];
+    } else if (activeTab === "organized") {
+      appointments = data.organized || [];
+    } else {
+      appointments = data.participating || [];
     }
 
-    const groupedAppointments = groupAppointmentsByDate(appointments);
-    const sortedDates = Object.keys(groupedAppointments).sort();
+    // 상태 필터링 적용
+    if (statusFilter !== "ALL") {
+      appointments = appointments.filter((apt) => apt.status === statusFilter);
+    }
 
-    return (
-      <div className="space-y-6">
-        {sortedDates.map((date) => (
-          <div key={date} className="overflow-hidden rounded-lg border">
-            <div className="border-b bg-gray-50 px-4 py-2">
-              <h3 className="font-medium">{formatDate(date)}</h3>
-            </div>
-            <ul className="divide-y">
-              {groupedAppointments[date].map((appointment: any) => (
-                <li key={appointment.id}>
-                  <Link href={`/appointments/${appointment.id}`}>
-                    <div className="cursor-pointer p-4 transition hover:bg-gray-50">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h4 className="font-medium">{appointment.title}</h4>
-                          <p className="text-sm text-gray-600">
-                            {formatTime(appointment.startTime)} - {formatTime(appointment.endTime)}
-                          </p>
-                          <p className="mt-1 text-sm text-gray-600">{appointment.locationName}</p>
-                        </div>
-                        <div className="flex flex-col items-end">
-                          {getStatusBadge(appointment.status)}
-                          <p className="mt-1 text-xs text-gray-500">
-                            참석자: {appointment.participants?.length || 0}명
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
-    );
-  };
+    // 배열 복사 후 정렬
+    return [...appointments].sort((a, b) => {
+      // 시작 시간이 없거나 온종일 예약 항목은 앞에 배치
+      if (!a.startTime || a.allDay) return -1;
+      if (!b.startTime || b.allDay) return 1;
+
+      switch (sortBy) {
+        case "date": {
+          // 날짜와 시간을 결합하여 비교
+          const dateTimeA = new Date(
+            `${dayjs(a.date).format("YYYY-MM-DD")}T${dayjs(a.startTime).format("HH:mm:ss")}`
+          ).getTime();
+          const dateTimeB = new Date(
+            `${dayjs(b.date).format("YYYY-MM-DD")}T${dayjs(b.startTime).format("HH:mm:ss")}`
+          ).getTime();
+
+          return sortOrder === "asc" ? dateTimeA - dateTimeB : dateTimeB - dateTimeA;
+        }
+        case "title": {
+          const titleA = a.title?.toLowerCase() || "";
+          const titleB = b.title?.toLowerCase() || "";
+          return sortOrder === "asc" ? titleA.localeCompare(titleB) : titleB.localeCompare(titleA);
+        }
+        case "status": {
+          const statusA = a.status?.toLowerCase() || "";
+          const statusB = b.status?.toLowerCase() || "";
+          return sortOrder === "asc"
+            ? statusA.localeCompare(statusB)
+            : statusB.localeCompare(statusA);
+        }
+        default:
+          return 0;
+      }
+    });
+  }, [data, activeTab, statusFilter, sortBy, sortOrder]);
 
   return (
-    <Layout title="내 약속" seoTitle="내 약속">
+    <Layout title="약속 목록" seoTitle="약속 목록 | Carrot Market">
       <div className="p-4">
         <div className="mb-4 flex items-center justify-between">
-          <div className="flex space-x-2">
-            <button
-              onClick={() => setTab("all")}
-              className={`rounded-md px-4 py-2 text-sm font-medium ${
-                tab === "all" ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"
-              }`}
+          <h1 className="text-lg font-medium">약속 목록</h1>
+          <div className="flex items-center space-x-2">
+            <Link
+              href="/appointments/calendar"
+              className="flex items-center justify-center rounded-lg border border-gray-300 px-3 py-2 transition-colors hover:bg-gray-100"
             >
-              전체
-            </button>
-            <button
-              onClick={() => setTab("organized")}
-              className={`rounded-md px-4 py-2 text-sm font-medium ${
-                tab === "organized" ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"
-              }`}
-            >
-              내가 만든 약속
-            </button>
-            <button
-              onClick={() => setTab("participating")}
-              className={`rounded-md px-4 py-2 text-sm font-medium ${
-                tab === "participating" ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-800"
-              }`}
-            >
-              참여 약속
-            </button>
-          </div>
-
-          <div className="flex space-x-2">
-            <Link href="/appointments/calendar">
-              <a className="flex items-center justify-center rounded-full p-2 text-gray-600 hover:bg-gray-100">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                  className="h-6 w-6"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 9v7.5m-9-6h.008v.008H12v-.008zM12 15h.008v.008H12V15zm0 2.25h.008v.008H12v-.008zM9.75 15h.008v.008H9.75V15zm0 2.25h.008v.008H9.75v-.008zM7.5 15h.008v.008H7.5V15zm0 2.25h.008v.008H7.5v-.008zm6.75-4.5h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V15zm0 2.25h.008v.008h-.008v-.008zm2.25-4.5h.008v.008H16.5v-.008zm0 2.25h.008v.008H16.5V15z"
-                  />
-                </svg>
-              </a>
+              <svg
+                className="h-5 w-5 text-gray-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
             </Link>
-            <Link href="/appointments/create">
-              <ModButton variant="primary">약속 만들기</ModButton>
-            </Link>
+            {/* ModButton을 직접 사용하고 onClick으로 라우팅 처리 */}
+            <ModButton
+              variant="primary"
+              size="small"
+              onClick={() => router.push("/appointments/create")}
+            >
+              약속 만들기
+            </ModButton>
           </div>
         </div>
 
-        {renderAppointments()}
+        {/* 탭 메뉴 */}
+        <div className="mb-6 flex border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab("all")}
+            className={`mr-4 py-2 ${
+              activeTab === "all"
+                ? "border-b-2 border-orange-500 font-medium text-orange-500"
+                : "text-gray-500"
+            }`}
+          >
+            모든 약속
+          </button>
+          <button
+            onClick={() => setActiveTab("organized")}
+            className={`mr-4 py-2 ${
+              activeTab === "organized"
+                ? "border-b-2 border-orange-500 font-medium text-orange-500"
+                : "text-gray-500"
+            }`}
+          >
+            내가 만든 약속
+          </button>
+          <button
+            onClick={() => setActiveTab("participating")}
+            className={`py-2 ${
+              activeTab === "participating"
+                ? "border-b-2 border-orange-500 font-medium text-orange-500"
+                : "text-gray-500"
+            }`}
+          >
+            참여 중인 약속
+          </button>
+        </div>
+
+        {/* 정렬 컨트롤 추가 */}
+        <div className="mb-4 flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as "date" | "title" | "status")}
+              className="min-w-[85px] rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            >
+              <option value="date">날짜순</option>
+              <option value="title">제목순</option>
+              <option value="status">상태별</option>
+            </select>
+            <button
+              onClick={() => setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
+              className="flex min-w-[100px] flex-row items-center justify-center gap-1 rounded-lg  border border-gray-300 px-0 py-2 text-sm hover:bg-gray-50"
+            >
+              <span>{sortOrder === "asc" ? "오름차순" : "내림차순"}</span>
+              <svg
+                className={`h-4 w-4 transform transition-transform ${
+                  sortOrder === "desc" ? "rotate-180" : ""
+                }`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 15l7-7 7 7"
+                />
+              </svg>
+            </button>
+          </div>
+          <AppointmentStatusFilter selectedStatus={statusFilter} onChange={setStatusFilter} />
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-10">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-orange-500 border-t-transparent"></div>
+          </div>
+        ) : processedAppointments.length > 0 ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {processedAppointments.map((appointment) => (
+              <AppointmentCard
+                key={appointment.id}
+                id={appointment.id}
+                title={appointment.title}
+                startTime={new Date(appointment.startTime)}
+                endTime={new Date(appointment.endTime)}
+                status={appointment.status}
+                location={
+                  appointment.locationTmap?.locationName || appointment.locationTmap?.fullAddress
+                }
+                organizerName={appointment.organizer?.name}
+                organizerAvatar={
+                  appointment.organizer?.avatar
+                    ? `https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${appointment.organizer.avatar}/public`
+                    : undefined
+                }
+              />
+            ))}
+          </div>
+        ) : (
+          <EmptyState message="약속이 없습니다." />
+        )}
       </div>
     </Layout>
   );

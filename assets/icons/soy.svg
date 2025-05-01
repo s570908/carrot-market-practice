@@ -1,0 +1,28 @@
+<!-- filepath: c:\Users\Song\Documents\DebugJS\carrot-market-practice\public\soy-icon.svg -->
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 배경 원 -->
+  <circle cx="256" cy="256" r="248" fill="#7BC67B" />
+  <circle cx="256" cy="256" r="230" fill="#90D890" />
+  
+  <!-- 콩 캐릭터 몸체 -->
+  <path d="M256 140C193.8 140 160 190 160 256C160 322 193.8 372 256 372C318.2 372 352 322 352 256C352 190 318.2 140 256 140Z" fill="#F5F5DC" stroke="#4A4A4A" stroke-width="8" stroke-linecap="round" />
+  
+  <!-- 왼쪽 눈 -->
+  <ellipse cx="220" cy="230" rx="14" ry="18" fill="#4A4A4A" />
+  <circle cx="224" cy="224" r="5" fill="white" />
+  
+  <!-- 오른쪽 눈 -->
+  <ellipse cx="292" cy="230" rx="14" ry="18" fill="#4A4A4A" />
+  <circle cx="296" cy="224" r="5" fill="white" />
+  
+  <!-- 미소 -->
+  <path d="M226 280C240 296 272 296 286 280" stroke="#4A4A4A" stroke-width="8" stroke-linecap="round" />
+  
+  <!-- 콩 잎 장식 -->
+  <path d="M256 140C256 140 230 100 200 90C170 80 160 120 190 130C220 140 256 140 256 140Z" fill="#7BC67B" stroke="#4A4A4A" stroke-width="6" stroke-linecap="round" />
+  <path d="M256 140C256 140 282 100 312 90C342 80 352 120 322 130C292 140 256 140 256 140Z" fill="#7BC67B" stroke="#4A4A4A" stroke-width="6" stroke-linecap="round" />
+  
+  <!-- 텍스트 -->
+  <path d="M193 320C193 320 200 340 220 345C240 350 267 345 267 345" stroke="#4A4A4A" stroke-width="6" stroke-linecap="round" />
+  <path d="M280 330C280 330 290 320 310 330C330 340 320 360 300 360C280 360 280 345 280 330Z" fill="#F8D56F" stroke="#4A4A4A" stroke-width="6" stroke-linecap="round" />
+</svg>

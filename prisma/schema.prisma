@@ -43,6 +43,7 @@ model User {
   friendships               Friendship[]             @relation("UserFriendships")
   // 친구 관계 (나를 친구로 추가한 사람들) - 이름 변경
   friendInvited             Friendship[]             @relation("FriendInvited")
+  pushSubscriptions         PushSubscription[]
 }
 
 model Token {
@@ -146,7 +147,7 @@ model Answer {
 model Wondering {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now()) @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    Int
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
@@ -315,9 +316,8 @@ model Appointment {
   id          Int      @id @default(autoincrement())
   title       String // 약속 제목
   description String?  @db.MediumText // 약속 설명
-  date        DateTime // 만나는 날짜
-  startTime   DateTime // 시작 시간
-  endTime     DateTime // 종료 시간
+  startTime   DateTime // 시작 시간 (날짜+시간)
+  endTime     DateTime // 종료 시간 (날짜+시간)
 
   locationTmap LocationTmap? // 약속 장소 (Tmap API 사용)
 
@@ -335,24 +335,31 @@ model Appointment {
   notifications AppointmentNotification[] // 약속 알림
 
   @@index([organizerId])
-  @@index([date]) // 날짜로 조회 성능 향상
+  @@index([startTime]) // date 대신 startTime으로 인덱스 변경
 }
 
 // 약속 참가자 모델
 model AppointmentParticipant {
-  id            Int         @id @default(autoincrement())
-  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  id            Int               @id @default(autoincrement())
+  appointment   Appointment       @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
   appointmentId Int
-  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId        Int
-  status        String      @default("pending") // confirmed, pending, declined
+  status        ParticipantStatus @default(PENDING)
   responseTime  DateTime? // 응답 시간
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 
   @@unique([appointmentId, userId]) // 한 약속에 동일 사용자가 중복 참가 불가
   @@index([userId])
   @@index([appointmentId])
+}
+
+// 참가자 응답 상태를 위한 별도 열거형
+enum ParticipantStatus {
+  PENDING // 응답 대기중
+  ACCEPTED // 참석 확정
+  DECLINED // 참석 거절
 }
 
 // 약속 알림 모델
@@ -379,10 +386,11 @@ model LocationTmap {
   appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
   appointmentId Int?         @unique // 1:1 관계 설정
 
-  // TMap 특화 필드
-  locationName String // 사용자 표시용 장소명 (buildingName과 동일)
-  latitude     Float // 위도
-  longitude    Float // 경도
+  // 사용자 선택 주소 특화 필드
+  locationName    String // 사용자 표시용 장소명 (buildingName과 동일)
+  selectedAddress String @default("") // 기본값 추가
+  latitude        Float // 위도
+  longitude       Float // 경도
 
   // TMap API 특화 필드들
   addressType     String? // A04 등
@@ -419,4 +427,19 @@ model Friendship {
   @@unique([userId, friendId])
   @@index([userId])
   @@index([friendId])
+}
+
+// 푸시 알림 구독 정보 모델 추가
+model PushSubscription {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  endpoint  String   @db.VarChar(500)
+  p256dh    String   @db.VarChar(255)
+  auth      String   @db.VarChar(255)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, endpoint])
+  @@index([userId])
 }

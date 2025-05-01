@@ -131,12 +131,12 @@ export default function Layout({
         </Head>
         <div
           {...rest}
-          className="fixed top-0 flex h-12 w-full max-w-xl items-center justify-center border-b bg-white px-10 text-lg font-medium text-gray-800"
+          className="fixed top-0 z-[100] flex h-12 w-full max-w-xl items-center justify-center border-b bg-white px-10 text-lg font-medium text-gray-800"
         >
           {canGoBack ? (
             <button onClick={onClick} className="absolute left-4 z-[2]">
               <svg
-                className="h-6 w-6"
+                className="w-6 h-6"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -154,7 +154,7 @@ export default function Layout({
           {goHome && (
             <button onClick={handleHomeClick} className="absolute left-4 z-[2] ml-10">
               <svg
-                className="h-6 w-6"
+                className="w-6 h-6"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -168,7 +168,7 @@ export default function Layout({
           {title ? <span className={cls(canGoBack ? "mx-auto" : "", "")}>{title}</span> : null}
           {notice ? (
             <Link href="/blog">
-              <a className="absolute right-4 rounded-md border-2 bg-orange-500 p-1 text-sm text-white hover:bg-orange-600">
+              <a className="absolute p-1 text-sm text-white bg-orange-500 border-2 rounded-md right-4 hover:bg-orange-600">
                 <span>공지사항</span>
               </a>
             </Link>
@@ -177,9 +177,9 @@ export default function Layout({
             <div className="absolute right-4">
               <button
                 onClick={handlePostOptionsClick}
-                className="cursor-pointer rounded-full p-2 hover:bg-gray-100"
+                className="p-2 rounded-full cursor-pointer hover:bg-gray-100"
               >
-                <IoEllipsisVerticalSharp className="h-6 w-6" />
+                <IoEllipsisVerticalSharp className="w-6 h-6" />
               </button>
             </div>
           ) : null}
@@ -190,7 +190,7 @@ export default function Layout({
           {children}
         </div>
         {hasTabBar ? (
-          <nav className="fixed bottom-0 flex w-full max-w-xl justify-between border-t bg-white px-10 pb-5 pt-3 text-xs text-gray-700">
+          <nav className="fixed bottom-0 flex justify-between w-full max-w-xl px-10 pt-3 pb-5 text-xs text-gray-700 bg-white border-t">
             <Link href="/">
               <a
                 className={cls(
@@ -201,7 +201,7 @@ export default function Layout({
                 )}
               >
                 <svg
-                  className="h-6 w-6"
+                  className="w-6 h-6"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -227,7 +227,7 @@ export default function Layout({
                 )}
               >
                 <svg
-                  className="h-6 w-6"
+                  className="w-6 h-6"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -253,7 +253,7 @@ export default function Layout({
                 )}
               >
                 <svg
-                  className="h-6 w-6"
+                  className="w-6 h-6"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -267,10 +267,10 @@ export default function Layout({
                   ></path>
                 </svg>
                 {notice && router.pathname !== "/chats" ? (
-                  <div className="absolute -right-3 -top-3 text-orange-500">
+                  <div className="absolute text-orange-500 -right-3 -top-3">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5"
+                      className="w-5 h-5"
                       viewBox="0 0 20 20"
                       fill="currentColor"
                     >
@@ -291,7 +291,7 @@ export default function Layout({
                 )}
               >
                 <svg
-                  className="h-6 w-6"
+                  className="w-6 h-6"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -317,7 +317,7 @@ export default function Layout({
                 )}
               >
                 <svg
-                  className="h-6 w-6"
+                  className="w-6 h-6"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"

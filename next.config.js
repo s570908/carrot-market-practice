@@ -31,6 +31,20 @@ const nextConfig = {
     });
     return config;
   },
+  // manifest.json을 위한 헤더 추가
+  async headers() {
+    return [
+      {
+        source: "/manifest.json",
+        headers: [
+          {
+            key: "Content-Type",
+            value: "application/manifest+json",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;

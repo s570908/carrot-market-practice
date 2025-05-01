@@ -1,6 +1,7 @@
 import { AppointmentStatus } from "@prisma/client";
 import aclient from "./aclient";
 import {
+  AppointmentDetailApiResponse,
   AppointmentListResponse,
   AppointmentResponse,
   AppointmentUpdateRequest,
@@ -11,7 +12,7 @@ import { AppointmentCreateRequest, CreateForm } from "@/types";
 
 // 기존 API 함수들
 export async function getAppointment(id: number) {
-  const response = await aclient.get<AppointmentResponse>(`/api/appointments/${id}`);
+  const response = await aclient.get<AppointmentDetailApiResponse>(`/api/appointments/${id}`);
   return response.data;
 }
 
@@ -37,11 +38,12 @@ export async function updateAppointment(id: number, appointmentData: Appointment
 /**
  * 약속 참가자의 상태를 변경합니다.
  * @param id 약속 ID
- * @param status 변경할 상태 ('confirmed' | 'declined')
+ * @param status 변경할 상태 ('CONFIRMED' | 'DECLINED')
  * @returns 상태 변경 응답 데이터
  */
 export async function updateAppointmentStatus(id: number, status: string) {
-  const response = await aclient.put<{ ok: boolean }>(`/api/appointments/${id}/participants`, {
+  console.log("updateAppointmentStatus", id, status);
+  const response = await aclient.put<{ ok: boolean }>(`/api/appointments/${id}/status`, {
     status,
   });
   return response.data;
@@ -98,4 +100,25 @@ export async function getAppointments<T extends "organized" | "participating" | 
     `/api/appointments?type=${finalType}`
   );
   return response.data;
+}
+
+/**
+ * 특정 날짜에 시작하는 약속을 조회합니다.
+ * @param date 조회할 날짜 (YYYY-MM-DD 형식)
+ * @returns 해당 날짜에 시작하는 약속 목록
+ *
+ * 참고: 이 함수는 startTime의 날짜 부분이 지정된 날짜와 일치하는 약속을 반환합니다.
+ * 예: "2023-09-15" 입력 → 2023년 9월 15일에 시작하는 모든 약속 반환
+ */
+export async function getAppointmentsByDate(date: string) {
+  try {
+    // API는 내부적으로 startTime을 사용해 필터링합니다
+    const response = await aclient.get<AppointmentListResponse<"all">>(
+      `/api/appointments?date=${date}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching appointments by date:", error);
+    throw error;
+  }
 }

@@ -140,6 +140,8 @@ const AddressList = memo(
                 value={`${fullAddress} ${addressName}`}
                 data-lat={lat}
                 data-lon={lon}
+                data-address-name={addressName}
+                data-full-address={fullAddress}
                 onClick={onClickAddressListItem}
               >
                 <span className="block text-sm font-bold">{addressName}</span>
@@ -159,17 +161,26 @@ AddressList.displayName = "AddressList";
 // Define the MapModalProps interface
 interface MapModalProps {
   isOpen: boolean;
+  initialLocation?: {
+    latitude: number;
+    longitude: number;
+    addressInfo: TmapAddressInfo | null;
+    selectedAddress?: string | null; // selectedAddress 속성 추가
+    locationName?: string; // locationName도 필요한 경우 추가
+  } | null;
   onClose: (selectedLocation?: null) => void;
   onOverlayClick?: () => void; // 어두운 배경 클릭 핸들러
   onLocationSelectAddressInfo: (
     latitude: number,
     longitude: number,
-    addressInfo: TmapAddressInfo | null
+    addressInfo: TmapAddressInfo | null,
+    selectedAddress: string | null
   ) => void;
 }
 
 export function MapModal({
   isOpen,
+  initialLocation,
   onClose,
   onOverlayClick,
   onLocationSelectAddressInfo,
@@ -219,6 +230,7 @@ export function MapModal({
   // useMemo는 의존성 배열([tmapResponse])의 값이 변경될 때만 새로운 값을 계산합니다.
   // tmapResponse가 동일하다면 이전과 동일한 addressData 참조를 반환합니다.
   // 이로 인해 AddressList의 props가 변경되지 않아 리렌더링이 발생하지 않습니다.
+  console.log("tmapResponse", tmapResponse);
   const addressData = useMemo(() => {
     return tmapResponse?.searchPoiInfo?.pois?.poi || [];
   }, [tmapResponse]);
@@ -235,10 +247,11 @@ export function MapModal({
   const onClickConfirm = () => {
     const { latitude, longitude } = coord;
     if (!(latitude && longitude)) return;
-    console.log("선택한 주소:", selectedAddress);
+    console.log("선택한 주소--selectedAddress:", selectedAddress);
+    console.log("주소 정보--addressInfo:", addressInfo); // 주소 정보 콘솔에 출력 (확인용)
     console.log("latitude:", latitude);
     console.log("longitude:", longitude);
-    onLocationSelectAddressInfo(latitude, longitude, addressInfo ?? null); // 선택된 위치를 부모에게 전달
+    onLocationSelectAddressInfo(latitude, longitude, addressInfo ?? null, selectedAddress ?? null); // 선택된 위치를 부모에게 전달
 
     onClose(); // 모달 닫기
   };
@@ -246,12 +259,31 @@ export function MapModal({
   const onClickAddressListItem = <Event extends React.MouseEvent | React.KeyboardEvent>(
     e: Event
   ) => {
-    const coordinate = {
+    const addressItem = {
       latitude: Number(e.currentTarget.getAttribute("data-lat")),
       longitude: Number(e.currentTarget.getAttribute("data-lon")),
+      addressName: e.currentTarget.getAttribute("data-address-name"),
+      fullAddress: e.currentTarget.getAttribute("data-full-address"),
     };
 
-    updateMarker(coordinate, "red");
+    // updateMarker 호출 시 customAddressName을 함께 전달
+    // 이를 통해 useMap 내부에서 검색 결과 선택임을 인식하고 주소 표시를 제어할 수 있음
+    updateMarker(
+      {
+        latitude: addressItem.latitude,
+        longitude: addressItem.longitude,
+        customAddressName: `${addressItem.addressName} (${addressItem.fullAddress})`,
+      },
+      "red"
+    );
+
+    // 선택한 주소 정보 콘솔에 출력 (확인용)
+    console.log("Selected address:", {
+      name: addressItem.addressName,
+      address: addressItem.fullAddress,
+      lat: addressItem.latitude,
+      lon: addressItem.longitude,
+    });
 
     // 마커 즉시 업데이트를 위해 플래그 재설정
     isMarkerUpdated.current = true;
@@ -271,6 +303,22 @@ export function MapModal({
       isMarkerUpdated.current = true;
     }
   }, [coord, coord.latitude, coord.longitude, updateMarker]);
+
+  // 초기 위치가 제공된 경우 지도 초기화 후 해당 위치로 이동
+  useEffect(() => {
+    if (isOpen && initialLocation && initialLocation.latitude && initialLocation.longitude) {
+      // 위치 정보가 있으면 지도 마커 업데이트
+      console.log("초기 위치:", initialLocation);
+      updateMarker(
+        {
+          latitude: initialLocation.latitude,
+          longitude: initialLocation.longitude,
+          customAddressName: initialLocation.selectedAddress || null,
+        },
+        "red"
+      );
+    }
+  }, [isOpen, initialLocation, updateMarker]);
 
   // 컴포넌트 마운트 시 초기화
   useEffect(() => {

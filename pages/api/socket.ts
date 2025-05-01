@@ -25,42 +25,45 @@ export default function handler(req: NextApiRequest, res: NextApiResponseServerI
       },
     });
 
-    // Add Admin UI plugin
-    instrument(io, {
-      auth: false,
-      // auth: {
-      //   type: "basic",
-      //   username: "admin", // Admin UI login username
-      //   password: "$2a$04$WnbCwmDn6SFrC93Z/DuF8evNsjz9Q4NBRN7iS0LmoanxqDfhBGosS", // Replace with bcrypt-hashed password
-      // },
-      mode: "development", // Use "development" or "production" mode
-    });
+    // // Add Admin UI plugin
+    // instrument(io, {
+    //   auth: false,
+    //   // auth: {
+    //   //   type: "basic",
+    //   //   username: "admin", // Admin UI login username
+    //   //   password: "$2a$04$WnbCwmDn6SFrC93Z/DuF8evNsjz9Q4NBRN7iS0LmoanxqDfhBGosS", // Replace with bcrypt-hashed password
+    //   // },
+    //   mode: "development", // Use "development" or "production" mode
+    // });
 
     // /ws-${workspace} 네임스페이스
-    const WSmarketnamespace = io.of(/^\/ws-.+/);
-    WSmarketnamespace.on("connection", (socket) => {
-      console.log(`Client connected to workspace namespace: ${socket.nsp.name}`);
+    const marketNamespace = io.of(/^\/ws-.+/);
+    marketNamespace.on("connection", (socket) => {
+      // namespace 이름을 명확하게 변수에 저장
+      const namespaceName = socket.nsp.name;
+      console.log(`Client connected to workspace namespace: ${namespaceName}`);
       console.log(`User connected socket.id: ${socket.id}`);
 
-      if (!onlineMap[socket.nsp.name]) {
-        onlineMap[socket.nsp.name] = {};
+      if (!onlineMap[namespaceName]) {
+        onlineMap[namespaceName] = {};
       }
 
       // 사용자 연결 이벤트 처리
       // 사용자가 login 이벤트를 보낸다. payload에는 로그인  user id, 로그인 user가 가입한 chat room id 목록이 들어 있다.
       socket.on("login", (data: { id: number; channels: number[] }) => {
-        console.log("login to the worksapce: ", socket.nsp.name);
+        console.log("login to the worksapce: ", namespaceName);
         console.log("login socket event--data: ", data);
 
         // Workspace URL과 Socket ID를 키로 사용자 ID를 기록
-        onlineMap[socket.nsp.name][socket.id] = data.id;
+        onlineMap[namespaceName][socket.id] = data.id;
 
         // Workspace URL에 속한 모든 socket에 사용자 ID 배열을 페이로드로 송부
-        socket.nsp.emit("onlineList", Object.values(onlineMap[socket.nsp.name]));
+        // socket.nsp.emit 대신 네임스페이스 객체를 통해 직접 emit
+        marketNamespace.emit("onlineList", Object.values(onlineMap[namespaceName]));
 
         // 로그인 user의 socket을 각각의 채널(chat room)에 등록한다.
         data.channels.forEach((channel) => {
-          const roomName = `${socket.nsp.name}-${channel}`;
+          const roomName = `${namespaceName}-${channel}`;
           console.log(`룸네임: ${roomName} 에 조인한다.`);
           socket.join(roomName);
         });
@@ -69,7 +72,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponseServerI
       // Listen for 'requestOnlineList' event
       socket.on("requestOnlineList", () => {
         console.log(`Request for online list received from socket ID: ${socket.id}`);
-        const onlineList = Object.values(onlineMap[socket.nsp.name]);
+        const onlineList = Object.values(onlineMap[namespaceName]);
         socket.emit("onlineList", onlineList); // Respond with the online list
       });
 
@@ -77,15 +80,42 @@ export default function handler(req: NextApiRequest, res: NextApiResponseServerI
         const roomName = data.room;
         socket.join(roomName);
         console.log(`joinRoom -- Socket:${socket.id} joined room:${roomName}`);
-        // 조인한 룸에 테스트 메시지 전송
-        // const testMessage = `Test message for room: ${roomName}`;
-        // WSmarketnamespace.to(roomName).emit("message", { room: roomName, message: testMessage });
+      });
+
+      socket.on("leaveRoom", (data) => {
+        socket.leave(data.room);
+        console.log(`leaveRoom -- Socket:${socket.id} left room:${data.room}`);
       });
 
       socket.on("changeState", (data) => {
         console.log("changeState -- data: ", data);
         // 동일한 namespace에 있는 모든 socket 클라이언트에게 상태 변경 이벤트 전송
-        socket.nsp.emit("changeState", data);
+        marketNamespace.emit("changeState", data);
+      });
+
+      // 약속방(appointment room) 조인 이벤트 리스너 및 핸들러
+      socket.on(
+        "joinAppointmentRoom",
+        (data: { appointmentId: number; userId: number; userName: string }) => {
+          const roomName = `appointment-${data.appointmentId}`;
+          socket.join(roomName);
+          console.log(`Socket:${socket.id} joined appointment room:${roomName}`);
+
+          // 방에 새로 조인한 유저를 같은 방의 다른 참가자에게 알림
+          socket.to(roomName).emit("userJoinedAppointment", {
+            appointmentId: data.appointmentId,
+            userId: data.userId,
+            userName: data.userName,
+            timestamp: new Date().toISOString(),
+          });
+        }
+      );
+
+      // 약속방(appointment room) 나가기 이벤트 리스너 및 핸들러
+      socket.on("leaveAppointmentRoom", (data: { appointmentId: number }) => {
+        const roomName = `appointment-${data.appointmentId}`;
+        socket.leave(roomName);
+        console.log(`Socket:${socket.id} left appointment room:${roomName}`);
       });
 
       // 테스트 이벤트
@@ -101,14 +131,14 @@ export default function handler(req: NextApiRequest, res: NextApiResponseServerI
 
       // 사용자 연결 해제 이벤트
       socket.on("disconnect", (reason) => {
-        console.log(`client disconnted from namespace: ${socket.nsp.name}`);
+        console.log(`client disconnted from namespace: ${namespaceName}`);
         console.log(`disconnected socket.id: ${socket.id}, reason: ${reason}`);
-        delete onlineMap[socket.nsp.name][socket.id];
-        socket.nsp.emit("onlineList", Object.values(onlineMap[socket.nsp.name]));
+        delete onlineMap[namespaceName][socket.id];
+        marketNamespace.emit("onlineList", Object.values(onlineMap[namespaceName]));
       });
 
       // 초기 연결 시 클라이언트에 이벤트 전송
-      socket.emit("hello", socket.nsp.name);
+      socket.emit("hello", namespaceName);
     });
 
     res.socket.server.io = io;

@@ -43,6 +43,7 @@ export interface DeleteLocationResponse {
 export interface LocationInput {
   appointmentId?: number;
   locationName: string;
+  selectedAddress?: string; // selectedAddress 필드 추가
   latitude: number;
   longitude: number;
   // 실제 API에서는 이렇게 묶여서 처리되지 않음
@@ -99,10 +100,11 @@ export function convertTmapAddressToLocationInput(
     latitude: number;
     longitude: number;
     appointmentId?: number;
+    selectedAddress?: string; // selectedAddress 매개변수 추가
   }
 ): LocationInput {
   return {
-    ...additionalData,
+    ...additionalData, // additionalData에 포함된 selectedAddress가 자동으로 LocationInput에 포함됨
     addressType: tmapAddress.addressType,
     adminDong: tmapAddress.adminDong,
     adminDongCode: tmapAddress.adminDongCode,

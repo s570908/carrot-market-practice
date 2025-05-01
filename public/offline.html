@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>오프라인 - Carrot Market</title>
+    <style>
+      body {
+        font-family: "Noto Sans KR", sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+        background-color: #f8f9fa;
+        color: #333;
+        text-align: center;
+        padding: 0 20px;
+      }
+      .container {
+        max-width: 500px;
+        padding: 30px;
+        background-color: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        color: #ff6b00;
+        margin-bottom: 20px;
+      }
+      p {
+        margin-bottom: 20px;
+        line-height: 1.6;
+      }
+      button {
+        background-color: #ff6b00;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+      }
+      button:hover {
+        background-color: #e65c00;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>인터넷 연결이 없습니다</h1>
+      <p>지금 오프라인 상태입니다. 인터넷에 다시 연결되면 앱을 이용할 수 있습니다.</p>
+      <button onclick="window.location.reload()">새로고침</button>
+    </div>
+  </body>
+</html>

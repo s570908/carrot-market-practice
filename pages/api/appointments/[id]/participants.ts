@@ -1,8 +1,4 @@
 // c:\Users\Song\Documents\DebugJS\appointment-nextjs\pages\api\appointments\[id]\participants.ts
-// import { NextApiRequest, NextApiResponse } from "next";
-// import { withApiSession } from "@/lib/withSession";
-// import client from "@/lib/client";
-
 import { NextApiRequest, NextApiResponse } from "next";
 import withHandler from "@libs/server/withHandler";
 import client from "@libs/client/client";
@@ -13,6 +9,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     query: { id },
     session: { user },
   } = req;
+  console.log("id, user", id, user);
 
   if (!user?.id) {
     return res.status(401).json({ ok: false, error: "로그인이 필요합니다." });
@@ -110,6 +107,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     } else if (req.method === "PUT") {
       // 참가 상태 업데이트 (참가자 본인만 가능)
+      console.log("req.method === PUT --- req.body", req.body);
+
       const { status } = req.body;
 
       if (!status) {
@@ -122,6 +121,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       if (!participant) {
         return res.status(404).json({ ok: false, error: "참가자 정보를 찾을 수 없습니다." });
       }
+
+      console.log(
+        "pages/api/appointments/[id]/participants.ts--user.id, participant.id",
+        user.id,
+        participant.id
+      );
 
       // 상태 업데이트
       const updatedParticipant = await client.appointmentParticipant.update({
