@@ -96,34 +96,53 @@ const result = await client.lastReadMessage.upsert({
 1. **사용자가 채팅방에 메시지를 보냄**
    - 프론트엔드 예시 (`pages/chats/[id].tsx` 등):
      ```typescript
-     // 메시지 전송 함수
-     socket.emit("message", {
-       channelId: chatRoomId,
-       userId: user.id,
-       chatMsg: message,
-       // ...기타 데이터
-     });
+     // 메시지 전송 함수 예시
+     async function sendChat(message: string) {
+       await fetch(`/api/chat/${chatRoomId}/send`, {
+         method: "POST",
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({
+           userId: user.id,
+           chatMsg: message,
+           // ...기타 데이터
+         }),
+       });
+     }
      ```
+     // 실제로는 socket.emit("message")가 아니라, sendChat()을 통해 서버에 POST 요청을 보냅니다.
 
 2. **서버에서 새 메시지를 DB(SellerChat)에 저장**
-   - 서버 예시 (`pages/api/socket/[...].ts` 또는 서버 소켓 핸들러):
+   - 서버 예시 (`pages/api/chat/[id]/send.ts` 등):
      ```typescript
-     socket.on("message", async (data) => {
-       // 1. 메시지 DB 저장
-       const newMessage = await client.sellerChat.create({
-         data: {
-           chatRoomId: data.channelId,
-           userId: data.userId,
-           chatMsg: data.chatMsg,
-           // ...기타 필드
+     // POST /api/chat/[id]/send
+     const newMessage = await client.sellerChat.create({
+       data: {
+         chatRoomId: +id,
+         userId: req.body.userId,
+         chatMsg: req.body.chatMsg,
+         // ...기타 필드
+       },
+     });
+
+     // 이후 소켓 브로드캐스트 및 unreadCount 계산
+     const chatRoom = await client.chatRoom.findUnique({ where: { id: +id } });
+     const userIds = [chatRoom.buyerId, chatRoom.sellerId];
+
+     for (const userId of userIds) {
+       const lastRead = await client.lastReadMessage.findUnique({
+         where: { userId_chatRoomId: { userId, chatRoomId: +id } },
+       });
+       const unreadCount = await client.sellerChat.count({
+         where: {
+           chatRoomId: +id,
+           id: { gt: lastRead?.sellerChatId || 0 },
          },
        });
 
-       // 2. 참여자에게 소켓 이벤트 브로드캐스트
-       io.of(`ws-${workspace}`).to(data.channelId.toString()).emit("message", newMessage);
-
-       // 3. unreadCount 계산 및 전송 (아래 참고)
-     });
+       io.of(`ws-${workspace}`)
+         .to(+id.toString())
+         .emit("chats-lastReadMessage", { chatRoomId: +id, userId, unreadCount });
+     }
      ```
 
 3. **서버는 각 사용자별로 LastReadMessage를 확인하여 unreadCount를 계산**
@@ -228,8 +247,22 @@ const result = await client.lastReadMessage.upsert({
 - `SellerChat`에서 해당 ID보다 큰 메시지 개수(`id > sellerChatId`)를 카운트
 - 이 개수가 unreadMessageCount가 됨
 
+**unreadCount 쿼리 예시 (prisma):**
+```typescript
+const lastRead = await client.lastReadMessage.findUnique({
+  where: { userId_chatRoomId: { userId, chatRoomId } },
+});
+const unreadCount = await client.sellerChat.count({
+  where: {
+    chatRoomId,
+    id: { gt: lastRead?.sellerChatId || 0 },
+  },
+});
+```
+
 ---
 
 **요약:**  
 - `/api/chat/[id]` API에서 sellerChatId를 가져와 LastReadMessage를 upsert하는 코드는 `pages/api/chat/[id]/index.ts`에 있다.
 - 이 API는 주로 `pages/chats/[id].tsx`에서 채팅방 진입 시, 메시지 목록 조회 시, 새로고침 시 호출된다.
+- unreadMessageCount(안읽은 메시지 개수)는 서버에서 각 사용자의 마지막 읽은 메시지 ID 이후의 메시지 개수를 카운트하여 계산하며, 실시간 소켓 이벤트 또는 API 응답에 포함되어 프론트엔드에서 UI에 반영된다.
