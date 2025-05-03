@@ -30,8 +30,8 @@ import { Swiper as SwiperCore } from "swiper"; // SwiperCore 타입 가져오기
 import { Navigation } from "swiper/modules"; // 네비게이션 모듈
 import "swiper/css";
 import "swiper/css/navigation";
-import { getProduct, getReservation, writeToggleFav } from "apiLibs/products";
-import { getChatRoomsByProduct, writeChatRoom } from "apiLibs/chatRooms";
+import { getProduct, getReservation, writeToggleFav } from "@/apiLibs/products";
+import { getChatRoomsByProduct, writeChatRoom } from "@/apiLibs/chatRooms";
 import { handleLoadingAndError } from "@components/LoadingError";
 //import { ProductDetailResponse } from "apiLibs/atypes";
 import useSocket from "@libs/client/useSocket";
@@ -451,7 +451,7 @@ const ItemDetail: NextPage = () => {
         </Swiper>
         {/* 기존 코드 유지 */}
         <div className="mb-8">
-          <div className="flex cursor-pointer items-center space-x-3 border-b border-t py-3">
+          <div className="flex items-center py-3 space-x-3 border-t border-b cursor-pointer">
             {data?.product?.user?.avatar ? (
               <ImgComponent
                 imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${data?.product?.user?.avatar}/public`}
@@ -517,7 +517,7 @@ const ItemDetail: NextPage = () => {
               ) : reserved && isProvider ? (
                 <div className="flex flex-row items-center gap-3">
                   <div className="text-base">{`예약자: ${reservationUserName} `}</div>
-                  <button className="rounded-full bg-slate-200 p-2 text-sm" onClick={onChatRoom}>
+                  <button className="p-2 text-sm rounded-full bg-slate-200" onClick={onChatRoom}>
                     예약자와의 채팅방으로 이동
                   </button>
                 </div>
@@ -535,11 +535,11 @@ const ItemDetail: NextPage = () => {
             <h1 className="mt-4 text-3xl font-bold text-gray-900">
               {data ? data?.product?.name : "Now Loading..."}
             </h1>
-            <span className="mt-3 block text-3xl text-gray-900">
+            <span className="block mt-3 text-3xl text-gray-900">
               ￦{data ? data?.product?.price : "Now Loading..."}
             </span>
             <div className="my-3">
-              <div className="border-t py-3 text-xl font-bold">
+              <div className="py-3 text-xl font-bold border-t">
                 {/*@ts-ignore*/}
                 {data?.product?.productReviews?.length > 0 ? "Review" : "Description"}
               </div>
@@ -548,7 +548,7 @@ const ItemDetail: NextPage = () => {
                 <>
                   {console.log("data?.product?.productReviews: ", data?.product?.productReviews)}
                   {data?.product?.productReviews.map((review) => (
-                    <div key={review.id} className="flex flex-row justify-items-start space-x-12">
+                    <div key={review.id} className="flex flex-row space-x-12 justify-items-start">
                       {/* <div className="flex flex-col items-center justify-center space-y-1">
                         {review.createdBy?.avatar ? (
                           <ImgComponent
@@ -563,12 +563,12 @@ const ItemDetail: NextPage = () => {
                         )}
                         <span className="font-medium text-gray-900">{review?.createdBy.name}</span>
                       </div> */}
-                      <div className="flex flex-row items-center justify-evenly space-x-20">
-                        <div className="mb-2 flex flex-col items-start">
+                      <div className="flex flex-row items-center space-x-20 justify-evenly">
+                        <div className="flex flex-col items-start mb-2">
                           Test
                           <StarRating score={review.score} />
                           <p className="mt-2 text-lg text-gray-700">{review.review}</p>
-                          <span className="space-x-4 text-xs font-extralight text-gray-900">
+                          <span className="space-x-4 text-xs text-gray-900 font-extralight">
                             <RegDate regDate={review.createdAt} />
                             <span className="font-medium text-gray-900">
                               {review?.createdBy.name}
@@ -621,11 +621,11 @@ const ItemDetail: NextPage = () => {
                 >
                   {isLoadingFav ? (
                     // 버튼 내부에만 로딩 표시
-                    <div className="h-6 w-6 animate-pulse rounded-full bg-gray-300"></div>
+                    <div className="w-6 h-6 bg-gray-300 rounded-full animate-pulse"></div>
                   ) : data?.isLike ? (
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="h-6 w-6"
+                      className="w-6 h-6"
                       viewBox="0 0 20 20"
                       fill="currentColor"
                     >
@@ -637,7 +637,7 @@ const ItemDetail: NextPage = () => {
                     </svg>
                   ) : (
                     <svg
-                      className="h-6 w-6"
+                      className="w-6 h-6"
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
