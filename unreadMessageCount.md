@@ -70,7 +70,7 @@ const result = await client.lastReadMessage.upsert({
 ### unreadMessageCount의 실시간 소켓 이벤트 업데이트 알고리즘
 
 1. **사용자가 채팅방에 메시지를 보냄**
-   - 프론트엔드에서 메시지를 전송하면 서버로 소켓 이벤트(`message` 등)를 보냄.
+   - 프론트엔드에서 메시지를 전송한다.
 
 2. **서버에서 새 메시지를 DB(SellerChat)에 저장**
    - 메시지 저장 후, 해당 채팅방의 모든 참여자에게 소켓 이벤트(`message` 또는 `chats-lastReadMessage` 등)를 브로드캐스트.
