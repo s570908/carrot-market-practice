@@ -1,20 +1,65 @@
-import React from "react";
-import usePushNotification from "@libs/client/usePushNotification";
+/**
+ * PushNotificationToggle 컴포넌트 상세 설명
+ * 
+ * 용도:
+ * - 사용자가 앱의 푸시 알림을 활성화/비활성화할 수 있는 토글 인터페이스 제공
+ * - 푸시 알림 상태와 관련된 피드백 및 안내 메시지 표시
+ * - 브라우저 호환성 및 권한 상태 관리
+ * 
+ * 주요 기능:
+ * 1. 푸시 알림 호환성 검사
+ *    - 브라우저가 푸시 알림을 지원하지 않을 경우 안내 메시지 표시
+ * 
+ * 2. 구독 상태 관리
+ *    - 현재 구독 상태에 따라 토글 스위치의 ON/OFF 상태 조정
+ *    - 토글 버튼을 통해 푸시 알림 구독/구독 취소 기능 제공
+ * 
+ * 3. 사용자 권한 관리
+ *    - 사용자가 이전에 알림 권한을 거부한 경우 브라우저 설정 변경 안내
+ *    - 권한 상태에 따른 맞춤형 안내 메시지 표시
+ * 
+ * 4. 상태 피드백 제공
+ *    - 구독 중/해지 중 상태를 시각적으로 표시 (버튼 비활성화, 투명도 조정)
+ *    - 오류 발생 시 오류 메시지 표시
+ * 
+ * 5. 접근성 지원
+ *    - 스크린 리더 지원을 위한 ARIA 속성 포함
+ *    - 시각적 상태와 일치하는 접근성 정보 제공
+ * 
+ * 구현 방식:
+ * - usePushNotification 커스텀 훅을 사용하여 푸시 알림 관련 로직 처리
+ * - 로컬 상태(isToggling)로 UI 상호작용 관리
+ * - 조건부 렌더링을 통해 다양한 상태에 따른 UI 표시
+ * - TailwindCSS를 사용한 스타일링
+ * 
+ * 주요 사용처:
+ * - 사용자 프로필 페이지
+ * - 설정/환경설정 페이지
+ * - 앱 최초 실행 시 알림 권한 요청 화면
+ * - 사용자 활동이 많은 페이지에서의 알림 활성화 유도
+ */
+
+import React, { useState } from "react";
+import usePushNotification from "@/libs/client/usePushNotification";
 
 interface PushNotificationToggleProps {
   className?: string;
 }
 
 export default function PushNotificationToggle({ className = "" }: PushNotificationToggleProps) {
+  // 이 값이 제대로 활용되고 있는지 확인이 필요합니다
   const {
     isPushSupported,
     hasPermission,
-    subscription,
+    subscription, 
     isSubscribing,
     error,
     subscribeToNotifications,
     unsubscribeFromNotifications,
   } = usePushNotification();
+  
+  // 상태 변경 중 UI 피드백을 위한 로컬 상태 추가
+  const [isToggling, setIsToggling] = useState(false);
 
   if (!isPushSupported) {
     return (
@@ -25,10 +70,26 @@ export default function PushNotificationToggle({ className = "" }: PushNotificat
   }
 
   const handleToggle = async () => {
-    if (subscription) {
-      await unsubscribeFromNotifications();
-    } else {
-      await subscribeToNotifications();
+    console.log("push alarm button clicked! 푸시 알림 상태 전환 중...");
+    console.log("변경전 subscription:", subscription);
+    console.log("변경전 hasPermission:", hasPermission);
+    console.log("변경전 isSubscribing:", isSubscribing);
+    setIsToggling(true);
+    try {
+      if (subscription) {
+        await unsubscribeFromNotifications();
+      } else {
+        // 권한이 없는 경우 사용자에게 안내
+        if (!hasPermission && Notification.permission === "denied") {
+          alert("브라우저 설정에서 알림 권한을 허용해주세요.");
+          return;
+        }
+        await subscribeToNotifications();
+      }
+    } catch (e) {
+      console.error("알림 상태 전환 중 오류 발생:", e);
+    } finally {
+      setIsToggling(false);
     }
   };
 
@@ -38,23 +99,31 @@ export default function PushNotificationToggle({ className = "" }: PushNotificat
         <h3 className="text-sm font-medium text-gray-900">푸시 알림</h3>
         <p className="text-xs text-gray-500">
           {subscription
-            ? "약속 알림을 실시간으로 받습니다"
-            : "알림을 활성화하여 중요한 약속 업데이트를 놓치지 마세요"}
+            ? "약속 알림을 실시간으로 받습니다" // subscription이 true일 때 표시
+            : hasPermission 
+              ? "알림을 활성화하여 중요한 약속 업데이트를 놓치지 마세요"
+              : "알림 권한을 허용하면 중요한 업데이트를 받을 수 있습니다"}
         </p>
         {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
       </div>
 
       <button
+        type="button"
         onClick={handleToggle}
-        disabled={isSubscribing}
-        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 ${
-          subscription ? "bg-orange-500" : "bg-gray-200"
-        } ${isSubscribing ? "opacity-50" : ""}`}
+        disabled={isSubscribing || isToggling}
+        className={`relative inline-flex items-center justify-center h-8 w-14 flex-shrink-0 rounded-full border-2 ${subscription ? "border-transparent" : "border-gray-400"} transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 z-10
+          ${subscription ? "bg-orange-500" : "bg-gray-400"} // subscription이 true일 때 오렌지색 배경
+          ${(isSubscribing || isToggling) ? "opacity-70 cursor-not-allowed" : "hover:bg-opacity-80"}
+        `}
+        role="switch"
+        aria-checked={!!subscription}
+        tabIndex={0}
       >
         <span className="sr-only">{subscription ? "알림 끄기" : "알림 켜기"}</span>
         <span
-          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-            subscription ? "translate-x-5" : "translate-x-0"
+          aria-hidden="true"
+          className={`absolute pointer-events-none h-6 w-6 transform rounded-full bg-white shadow-md transition duration-200 ease-in-out ${
+            subscription ? "translate-x-3" : "translate-x-[-0.75rem]"
           }`}
         />
       </button>

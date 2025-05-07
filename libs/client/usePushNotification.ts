@@ -1,39 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 
-// 모듈 레벨 변수들로 상태 캐싱
-let serviceWorkerRegistration: ServiceWorkerRegistration | null = null;
-let registrationPromise: Promise<ServiceWorkerRegistration | null> | null = null;
-
-// 싱글톤 패턴 - 상태를 기억하는 함수
-async function getServiceWorkerRegistration(): Promise<ServiceWorkerRegistration | null> {
-  // 이미 완료된 등록이 있으면 바로 반환
-  if (serviceWorkerRegistration) return serviceWorkerRegistration;
-
-  // 진행 중인 등록이 있으면 그 Promise 반환
-  if (registrationPromise) return registrationPromise;
-
-  // 서비스 워커 지원 확인
-  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-    return null;
-  }
-
-  // 새 등록 시작 및 캐싱
-  registrationPromise = navigator.serviceWorker
-    .register("/service-worker.js")
-    .then((registration) => {
-      console.log("서비스 워커가 성공적으로 등록되었습니다.");
-      serviceWorkerRegistration = registration;
-      return registration;
-    })
-    .catch((error) => {
-      console.error("서비스 워커 등록 오류:", error);
-      registrationPromise = null; // 오류 시 Promise 초기화
-      return null;
-    });
-
-  return registrationPromise;
-}
-
 interface PushNotificationHookResult {
   isPushSupported: boolean;
   hasPermission: boolean;
@@ -65,8 +31,8 @@ export default function usePushNotification(): PushNotificationHookResult {
         setHasPermission(permission === "granted");
 
         try {
-          // 싱글톤 함수를 사용하여 서비스 워커 등록 - 중복 등록 방지
-          const registration = await getServiceWorkerRegistration();
+          // 이미 등록된 서비스 워커 가져오기
+          const registration = await navigator.serviceWorker.ready;
 
           if (registration) {
             // 기존 구독 정보 확인
@@ -98,31 +64,27 @@ export default function usePushNotification(): PushNotificationHookResult {
       if (Notification.permission !== "granted") {
         const permission = await Notification.requestPermission();
         if (permission !== "granted") {
-          setError("알림 권한이 거부되었습니다");
-          setIsSubscribing(false);
-          return false;
+          throw new Error("알림 권한이 거부되었습니다");
         }
         setHasPermission(true);
       }
 
-      // VAPID 공개 키 가져오기
+      // VAPID 공개 키 가져오기 - 에러 처리 개선
       const keyResponse = await fetch("/api/push/subscribe");
+      if (!keyResponse.ok) {
+        const errorData = await keyResponse.json();
+        throw new Error(errorData.error || "서버 설정 오류");
+      }
+      
       const { publicKey, ok } = await keyResponse.json();
-
       if (!ok || !publicKey) {
         throw new Error("VAPID 키를 가져오는데 실패했습니다");
       }
 
-      // 싱글톤 함수를 사용하여 서비스 워커 등록 - 중복 등록 방지
-      const registration = await getServiceWorkerRegistration();
-      if (!registration) {
-        throw new Error("서비스 워커 등록에 실패했습니다");
-      }
-
-      // 기존 구독 확인 및 취소
-      const existingSubscription = await registration.pushManager.getSubscription();
-      if (existingSubscription) {
-        await existingSubscription.unsubscribe();
+      // 이미 등록된 서비스 워커 확인
+      const registration = await navigator.serviceWorker.ready;
+      if (!registration.pushManager) {
+        throw new Error("Push Manager를 사용할 수 없습니다");
       }
 
       // VAPID 공개 키를 Uint8Array로 변환
@@ -134,20 +96,17 @@ export default function usePushNotification(): PushNotificationHookResult {
         applicationServerKey: convertedKey,
       });
 
-      // 서버에 구독 정보 전송
-      const response = await fetch("/api/push/subscribe", {
+      // 서버에 구독 정보 저장
+      const saveResponse = await fetch("/api/push/subscribe", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          subscription: newSubscription,
-        }),
+        body: JSON.stringify({ subscription: newSubscription }),
       });
 
-      const result = await response.json();
-      if (!result.ok) {
-        throw new Error("구독 정보를 서버에 등록하지 못했습니다");
+      if (!saveResponse.ok) {
+        throw new Error("구독 정보를 서버에 저장하지 못했습니다");
       }
 
       setSubscription(newSubscription);
@@ -159,7 +118,7 @@ export default function usePushNotification(): PushNotificationHookResult {
     } finally {
       setIsSubscribing(false);
     }
-  }, [isPushSupported]);
+  }, [isPushSupported, setHasPermission]);
 
   // 구독 취소 함수
   const unsubscribeFromNotifications = useCallback(async () => {

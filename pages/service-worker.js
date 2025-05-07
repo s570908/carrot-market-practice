@@ -57,6 +57,22 @@
  * - 네트워크 전용 전략 (Network Only)
  */
 
+/**
+ * 오류 수정 및 개선 사항:
+ * 
+ * 1. 네트워크 타임아웃 오류(408) 해결:
+ *    - 네트워크 요청 시 타임아웃 설정 추가
+ *    - CORS 이슈가 있는 외부 도메인(Google Fonts, SKT API 등) 처리 개선
+ * 
+ * 2. chrome-extension 스킴 캐싱 오류 해결:
+ *    - HTTP/HTTPS 프로토콜만 캐싱하도록 제한
+ *    - 캐시 저장 전 URL 스킴 검증
+ * 
+ * 3. 캐시 작업 실패 처리:
+ *    - 캐시 작업 시 오류 처리 로직 추가
+ *    - 요청 타임아웃 설정으로 무한 대기 방지
+ */
+
 // 캐시 이름 정의
 const CACHE_NAME = "soy-market-v1";
 
@@ -68,6 +84,66 @@ const CACHE_ASSETS = [
   "/icons/soy-bean-512-512.png",
   "/offline.html", // 오프라인 페이지 추가
 ];
+
+// 타임아웃 설정으로 fetch 요청 제한
+const timeoutFetch = (request, timeoutMs = 8000) => {
+  return Promise.race([
+    fetch(request),
+    new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
+    )
+  ]);
+};
+
+// URL이 캐시 가능한지 확인하는 함수
+const isCacheableRequest = (request) => {
+  try {
+    const url = new URL(request.url);
+    
+    // HTTP/HTTPS 프로토콜만 캐싱
+    if (!url.protocol.startsWith('http')) {
+      return false;
+    }
+    
+    // API 요청이나 동적 데이터는 캐시하지 않음
+    if (url.pathname.startsWith('/api/')) {
+      return false;
+    }
+    
+    // CORS 이슈가 있는 외부 도메인은 캐싱하지 않음
+    const externalDomains = [
+      'fonts.googleapis.com',
+      'fonts.gstatic.com',
+      'apis.openapi.sk.com',
+      'dapi.kakao.com',
+      'openapi.naver.com'
+    ];
+    
+    if (externalDomains.some(domain => url.hostname.includes(domain))) {
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('[Service Worker] URL 검증 오류:', error);
+    return false;
+  }
+};
+
+// 안전한 캐시 저장 함수
+const safeCachePut = async (cache, request, response) => {
+  try {
+    if (!isCacheableRequest(request)) {
+      return false;
+    }
+    
+    await cache.put(request, response);
+    return true;
+  } catch (error) {
+    console.error('[Service Worker] 캐시 저장 오류:', error);
+    return false;
+  }
+};
 
 // 설치 이벤트 - 캐시 초기화
 self.addEventListener("install", (event) => {
@@ -103,62 +179,8 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// 408 타임아웃 에러 발생 원인 분석
-// 408 타임아웃 에러가 발생했던 주요 원인들을 설명하겠습니다:
-
-// 서비스 워커의 간섭
-
-// 서비스 워커가 외부 리소스 요청을 가로채서 처리하려고 시도
-// 처리 과정에서 지연이 발생하여 요청 시간 초과
-// Google Fonts와 TMap API와 같은 외부 리소스는 서비스 워커가 처리하기에 부적합
-// 리소스 로딩 순서 문제
-
-// 리소스 로딩이 최적화되지 않아 병목 현상 발생
-// DNS 조회, TCP 연결, TLS 협상 등이 각각 시간 소요
-
-// 특히, 여러 외부 리소스를 동시에 요청할 때 발생 가능성 높음
-
-// 해결방안: 서비스 워커에서 외부 리소스 요청을 가로채지 않도록 수정
-
 // 페치 이벤트 - 개선된 캐시 전략 적용
 self.addEventListener("fetch", (event) => {
-  // 외부 리소스는 서비스 워커가 처리하지 않도록 우회
-  try {
-    const url = new URL(event.request.url);
-    
-    // 서비스 워커가 처리하지 않을 도메인 목록
-    const bypassDomains = [
-      'fonts.googleapis.com',    // Google Fonts CSS
-      'fonts.gstatic.com',      // Google Fonts 파일
-      'apis.openapi.sk.com',    // TMap API
-      'tmap.co.kr'              // TMap 관련 리소스
-    ];
-
-    if (bypassDomains.some(domain => url.hostname.includes(domain))) {
-      return; // 브라우저의 기본 동작으로 처리
-    }
-  } catch (error) {
-    console.error('[Service Worker] URL 파싱 에러:', error);
-    return; // 에러 발생 시 서비스 워커가 처리하지 않음
-  }
-
-  // URL이 캐시 가능한지 확인하는 함수
-  const isCacheableRequest = (request) => {
-    const url = new URL(request.url);
-    
-    // chrome-extension:, data:, blob: 등의 스킴은 캐시할 수 없음
-    if (!url.protocol.startsWith('http')) {
-      return false;
-    }
-    
-    // API 요청이나 동적 데이터는 캐시하지 않음 (선택적)
-    if (url.pathname.startsWith('/api/')) {
-      return false;
-    }
-    
-    return true;
-  };
-
   // 요청이 캐시 가능하지 않으면 기본 처리로 넘김
   if (!isCacheableRequest(event.request)) {
     return;
@@ -167,7 +189,7 @@ self.addEventListener("fetch", (event) => {
   // manifest.json 요청에 대해서는 항상 네트워크 우선
   if (event.request.url.includes("manifest.json")) {
     event.respondWith(
-      fetch(event.request).catch(() => {
+      timeoutFetch(event.request, 5000).catch(() => {
         return caches.match(event.request);
       })
     );
@@ -186,10 +208,10 @@ self.addEventListener("fetch", (event) => {
         // 캐시에 있으면 캐시에서 반환
         if (cachedResponse) {
           // 백그라운드에서 네트워크 요청으로 캐시 업데이트 (캐시 리프레시)
-          fetch(event.request).then((response) => {
-            if (response && response.ok && isCacheableRequest(event.request)) {
+          timeoutFetch(event.request, 5000).then((response) => {
+            if (response && response.ok) {
               caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, response.clone());
+                safeCachePut(cache, event.request, response.clone());
               });
             }
           }).catch(() => {/* 실패 무시 */});
@@ -197,18 +219,16 @@ self.addEventListener("fetch", (event) => {
         }
 
         // 캐시에 없으면 네트워크 요청
-        return fetch(event.request).then((response) => {
+        return timeoutFetch(event.request, 5000).then((response) => {
           if (!response || !response.ok) {
             throw new Error('Network request failed');
           }
           
-          // 네트워크 응답을 캐시에 저장 (캐시 가능한 요청만)
-          if (isCacheableRequest(event.request)) {
-            const responseToCache = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-          }
+          // 네트워크 응답을 캐시에 저장
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            safeCachePut(cache, event.request, responseToCache);
+          });
           
           return response;
         }).catch(() => {
@@ -227,7 +247,7 @@ self.addEventListener("fetch", (event) => {
   // 네비게이션 요청 (HTML 페이지)에 대해 네트워크 우선 전략
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request).catch(() => {
+      timeoutFetch(event.request, 5000).catch(() => {
         return caches.match('/offline.html');
       })
     );
@@ -236,13 +256,13 @@ self.addEventListener("fetch", (event) => {
 
   // 그 외의 요청은 네트워크 시도 후 캐시 폴백
   event.respondWith(
-    fetch(event.request)
+    timeoutFetch(event.request, 5000)
       .then((response) => {
-        // 성공한 응답은 캐시에 저장 (캐시 가능한 요청만)
-        if (response && response.ok && isCacheableRequest(event.request)) {
+        // 성공한 응답은 캐시에 저장
+        if (response && response.ok) {
           const responseToCache = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
+            safeCachePut(cache, event.request, responseToCache);
           });
         }
         return response;

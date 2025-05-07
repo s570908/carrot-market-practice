@@ -15,11 +15,17 @@ import useSocket from "@libs/client/useSocket";
 import { ChatRoomType, UserID } from "apiLibs/atypes";
 import { getChatRoomIDs } from "apiLibs/chatRooms";
 import { getProductsPaging } from "apiLibs/products";
-import { ClipLoader } from "react-spinners"; // react-spinners에서 ClipLoader 가져오기
+import dynamic from "next/dynamic"; // dynamic import 추가
 import { getUnreadMessagesForUser } from "apiLibs/chats"; // 새로운 API 함수 가져오기
 import React from "react";
 import { ProductPaging } from "@/types";
 import ServiceWorkerStatus from "@components/ServiceWorkerStatus";
+
+// ClipLoader를 클라이언트 사이드에서만 로드 (SSR 비활성화)
+const ClipLoader = dynamic(() => import("react-spinners").then(mod => mod.ClipLoader), { 
+  ssr: false,
+  loading: () => <div className="w-10 h-10 border-2 border-orange-500 rounded-full border-t-transparent animate-spin"></div>
+});
 
 export interface ProductWithCount extends Product {
   favs: Fav[];
@@ -262,9 +268,9 @@ const Home: NextPage = () => {
       {/* 서비스 워커 상태 컴포넌트는 개발 환경에서만 표시 */}
       {process.env.NODE_ENV === "development" && <ServiceWorkerStatus />}
 
-      <div className="flex flex-col space-y-5 divide-y px-4">
+      <div className="flex flex-col px-4 space-y-5 divide-y">
         {isLoading ? (
-          <div className="flex h-64 items-center justify-center">
+          <div className="flex items-center justify-center h-64">
             <ClipLoader color="#36d7b7" size={50} />
           </div>
         ) : (
@@ -280,17 +286,17 @@ const Home: NextPage = () => {
           )
         )}
         {isFetchingNextPage && hasNextPage && (
-          <div className="flex h-16 items-center justify-center">
+          <div className="flex items-center justify-center h-16">
             <ClipLoader color="#36d7b7" size={30} />
           </div>
         )}
       </div>
       <div className="loader" ref={observerElem}></div>
       {data ? (
-        <div className="group relative w-full">
+        <div className="relative w-full group">
           <FloatingButton href="/products/upload" isGroup={true}>
             <svg
-              className="h-6 w-6"
+              className="w-6 h-6"
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"

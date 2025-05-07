@@ -65,14 +65,14 @@ export default function ServiceWorkerStatus() {
   };
 
   return (
-    <div className="mb-4 rounded-lg border bg-white p-4 shadow-sm">
+    <div className="p-4 mb-4 bg-white border rounded-lg shadow-sm">
       <h3 className="mb-2 text-lg font-bold">서비스 워커 상태</h3>
       <p className="mb-2">{status}</p>
 
       {installable && (
         <button
           onClick={installPWA}
-          className="rounded bg-orange-500 px-4 py-2 text-white transition hover:bg-orange-600"
+          className="px-4 py-2 text-white transition bg-orange-500 rounded hover:bg-orange-600"
         >
           앱 설치하기
         </button>
@@ -88,7 +88,7 @@ export default function ServiceWorkerStatus() {
             });
           }
         }}
-        className="mt-2 rounded bg-blue-500 px-4 py-2 text-white transition hover:bg-blue-600"
+        className="px-4 py-2 mt-2 text-white transition bg-blue-500 rounded hover:bg-blue-600"
       >
         서비스 워커 테스트
       </button>
