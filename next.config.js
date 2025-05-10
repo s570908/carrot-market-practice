@@ -2,6 +2,7 @@
 
 const nextConfig = {
   reactStrictMode: true,
+  swcMinify: true,
   images: {
     domains: [
       "imagedelivery.net",
@@ -31,7 +32,7 @@ const nextConfig = {
     });
     return config;
   },
-  // manifest.json을 위한 헤더 추가
+  // PWA 관련 헤더 추가
   async headers() {
     return [
       {

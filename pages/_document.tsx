@@ -43,8 +43,8 @@ export default function Document() {
           src={`https://apis.openapi.sk.com/tmap/jsv2?version=1&appKey=${process.env.NEXT_PUBLIC_TMAP_APP_KEY}`}
         />
 
-        {/* 정적 manifest.json 파일 사용 - rel 속성 수정 */}
-        <link rel="/manifest" href="/manifest.json" />
+        {/* 정적 manifest.json 파일 - 올바른 형식 적용 */}
+        <link rel="manifest" href="/manifest.json" />
 
         {/* PWA 기본 설정 */}
         <meta name="application-name" content="Soy Market" />
@@ -53,7 +53,7 @@ export default function Document() {
 
         {/* iOS PWA 지원 */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-title" content="Soy Market" />
+        <meta name="apple-mobile-web-app-title" content="CarrotMarket" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="mobile-web-app-capable" content="yes" />
         <link rel="apple-touch-icon" href="/icons/soy-bean-192-192.png" />

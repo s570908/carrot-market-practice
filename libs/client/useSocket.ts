@@ -4,6 +4,7 @@ import { io, Socket } from "socket.io-client";
 const backUrl =
   process.env.NODE_ENV === "production" ? "https://sleact.nodebird.com" : "http://localhost:3000";
 
+// 모듈 레벨에서 선언된 객체 - 모든 컴포넌트가 공유
 const sockets: { [key: string]: Socket } = {};
 
 const useSocket = (workspace: string = "market"): [Socket | undefined, () => void] => {

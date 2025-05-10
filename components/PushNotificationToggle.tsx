@@ -47,13 +47,13 @@ interface PushNotificationToggleProps {
 }
 
 export default function PushNotificationToggle({ className = "" }: PushNotificationToggleProps) {
-  // 이 값이 제대로 활용되고 있는지 확인이 필요합니다
   const {
     isPushSupported,
     hasPermission,
     subscription, 
     isSubscribing,
     error,
+    isIncognito,
     subscribeToNotifications,
     unsubscribeFromNotifications,
   } = usePushNotification();
@@ -95,6 +95,13 @@ export default function PushNotificationToggle({ className = "" }: PushNotificat
 
   return (
     <div className={`flex items-center ${className}`}>
+      {isIncognito && (
+        <div className="p-2 mb-3 text-sm text-white bg-yellow-500 rounded">
+          <strong>시크릿 창에서는 푸시 알림을 사용할 수 없습니다.</strong><br/>
+          브라우저의 보안 정책으로 인해 시크릿 창(인코그니토 모드)에서는 
+          푸시 알림 권한이 자동으로 차단됩니다. 일반 창으로 접속해 주세요.
+        </div>
+      )}
       <div className="flex-grow">
         <h3 className="text-sm font-medium text-gray-900">푸시 알림</h3>
         <p className="text-xs text-gray-500">

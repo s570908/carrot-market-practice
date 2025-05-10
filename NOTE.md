@@ -632,6 +632,146 @@ const { data, loading } = useFetch<CreateUserResponse>("/api/users/create", {
 - TMap API
   이러한 서비스들은 좌표값을 받아 해당 좌표에 가장 가까운 주소 정보를 다양한 상세 수준(도/시/군/구/동/번지 등)으로 제공합니다.
 
+# Warning: Extra attributes from the server: data-darkreader-inline-stroke,style Error Component Stack at svg (<anonymous>)
+
+  이 오류는 DarkReader와 같은 브라우저 확장 프로그램이 서버에서 렌더링된 HTML과 클라이언트 렌더링 결과 사이에 불일치를 만들어 발생하는 것입니다. 문제를 해결하기 위해 Layout 컴포넌트를 수정해보겠습니다.
+
+### [Layout.tsx](file:///c%3A/Users/song/Documents/DebugJS/carrot-market-practice/components/Layout.tsx)
+
+````tsx
+// ...existing code...
+
+// 하이드레이션 무시 설정 추가
+import { useEffect, useState } from "react";
+
+// ...existing code...
+
+export default function Layout({
+  title,
+  canGoBack,
+  hasTabBar,
+  children,
+  seoTitle,
+}: LayoutProps) {
+  // 클라이언트 사이드 렌더링만 사용하도록 상태 추가
+  const [isMounted, setIsMounted] = useState(false);
+  
+  // 마운트 후에만 렌더링하여 하이드레이션 오류 방지
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // ...existing code...
+
+  return (
+    <div>
+      <Head>
+        <title>{seoTitle || "소이마켓"}</title>
+      </Head>
+      <div className="bg-white w-full h-12 max-w-xl justify-center text-lg px-10 font-medium fixed text-gray-800 border-b top-0 flex items-center">
+        {canGoBack ? (
+          <button onClick={onClick} className="absolute left-4">
+            {/* suppressHydrationWarning 속성 추가하여 하이드레이션 경고 무시 */}
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+              suppressHydrationWarning
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M15 19l-7-7 7-7"
+                suppressHydrationWarning
+              ></path>
+            </svg>
+          </button>
+        ) : null}
+        {title ? <span className="mx-auto">{title}</span> : null}
+      </div>
+      <div className={cls("pt-12", hasTabBar ? "pb-24" : "")}>{children}</div>
+      {hasTabBar ? (
+        <nav className="bg-white max-w-xl text-gray-700 border-t fixed bottom-0 w-full px-10 pb-5 pt-3 flex justify-between text-xs">
+          {/* 각 a 태그와 svg에 suppressHydrationWarning 속성 추가 */}
+          <Link href="/" legacyBehavior>
+            <a
+              className={cls(
+                "flex flex-col items-center space-y-2",
+                router.pathname === "/"
+                  ? "text-orange-500"
+                  : "hover:text-gray-500 transition-colors"
+              )}
+              suppressHydrationWarning
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+                suppressHydrationWarning
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                  suppressHydrationWarning
+                ></path>
+              </svg>
+              <span>홈</span>
+            </a>
+          </Link>
+          {/* 나머지 네비게이션 아이템에도 suppressHydrationWarning 추가 */}
+          {/* ...existing code... */}
+        </nav>
+      ) : null}
+    </div>
+  );
+}
+````
+
+### [_app.tsx](file:///c%3A/Users/song/Documents/DebugJS/carrot-market-practice/pages/_app.tsx)
+
+````tsx
+
+
+Made changes.
+
+// ...existing code...
+
+function MyApp({ Component, pageProps }: AppProps) {
+  // ...existing code...
+
+  return (
+    <SWRConfig
+      value={{
+        fetcher,
+        // ...existing code...
+      }}
+    >
+      {/* 하이드레이션 이슈 해결을 위한 속성 추가 */}
+      <div suppressHydrationWarning>
+        <AppContent Component={Component} pageProps={pageProps} />
+      </div>
+    </SWRConfig>
+  );
+}
+
+// ...existing code...
+````
+
+이 변경 사항은 다음과 같은 방식으로 문제를 해결합니다:
+
+1. `suppressHydrationWarning` 속성을 SVG 태그와 관련 Path 태그에 추가하여 하이드레이션 경고를 억제합니다.
+2. 하이드레이션 이슈를 발생시키는 요소들(주로 DarkReader와 같은 확장 프로그램에 의해 추가된 속성들)의 오류를 무시합니다.
+3. 전체 앱 래퍼에도 suppressHydrationWarning을 적용하여 다른 부분에서 발생할 수 있는 유사한 오류도 방지합니다.
+
+이 방법은 실제 기능적인 문제를 해결하기보다는 경고를 억제하는 방식이지만, 대부분의 경우 이런 하이드레이션 불일치는 실제 애플리케이션 기능에 영향을 미치지 않기 때문에 허용 가능한 접근법입니다.
+
 # 목차
 
 - [useIntersectionObserver hook](#useintersectionobserver-hook)
@@ -666,4 +806,7 @@ const { data, loading } = useFetch<CreateUserResponse>("/api/users/create", {
   - [리버스 지오코딩(Reverse Geocoding): 좌표 → 주소 변환](#리버스-지오코딩reverse-geocoding-좌표--주소-변환)
   - [주요 용도](#주요-용도)
   - [구현 방법](#구현-방법)
+- [Warning: Extra attributes from the server: data-darkreader-inline-stroke,style Error Component Stack at svg ()](#warning-extra-attributes-from-the-server-data-darkreader-inline-strokestyle-error-component-stack-at-svg-)
+    - [\[Layout.tsx\](file:///c%3A/Users/song/Documents/DebugJS/carrot-market-practice/components/Layout.tsx)](#layouttsxfilec3auserssongdocumentsdebugjscarrot-market-practicecomponentslayouttsx)
+    - [\[\_app.tsx\](file:///c%3A/Users/song/Documents/DebugJS/carrot-market-practice/pages/\_app.tsx)](#_apptsxfilec3auserssongdocumentsdebugjscarrot-market-practicepages_apptsx)
 - [목차](#목차)

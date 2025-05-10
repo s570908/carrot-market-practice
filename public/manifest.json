@@ -1,16 +1,46 @@
 {
-  "name": "Carrot Market Practice",
-  "short_name": "CarrotMarket",
-  "start_url": "/",
+  "name": "당근마켓 프랙티스",
+  "short_name": "당근마켓",
+  "theme_color": "#FF7E36",
+  "background_color": "#FFFFFF",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ff9900",
-  "orientation": "any",
+  "orientation": "portrait",
   "scope": "/",
+  "start_url": "/",
   "icons": [
+    {
+      "src": "/icons/soy-bean-72-72.png",
+      "sizes": "72x72",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/soy-bean-96-96.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/soy-bean-128-128.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/soy-bean-144-144.png",
+      "sizes": "144x144",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/soy-bean-152-152.png",
+      "sizes": "152x152",
+      "type": "image/png"
+    },
     {
       "src": "/icons/soy-bean-192-192.png",
       "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/soy-bean-384-384.png",
+      "sizes": "384x384",
       "type": "image/png"
     },
     {

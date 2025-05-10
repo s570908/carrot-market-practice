@@ -31,8 +31,9 @@ export async function sendPushNotification(
       throw new Error('VAPID keys not set');
     }
 
+    // VAPID 세부 정보 설정
     webPush.setVapidDetails(
-      'mailto:example@example.com',
+      process.env.VAPID_SUBJECT || 'mailto:example@example.com',
       vapidPublicKey,
       vapidPrivateKey
     );
