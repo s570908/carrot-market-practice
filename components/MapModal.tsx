@@ -15,7 +15,7 @@ function Input({ label = "", errorMessage = "", ...rest }: InputProps) {
       }`}
     >
       {label && (
-        <div className="mb-1 flex items-center justify-between">
+        <div className="flex items-center justify-between mb-1">
           <FieldLabel label={label} required={required} />
           {maxLength && (
             <span className="text-xs text-gray-500">
@@ -25,7 +25,7 @@ function Input({ label = "", errorMessage = "", ...rest }: InputProps) {
         </div>
       )}
       <input
-        className="w-full rounded border p-2"
+        className="w-full p-2 border rounded"
         disabled={disabled}
         maxLength={maxLength}
         // eslint-disable-next-line react/jsx-props-no-spreading
@@ -125,7 +125,7 @@ const AddressList = memo(
     if (!addressData?.length) return null;
 
     return (
-      <div className="h-full overflow-y-auto rounded-md border border-gray-300 p-2">
+      <div className="h-full p-2 overflow-y-auto border border-gray-300 rounded-md">
         <ul className="space-y-2">
           {addressData.map((address) => {
             const fullAddress = address.newAddressList.newAddress[0].fullAddressRoad;
@@ -135,7 +135,7 @@ const AddressList = memo(
               <li
                 role="option"
                 aria-selected={false}
-                className="cursor-pointer rounded border p-2 hover:bg-gray-100"
+                className="p-2 border rounded cursor-pointer hover:bg-gray-100"
                 key={address.pkey}
                 value={`${fullAddress} ${addressName}`}
                 data-lat={lat}
@@ -339,7 +339,7 @@ export function MapModal({
         className="absolute inset-0 bg-black bg-opacity-50"
         onClick={onOverlayClick || closeModal} // 배경 클릭 시 닫기
       ></div>
-      <div className="relative z-10 w-full max-w-4xl rounded-lg bg-white p-6 shadow-lg">
+      <div className="relative z-10 w-full max-w-4xl p-6 bg-white rounded-lg shadow-lg">
         <div className="flex flex-col space-y-4">
           <div className="flex items-center justify-center space-x-2">
             <span className="text-sm font-normal">선택한 주소: </span>
@@ -363,7 +363,7 @@ export function MapModal({
               </div>
 
               {/* 검색 결과 컨테이너 - 수정된 부분 */}
-              <div className="flex h-full flex-col overflow-hidden">
+              <div className="flex flex-col h-full overflow-hidden">
                 <h3 className="mb-2 text-sm font-medium">검색 결과</h3>
 
                 {/* 스크롤 가능한 영역 */}
@@ -374,8 +374,8 @@ export function MapModal({
                       onClickAddressListItem={onClickAddressListItem}
                     />
                   ) : (
-                    <div className="flex h-full items-center justify-center rounded-md border border-gray-300 p-2">
-                      <p className="text-center text-sm text-gray-500">검색 결과가 없습니다</p>
+                    <div className="flex items-center justify-center h-full p-2 border border-gray-300 rounded-md">
+                      <p className="text-sm text-center text-gray-500">검색 결과가 없습니다</p>
                     </div>
                   )}
                 </div>
@@ -383,7 +383,7 @@ export function MapModal({
             </div>
 
             {/* 지도 영역 */}
-            <div id="map" className="h-full flex-grow" ref={mapRef} />
+            <div id="map" className="flex-grow h-full" ref={mapRef} />
           </div>
 
           <div className="flex space-x-2">

@@ -19,8 +19,6 @@
       "@libs/*": ["libs/*"],
       "@components/*": ["components/*"],
       "@/*": ["./*"],
-      "@morak/ui": ["morak/packages/morak-ui"],
-      "@morak/*": ["morak/packages/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "pages/index.tsx.Ssr", "pages/mapModal"],

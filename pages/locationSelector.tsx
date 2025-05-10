@@ -63,11 +63,11 @@ const LocationSelectorPage: NextPage = () => {
 
             {/* 선택된 위치 표시 */}
             {selectedLocationByAddressInfo === null ? (
-              <div className="mt-6 rounded-md bg-gray-50 p-4">
+              <div className="p-4 mt-6 rounded-md bg-gray-50">
                 <h3 className="text-lg font-medium">선택된 위치가 없습니다.</h3>
               </div>
             ) : (
-              <div className="mt-6 rounded-md bg-gray-50 p-4">
+              <div className="p-4 mt-6 rounded-md bg-gray-50">
                 <h3 className="text-lg font-medium">선택된 위치</h3>
                 <p className="mt-2 text-sm text-gray-600">
                   명칭: {selectedLocationByAddressInfo.addressInfo?.buildingName || "정보 없음"}

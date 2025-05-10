@@ -238,8 +238,8 @@ const Chats: NextPage = () => {
     >
       <div className="divide-y-[1px]">
         {productId ? (
-          <div className="w-full max-w-xl border-b border-gray-200 bg-red-200 p-4">
-            <div className="flex cursor-pointer items-center" onClick={handleClick}>
+          <div className="w-full max-w-xl p-4 bg-red-200 border-b border-gray-200">
+            <div className="flex items-center cursor-pointer" onClick={handleClick}>
               <div className="flex items-center space-x-4">
                 <ImgComponent
                   width={80}
@@ -283,7 +283,7 @@ const Chats: NextPage = () => {
           </div>
         )}
         {filteredChatRooms?.length === 0 ? (
-          <div className="flex h-20 items-center justify-center">채팅방이 없습니다</div>
+          <div className="flex items-center justify-center h-20">채팅방이 없습니다</div>
         ) : (
           filteredChatRooms.map((chatRoom: any) => {
             return (

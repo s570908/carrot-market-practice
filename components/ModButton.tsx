@@ -58,7 +58,7 @@ export const ModButton: React.FC<ButtonProps> = ({
   return (
     <button className={buttonClasses} disabled={disabled || isLoading} {...props}>
       {isLoading && (
-        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-white border-l-transparent border-r-white border-t-white"></div>
+        <div className="w-4 h-4 mr-2 border-2 rounded-full animate-spin border-b-white border-l-transparent border-r-white border-t-white"></div>
       )}
       {children}
     </button>

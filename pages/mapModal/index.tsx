@@ -14,7 +14,7 @@ function Input({ label = "", errorMessage = "", ...rest }: InputProps) {
       }`}
     >
       {label && (
-        <div className="mb-1 flex items-center justify-between">
+        <div className="flex items-center justify-between mb-1">
           <FieldLabel label={label} required={required} />
           {maxLength && (
             <span className="text-xs text-gray-500">
@@ -24,7 +24,7 @@ function Input({ label = "", errorMessage = "", ...rest }: InputProps) {
         </div>
       )}
       <input
-        className="w-full rounded border p-2"
+        className="w-full p-2 border rounded"
         disabled={disabled}
         maxLength={maxLength}
         // eslint-disable-next-line react/jsx-props-no-spreading
@@ -131,7 +131,7 @@ const AddressList = memo(
             <li
               role="option"
               aria-selected={false}
-              className="cursor-pointer rounded border p-2 hover:bg-gray-100"
+              className="p-2 border rounded cursor-pointer hover:bg-gray-100"
               key={address.pkey}
               value={`${fullAddress} ${addressName}`}
               data-lat={lat}
@@ -265,7 +265,7 @@ export function MapModal() {
   }, [initMapModal]);
 
   return (
-    <dialog className="w-full max-w-4xl rounded-lg bg-white p-6 shadow-lg" open>
+    <dialog className="w-full max-w-4xl p-6 bg-white rounded-lg shadow-lg" open>
       <div className="flex flex-col space-y-4">
         <div className="flex items-center justify-center space-x-2">
           <span className="text-sm font-normal">선택한 주소: </span>

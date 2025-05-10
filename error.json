@@ -1,0 +1,1 @@
+"이 Set-Cookie 헤더는 'SameSite' 속성을 지정하지 않고 'SameSite=Lax'로 기본 설정되었습니다. 또한 최상위 탐색에 관한 응답이 아니라 크로스 사이트 응답에서 발생하여 차단되었습니다. Set-Cookie는 크로스 사이트 사용이 가능하도록 'SameSite=None'으로 설정되어야 합니다."
