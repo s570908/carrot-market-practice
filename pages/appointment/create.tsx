@@ -1,6 +1,7 @@
 import DatePicker from "@components/DatePicker";
 import Layout from "@components/Layout";
 import MapModal from "@components/MapModal";
+import MapViewer from "@components/MapViewer";
 import PlaceSelectionModal from "@components/PlaceSelectionModal";
 import TimePicker from "@components/TimePicker";
 import { useAwaitableModal } from "@libs/client/useAwaitableModal";
@@ -136,59 +137,67 @@ const CreateAppointment = () => {
             <TimePicker value={time} onChange={setTime} />
 
             {/* 장소 */}
-            <div className="flex w-full items-center justify-between">
-              <span className="font-medium text-gray-700">장소</span>
-              {selectedLocation ? (
-                <div className="flex w-2/3 flex-col space-y-2">
-                  {/* 선택된 장소 정보와 X 버튼 */}
-                  <div className="flex cursor-pointer items-center justify-end gap-1">
-                    <span className="text-gray-700" onClick={handleOpenModal}>
-                      {selectedLocation.address}
-                    </span>
-                    <button
-                      onClick={handleClearLocation}
-                      className="rounded-full hover:bg-gray-100"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="ml-1 h-5 w-5 text-gray-500"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
+            <div className="flex w-full flex-col">
+              <div className="flex w-full items-center justify-between">
+                {<></>}
+                <span className="font-medium text-gray-700">장소</span>
+                {selectedLocation ? (
+                  <div className="flex w-2/3 flex-col space-y-2">
+                    {/* 선택된 장소 정보와 X 버튼 */}
+                    <div className="flex cursor-pointer items-center justify-end gap-1">
+                      <span className="text-gray-700" onClick={handleOpenModal}>
+                        {selectedLocation.address}
+                      </span>
+                      <button
+                        onClick={handleClearLocation}
+                        className="rounded-full hover:bg-gray-100"
                       >
-                        <path
-                          fillRule="evenodd"
-                          d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </button>
-                  </div>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="ml-1 h-5 w-5 text-gray-500"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </button>
+                    </div>
 
-                  {/* 미니 맵 뷰어 */}
-                  {/* <div 
-                    ref={miniMapRef} 
-                    className="w-full h-32 border border-gray-300 rounded-md"
-                  /> */}
-                </div>
-              ) : (
-                <div className="flex cursor-pointer items-center justify-end gap-1">
-                  <span className="text-gray-500" onClick={handleOpenModal}>
-                    장소 선택
-                  </span>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="ml-1 h-5 w-5 text-gray-400"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <polyline points="9 6 15 12 9 18"></polyline>
-                  </svg>
-                </div>
-              )}
+                    {/* 미니 맵 뷰어 */}
+                    <div className="w-full overflow-hidden rounded-lg shadow-md">
+                      <MapViewer
+                        lat={selectedLocation.latitude}
+                        lng={selectedLocation.longitude}
+                        height="300px"
+                        zoomLevel={15}
+                        name={selectedLocation.address}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex cursor-pointer items-center justify-end gap-1">
+                    <span className="text-gray-500" onClick={handleOpenModal}>
+                      장소 선택
+                    </span>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="ml-1 h-5 w-5 text-gray-400"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="9 6 15 12 9 18"></polyline>
+                    </svg>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* 알림 시간 */}

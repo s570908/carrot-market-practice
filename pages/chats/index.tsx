@@ -45,6 +45,7 @@ import { fetchChatRooms } from "@libs/server/fetchChatRooms";
 import Dropdown from "@components/Dropdown";
 import RadioButtonGroup from "@components/RadioGroupButton";
 import { useQuery } from "react-query";
+import { cls } from "@libs/utils";
 
 interface ChatRoomWithUser extends ChatRoom {
   buyer: User;
@@ -73,6 +74,7 @@ const Chats: NextPage = () => {
   const { productId } = router.query; // URL에서 productId 쿼리 파라미터를 추출
   // console.log("productId: ", productId);
   const { user } = useUser();
+  const [onlineUsers, setOnlineUsers] = useState<number[]>([]); // Array to store online users
   const fetchChats = async (url: string) => {
     const response = await axios.get(url);
     return response.data;
@@ -286,6 +288,12 @@ const Chats: NextPage = () => {
                       <div className="flex w-full flex-row items-center space-x-2">
                         <div className="relative w-10/12 space-y-1">
                           <div className="flex flex-row space-x-2">
+                            <div
+                              className={cls(
+                                "h-2.5 w-2.5 rounded-full"
+                                // isUserOnline ? "bg-green-400" : "bg-gray-400"
+                              )}
+                            />
                             <p className="text-gray-700">
                               {chatRoom.buyerId === user?.id
                                 ? `판매자: ${chatRoom.seller.name}`
