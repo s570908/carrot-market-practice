@@ -122,7 +122,7 @@ const EachChatRoom = ({ chatRoomId, onlineUsers, shouldRefetch }: EachChatRoomPr
   // Calculate whether the user is online
   let isUserOnline = false;
   if (chatRoom) {
-    // Calculate whether the user is online
+    // 상대방 ID 판별: 내가 구매자면 판매자 ID, 내가 판매자면 구매자 ID
     isUserOnline = onlineUsers.includes(
       chatRoom.buyerId === user?.id ? chatRoom.sellerId : chatRoom.buyerId
     );
