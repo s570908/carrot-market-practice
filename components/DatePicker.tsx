@@ -1,7 +1,8 @@
 import { useAwaitableModal } from "@libs/client/useAwaitableModal";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import Calendar from "./Calendar";
+//import Calendar from "./Calendar";
+import Calendar from "./Calendar-kkh";
 
 interface DatePickerProps {
   onChange?: (date: string) => void; // 추가됨
@@ -9,14 +10,16 @@ interface DatePickerProps {
 }
 
 const DatePicker: React.FC<DatePickerProps> = ({ onChange, value }) => {
-  const [selectedDate, setSelectedDate] = useState<string>(() => {
-    if (value) return value;
+  const [selectedDate, setSelectedDate] = useState<string>(value || "");
+
+  // Get current date string for default Calendar view
+  const getCurrentDateString = (): string => {
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, "0");
     const day = String(now.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
-  });
+  };
 
   // 추가된 useAwaitableModal 사용
   const { openModal: openCalendarModal, renderModal: renderCalendarModal } =
@@ -30,7 +33,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ onChange, value }) => {
           />
           <div className="z-50">
             <Calendar
-              selectedDate={selectedDate}
+              selectedDate={selectedDate || getCurrentDateString()}
               onSelectDate={(date) => {
                 setSelectedDate(date);
               }}
@@ -68,7 +71,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ onChange, value }) => {
   return (
     <>
       {renderCalendarModal()}
-      <div className="flex w-full items-center justify-between">
+      <div className="flex items-center justify-between w-full">
         <span className="font-medium text-gray-700">날짜</span>
         <div className="flex items-center">
           <span className="text-gray-700">
@@ -80,7 +83,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ onChange, value }) => {
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
+              className="w-5 h-5"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"

@@ -1,0 +1,103 @@
+import { useAwaitableModal } from "@libs/client/useAwaitableModal";
+import React, { useCallback, useEffect, useState } from "react";
+import TimePickerModal from "./TimePickerModal";
+
+interface TimePickerProps {
+  value?: string;
+  onChange?: (time: string) => void;
+}
+
+const TimePicker: React.FC<TimePickerProps> = ({ value, onChange }) => {
+  // 부모로부터 받은 value를 그대로 사용 (빈 문자열 가능)
+  const [selectedTime, setSelectedTime] = useState(value);
+  
+  const { openModal, renderModal } = useAwaitableModal((modal, params) => (
+    <TimePickerModal
+      initialTime={params.initialTime || getCurrentTimeString()}
+      onClose={() => modal.closeWithResult("Cancelled")}
+      onConfirm={(time) => modal.closeWithResult(time)}
+    />
+  ));
+
+  // Helper function to get current time in HH:MM format
+  const getCurrentTimeString = () => {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, "0");
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+    return `${hours}:${minutes}`;
+  };
+
+  const formatDisplayTime = useCallback((timeString?: string): string => {
+    if (!timeString) return "시간 선택";
+
+    try {
+      const [hours, minutes] = timeString.split(":").map(Number);
+      if (isNaN(hours) || isNaN(minutes)) return "시간 선택";
+
+      const period = hours >= 12 ? "오후" : "오전";
+      const displayHour = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+      return `${period} ${String(displayHour).padStart(2, "0")}시 ${String(
+        minutes
+      ).padStart(2, "0")}분`;
+    } catch {
+      return "시간 선택";
+    }
+  }, []);
+
+  const handleTimePickerClick = async () => {
+    try {
+      const result = await openModal({
+        // 선택된 시간이 있으면 사용, 없으면 undefined (모달이 현재 시간 사용)
+        initialTime: selectedTime || undefined,
+      });
+      
+      if (onChange && result !== "Cancelled") {
+        setSelectedTime(result);
+        onChange(result);
+      }
+    } catch (error) {
+      if (error === "Cancelled") {
+        return;
+      }
+      console.error("TimePicker Error:", error);
+    }
+  };
+
+  // 초기 렌더링 시의 hydration 문제를 방지하기 위한 상태 추가
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  return (
+    <div className="flex items-center justify-between w-full">
+      {renderModal()}
+      <span className="font-medium text-gray-700">시간</span>
+      <div className="flex items-center gap-1">
+        <span className="text-gray-700">
+          {selectedTime ? formatDisplayTime(selectedTime) : "시간 선택"}
+        </span>
+        <button
+          onClick={handleTimePickerClick}
+          className="ml-1 text-gray-400 hover:text-gray-600"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-5 h-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default TimePicker;

@@ -11,14 +11,7 @@ import { getChatRoomIDs } from "apiLibs/chatRooms";
 import { ChatRoomType } from "apiLibs/atypes";
 
 // QueryClient 생성
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  },
-});
+const queryClient = new QueryClient();
 
 function MyApp(appProps: AppProps) {
   useEffect(() => {

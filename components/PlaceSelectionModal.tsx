@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useMap } from "@libs/client/useMap";
-import { useQuery } from "react-query";
+import { useQuery } from "@tanstack/react-query";
 import { tmap } from "@/services";
 
 interface PlaceSelectionModalProps {
@@ -157,19 +157,17 @@ const PlaceSelectionModal: React.FC<PlaceSelectionModalProps> = ({
     updateMarker,
     currentAddress,
     initMapModal,
-    getCurrentPosition,
+    //getCurrentPosition,
     setCoord,
   } = useMap(mapRef);
 
   // 주소 검색 쿼리
-  const { data: tmapResponse } = useQuery(
-    ["tmap", "searchAddress", { searchKeyword: debouncedSearchKeyword }],
-    () => tmap.searchAddress({ searchKeyword: debouncedSearchKeyword }),
-    {
-      enabled: !!debouncedSearchKeyword,
-      placeholderData: undefined,
-    }
-  );
+  const { data: tmapResponse } = useQuery({
+    queryKey: ["tmap", "searchAddress", { searchKeyword: debouncedSearchKeyword }],
+    queryFn: () => tmap.searchAddress({ searchKeyword: debouncedSearchKeyword }),
+    enabled: !!debouncedSearchKeyword,
+    placeholderData: undefined,
+  });
 
   // 주소 데이터 메모이제이션
   const addressData = useMemo(() => {
