@@ -115,6 +115,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     // },
   });
 
+  console.log("/api/chat/${router.query.id}--data:", data);
+
   // const { openModal: openReservedModal, renderModal: renderReservedModal } = useAwaitableModal(
   //   (modal, params) => {
   //     return (
@@ -124,6 +126,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   //           className="fixed inset-0 bg-black bg-opacity-50"
   //           //onClick={() => modal.closeWithError("backdrop_click")}
   //         />
+  
   //         <div className="z-50">
   //           <div className="p-4 bg-white rounded-lg w-96">
   //             <h2 className="mb-4 text-xl font-bold">{params.name}과 예약 중입니다.</h2>
@@ -291,7 +294,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         if (prev) {
           const newMessage = {
             id: Date.now(),
-            chatMsg: params.chatForm.chatMsg + "test",
+            chatMsg: params.chatForm.chatMsg,
             user: { ...user },
             userId: user?.id,
           };
@@ -398,7 +401,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   //   //// scrollTop 의 최대치는 scrollHeight-clientHeght. scrollTop에 이 최대치보다 큰 수를 넣더라도 scrollTop은 최대치 만큼만 반응한다.
   //   chatBox.scrollTop = chatBox.scrollHeight + 20;
   // }, [data?.ok, sendChatData, mutate]);
-  // ref: https://velog.io/@lumpenop/TIL-nextron-React-%EC%B1%84%ED%8C%85%EC%B0%BD-%EA%B5%AC%ED%98%84-%EC%9E%85%EB%A0%A5-%EC%8B%9C-%EC%B1%84%ED%8C%85%EC%B0%BD-%EC%95%84%EB%9E%98%EB%A1%9C-%EC%8A%A4%ED%81%AC%EB%A1%A4-220724
+  // ref: https://velog.io/@lumpenop/TIL-nextron-React-%EC%B1%84%ED%8C%85%EC%B0%BD-%EA%B5%AC%ED%98%84-%EC%9E%85%EB%A0%A5-%EC%8B%9C-%EC%B1%84%ED%8C%85%EC%B0%BD-%EC%95%84%EB%A1%9C-%EC%8A%A4%ED%81%AC%EB%A1%A4-220724
 
   // 새로운 메시지를 작성하고 submit하면 scroll to bottom이 되게 한다.
   const isScrollToBottom = newMessageSubmitted === true;
@@ -573,21 +576,24 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       console.log(`Joined room: ${roomName}`);
 
       socket.on("message", (message: any) => {
+        console.log("id && message.channelId === id: message.channelId, id", message.channelId, id);
+        console.log("socket message event received:", message);
         // message는 같은 채널에 있는 모든 사용자에게 전달된다.
         // 따라서  if (id && message.channelId === id) 는 항상 true이다.
         // 그러나 메시지가 현재 채팅방에 해당하는지 확인하는 것이 좋다.
         // 애플리케이션 확장성: 향후 기능 확장 시 구현이 변경될 수 있으므로, 이 검사는 방어적 프로그래밍 측면에서 유용합니다.
         // 해당 chatRoom에서만 refetch하도록...
         if (id && message.channelId === id) {
+          //console.log("socket message event received:", message);
           refetchChat();
         }
       });
     }
-    return () => {
-      if (socket) {
+      return () => {
+        if (socket) {
         socket.off("message");
-      }
-    };
+        }
+      };
   }, [socket, id, refetchChat, router.query.id]);
 
   // 드롭다운에서 선택 변경 시 호출되는 함수
@@ -746,7 +752,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       const { scrollTop, clientHeight } = chatBoxRef.current;
 
       // 스크롤 중일 때 툴팁을 표시
-      //setScrolling(true);
+      setIsScrolling(true);
       setShowTooltip(true);
 
       // 화면 상단에 표시된 첫 번째 메시지 찾기
@@ -761,7 +767,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       });
 
       if (firstVisibleMessage) {
-        setTooltipDate(dayjs(firstVisibleMessage.createdAt).format("YYYY년 MM월 DD일 dddd"));
+        const dateStr = firstVisibleMessage.createdAt;
+        setTooltipDate(dayjs(dateStr).format("YYYY년 MM월 DD일 dddd"));
+        setCurrentVisibleDate(dateStr);
       }
 
       // 스크롤이 멈춘 후 1초 후에 툴팁 숨기기
@@ -771,10 +779,10 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
       scrollTimeoutRef.current = setTimeout(() => {
         setShowTooltip(false);
-        //setScrolling(false);
+        setIsScrolling(false);
       }, 1000);
     }
-  }, [setShowTooltip, setTooltipDate, messageRefs]);
+  }, [setShowTooltip, setTooltipDate, setCurrentVisibleDate, setIsScrolling, messageRefs]);
 
   // scrollTimeoutRef.current와 관련된 메모리 누수 방지를 위해, 컴포넌트 언마운트 시 타이머를 정리합니다:
   useEffect(() => {
@@ -851,17 +859,12 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   // 스티키 헤더용 포맷 함수
   const formatDateWithDay = (date: string | null) => {
     if (!date) return "";
-
-    const days = ["일", "월", "화", "수", "목", "금", "토"];
-    const dateObj = dayjs(date);
-    const dayOfWeek = days[dateObj.day()];
-
-    return `${dateObj.format("YYYY. MM. DD")}. ${dayOfWeek}`;
+    return dayjs(date).locale('ko').format("YYYY. MM. DD. ddd");
   };
 
   const handleAppointmentClick = () => {
-    const chatroomId = router.query.id; // 현재 채팅방방 ID
-    router.push(`/appointment/create?chatroomId=${chatroomId}`); // 채팅방 ID를 URL로 전달
+    const channelId = router.query.id; // 현재 채팅방방 ID
+    router.push(`/appointment/create?channelId=${channelId}`); // 채팅방 ID를 URL로 전달
   };
 
   // 상태 표시 컴포넌트
@@ -1008,6 +1011,20 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               const messageDate = dayjs(message.createdAt).format("YYYY-MM-DD"); // 메시지 날짜
               const showDate = lastMessageDate !== messageDate; // 날짜를 표시할지 여부
               lastMessageDate = messageDate; // 마지막 메시지 날짜 업데이트
+              
+              // Check if this is an appointment message
+              const isAppointment = !!message.chatMeetup;
+              
+              // Format appointment data if this is an appointment message
+              const appointmentData = isAppointment 
+                ? {
+                    appointmentTime: message.chatMeetup.appointmentTime,
+                    place: message.chatMeetup.place ,
+                    latitude: message.chatMeetup.locationLatitude ,
+                    longitude: message.chatMeetup.locationLongitude ,
+                  }
+                : undefined;
+                
               return (
                 <div
                   key={message.id}
@@ -1033,7 +1050,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                   {showDate && (
                     <div className="my-2 text-sm text-center text-white">
                       <span className="px-4 bg-gray-400 rounded-full">
-                        {dayjs(message.createdAt).format("YYYY년 MM월 DD일 dddd")}
+                        {dayjs(message.createdAt)
+                          .locale('ko')
+                          .format("YYYY년 MM월 DD일 dddd")}
                       </span>
                     </div>
                   )}
@@ -1044,6 +1063,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                     message={message.chatMsg}
                     avatar={message.user.avatar}
                     date={message.createdAt}
+                    isAppointment={isAppointment}
+                    appointmentData={appointmentData}
                   />
                 </div>
               );
@@ -1064,25 +1085,12 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
             <div ref={scrollRef} style={{ height: "1px" }}></div>
           </div>
           <div>
-            {/* <form onSubmit={handleSubmit(onValid)} className="fixed inset-x-0 bottom-0 py-2 bg-white">
-            <div className="relative flex items-center w-full max-w-md pl-2 mx-auto">
-              <input
-                {...register("chatMsg", { required: true })}
-                type="text"
-                className="w-full pr-12 border-gray-300 rounded-full shadow-sm focus:border-orange-500 focus:outline-none focus:ring-orange-500"
-              />
-              <div className="absolute inset-y-0 right-0 flex py-1.5 pr-1.5">
-                <button className="flex items-center px-3 text-sm text-white bg-orange-500 rounded-full hover:bg-orange-600 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2">
-                  &rarr;
-                </button>
-              </div>
-            </div>
-          </form> */}
             <form onSubmit={handleSubmit(onValid)} className="w-full px-1 py-1 mt-10 border-t">
               <div className="relative w-full px-2 py-2 bg-white rounded-md outline-none">
                 <input
                   {...register("chatMsg", { required: true, maxLength: 80 })}
                   maxLength={80}
+                  autoComplete="off"
                   placeholder={
                     user === undefined ? "로그인 후 이용가능합니다." : "메세지를 입력해주세요."
                   }
@@ -1111,8 +1119,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 };
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
-  const chatRoomId = Number(context.params?.id);
-  let chatRoomData = await getChatRoomData(chatRoomId);
+  const channelId = Number(context.params?.id);
+  let chatRoomData = await getChatRoomData(channelId);
 
   if (!chatRoomData) {
     return {

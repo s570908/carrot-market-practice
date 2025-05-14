@@ -8,8 +8,10 @@ import useUser from "@libs/client/useUser";
 import axios from "axios";
 import { useRouter } from "next/router";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { TmapAddressInfo } from "@/types";
+import { ChatMeetupParams, ChatMeetupResponse } from "@/apiLibs/atypes";
+import { createChatMeetup } from "@/apiLibs/chats";
 
 interface SelectedLocation {
   latitude: number;
@@ -36,18 +38,19 @@ const CreateAppointment = () => {
 
   const [alertTime, setAlertTime] = useState("30분 전");
 
-  const chatroomId = Number(router.query.chatroomId); // 숫자로 변환
+  const channelId = Number(router.query.channelId); // 숫자로 변환
+  console.log("CreateAppointment--channelId:", channelId);
 
-  const fetchChatRoomData = async (chatroomId: number) => {
-    const response = await axios.get(`/api/chat/${chatroomId}`);
+  const fetchChatRoomData = async (channelId: number) => {
+    const response = await axios.get(`/api/chat/${channelId}`);
     return response.data;
   };
 
   // React Query로 데이터 가져오기
   const { data, isLoading, error } = useQuery({
-    queryKey: ["chatRoom", chatroomId],
-    queryFn: () => fetchChatRoomData(chatroomId),
-    enabled: !!chatroomId, // chatroomId가 유효할 때만 실행
+    queryKey: ["chatRoom", channelId],
+    queryFn: () => fetchChatRoomData(channelId),
+    enabled: !!channelId, // channelId가 유효할 때만 실행
   });
 
   const otherName =
@@ -55,34 +58,23 @@ const CreateAppointment = () => {
       ? data?.chatRoomOfSeller?.seller?.name
       : data?.chatRoomOfSeller?.buyer?.name;
 
-  // 장소 선택 모달 설정
-  // kkh version
-  // const { openModal, renderModal } = useAwaitableModal((modal, params) => {
-  //   return (
-  //     <PlaceSelectionModal
-  //       isVisible={modal.isVisible}
-  //       onClose={() => modal.closeWithError("취소됨")}
-  //       onLocationSelect={(latitude, longitude, address) =>
-  //         modal.closeWithResult({ latitude, longitude, address })
-  //       }
-  //       initialLocation={params?.initialLocation} // 이전에 선택한 위치 전달
-  //     />
-  //   );
-  // });
-  // // 장소 선택 버튼 클릭 핸들러
-  // const handleOpenModal = async () => {
-  //   try {
-  //     // 모달을 열 때 현재 선택된 위치 정보를 전달
-  //     const result = await openModal({ initialLocation: selectedLocation });
-  //     console.log("선택된 위치:", result);
-
-  //     if (result) {
-  //       setSelectedLocation(result);
-  //     }
-  //   } catch (error) {
-  //     console.log("장소 선택이 취소되었습니다:", error);
-  //   }
-  // };
+  // useMutation 훅 설정
+  const { mutate: createMeetup, status } = useMutation<
+    ChatMeetupResponse, 
+    Error, 
+    ChatMeetupParams
+  >({
+    mutationFn: createChatMeetup,
+    onSuccess: (data) => {
+      console.log("약속이 성공적으로 생성되었습니다:", data);
+      alert("약속이 생성되었습니다!");
+      router.back();
+    },
+    onError: (error) => {
+      console.error("약속 생성 중 오류 발생:", error);
+      alert("약속 생성에 실패했습니다.");
+    }
+  });
 
   // useAwaitableModal을 사용하여 MapModal 컴포넌트를 렌더링
   // params를 initialLocation으로 전달하여 모달이 열릴 때 초기 위치 정보를 설정
@@ -154,21 +146,32 @@ const CreateAppointment = () => {
       return;
     }
 
+    // Format date and time as ISO string for proper UTC conversion
+    const localDateTime = new Date(`${date}T${time}`);
+    
+    // Validate that the date is valid before proceeding
+    if (isNaN(localDateTime.getTime())) {
+      alert("날짜 또는 시간 형식이 올바르지 않습니다.");
+      return;
+    }
+    
+    const utcDateTime = localDateTime.toISOString();
+    
+    // Updated to use flat location properties
     const appointmentData = {
-      date,
-      time,
-      place: selectedLocation.selectedAddress,
-      location: {
-        latitude: selectedLocation.latitude,
-        longitude: selectedLocation.longitude,
-      },
+      channelId: channelId,
+      appointmentTime: utcDateTime,
+      place: selectedLocation.selectedAddress ?? "Unknown location",
+      locationLatitude: selectedLocation.latitude,
+      locationLongitude: selectedLocation.longitude,
       alertTime,
-      chatroomId,
     };
 
-    console.log(appointmentData);
-    alert("약속이 생성되었습니다!");
-    router.push("/chats"); // 완료 후 다른 페이지로 이동
+    console.log("appointmentData: ", appointmentData);
+    
+    // useMutation을 사용하여 약속 생성 요청
+    createMeetup(appointmentData);
+    // router.back()은 mutation의 onSuccess에서 처리됨
   };
 
   return (
@@ -274,9 +277,12 @@ const CreateAppointment = () => {
           <div className="mt-8">
             <button
               onClick={handleSubmit}
-              className="w-full py-3 font-medium text-white bg-orange-500 rounded-md hover:bg-orange-600"
+              disabled={status === "pending"}
+              className={`w-full py-3 font-medium text-white ${
+                status === "pending" ? "bg-gray-400" : "bg-orange-500 hover:bg-orange-600"
+              } rounded-md`}
             >
-              완료
+              {status === "pending" ? "처리 중..." : "완료"}
             </button>
           </div>
         </div>

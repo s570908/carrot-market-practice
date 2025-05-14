@@ -184,6 +184,7 @@ model SellerChat {
   //// 현재의 응용에서는 producer(문자를 보낸 사람)와 consumer가 각 1명에 국한된다.
   //isNew                Boolean? //// 추후 지울 필요가 있는지 체크할 것
   lastReadMessage      LastReadMessage[] // 여러 명이 이 메시지까지 읽었음을 표시한다.
+  chatMeetup           ChatMeetup?  
 }
 
 model ChatRoom {
@@ -445,4 +446,20 @@ model PushSubscription {
   @@unique([userId, endpoint])
   @@index([userId, endpointPattern]) // 사용자 ID + 엔드포인트 패턴 인덱스
   @@index([userId])
+}
+
+// 채팅 약속 모델 수정
+model ChatMeetup {
+  id              Int      @id @default(autoincrement())
+  appointmentTime DateTime // Single field for date+time in UTC
+  place           String  
+  locationLatitude     Float?   // Latitude coordinate
+  locationLongitude    Float?   // Longitude coordinate
+  alertTime       String
+  
+  message         SellerChat @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId       Int        @unique  // 하나의 챗밋업은 하나의 메시지만 가짐
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }

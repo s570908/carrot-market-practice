@@ -1,36 +1,23 @@
-//Selected address: 
-{name: '롯데호텔 월드 호텔백화점주차장', address: '서울 송파구 올림픽로 240', lat: 37.51224047, lon: 127.1004559}
-
-
-//약속 수정 api/appointment/[id]--Put body:
 {
-  "title": "약속4",
-  "description": "설명4",
-  "date": "2025-04-05T00:00:00.000Z",
-  "startTime": "2000-01-01T10:25:00.000Z",
-  "endTime": "2000-01-01T13:25:00.000Z",
-  "participants": [2],
-  "notifications": [{ "title": "약속 알림", "minutesBefore": 30, "type": "PUSH" }],
-  "location": {
-    "latitude": 37.51457363,
-    "longitude": 127.10592756,
-    "addressInfo": {
-      "fullAddress": "서울특별시 송파구 올림픽로 326 송파구청",
-      "addressType": "A04",
-      "city_do": "서울특별시",
-      "gu_gun": "송파구",
-      "eup_myun": "",
-      "adminDong": "",
-      "adminDongCode": "",
-      "legalDong": "",
-      "legalDongCode": "",
-      "ri": "",
-      "bunji": "",
-      "roadName": "올림픽로",
-      "buildingIndex": "326",
-      "buildingName": "송파구청",
-      "mappingDistance": "12.27",
-      "roadCode": "117103123023"
+    "id": 588,
+    "createdAt": "2025-05-13T18:17:57.876Z",
+    "updatedAt": "2025-05-13T18:17:57.876Z",
+    "userId": 1,
+    "chatMsg": "약속을 만들었어요",
+    "chatRoomId": 20,
+    "user": {
+        "name": "홍길동",
+        "avatar": "bc28587a-e099-4618-24bd-b3c8af271f00"
+    },
+    "chatMeetup": {
+        "id": 11,
+        "appointmentTime": "2025-05-13T18:17:00.000Z",
+        "place": "서울특별시 중구 세종대로21길 33 조선일보사",
+        "locationLatitude": 37.56786495519389,
+        "locationLongitude": 126.9751524925236,
+        "alertTime": "30분 전",
+        "messageId": 588,
+        "createdAt": "2025-05-13T18:17:57.876Z",
+        "updatedAt": "2025-05-13T18:17:57.876Z"
     }
-  }
 }

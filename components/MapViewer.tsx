@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { useMap } from "@libs/client/useMap";
+import { cls } from "@libs/utils";
 
 interface MapViewerProps {
   lat: number;
@@ -8,6 +9,7 @@ interface MapViewerProps {
   zoomLevel?: number;
   width?: string;
   height?: string;
+  containerClassName?: string;
 }
 
 const MapViewer: React.FC<MapViewerProps> = ({
@@ -17,12 +19,13 @@ const MapViewer: React.FC<MapViewerProps> = ({
   zoomLevel = 15,
   width = "100%",
   height = "300px",
+  containerClassName = "",
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   // 정적 지도로 만들기 위한 옵션 설정
   const { updateMarker } = useMap(mapRef, {
     isClickable: false,
-    isZummable: false, // 휠 스크롤을 통한 줌 기능 비활성화
+    isZummable: true, // 휠 스크롤을 통한 줌 기능 비활성화
   });
 
   // 좌표가 변경되면 마커 업데이트
@@ -35,7 +38,7 @@ const MapViewer: React.FC<MapViewerProps> = ({
 
   return (
     <>
-      <div style={{ width, height }} className="relative overflow-hidden rounded-md shadow-md">
+      <div style={{ width, height }} className={cls("relative overflow-hidden rounded-md shadow-md", containerClassName)}>
         <div
           id="map"
           ref={mapRef}

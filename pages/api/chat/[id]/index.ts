@@ -30,6 +30,8 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
             avatar: true,
           },
         },
+        // ChatMeetup 정보 포함
+        chatMeetup: true,
       },
     });
 
@@ -76,16 +78,16 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
         update: { sellerChatId: sellerChatId },
       });
 
-      const channel = `/ws-${worksapce}-${id}`;
+      //const channel = `/ws-${worksapce}-${id}`;
 
-      res?.socket?.server?.io
-        ?.of(`ws-${worksapce}`)
-        .to(channel)
-        .emit("chats-lastReadMessage", result);
-      console.log(
-        "channel에 chats-lastReadMessage 이벤트를 보낸다: result.sellerChatId: ",
-        result.sellerChatId
-      );
+      // res?.socket?.server?.io
+      //   ?.of(`ws-${worksapce}`)
+      //   .to(channel)
+      //   .emit("chats-lastReadMessage", result);
+      // console.log(
+      //   "channel에 chats-lastReadMessage 이벤트를 보낸다: result.sellerChatId: ",
+      //   result.sellerChatId
+      // );
     }
 
     if (chatRoomOfSeller?.buyerId !== user?.id && chatRoomOfSeller?.sellerId !== user?.id) {
@@ -95,7 +97,6 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
     }
   }
   if (req.method === "POST") {
-    //async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
     const {
       query: { id },
       body,
@@ -133,16 +134,26 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
       channelId: +id,
     };
 
-    const channel = `/ws-${worksapce}-${id}`;
+    // const channel = `/ws-${worksapce}-${id}`;
+
+    // // dispatch to channel "message"
+    // //*******************************************중요!!!!
+    // // Workspace를 사용하는 io일 경우에는 of(`ws-${worksapce}`) 이 부분이 매우 중요함. 반드시 사용해야함.
+    // //****************************************************
+    // res?.socket?.server?.io?.of(`ws-${worksapce}`).to(channel).emit("message", message);
+
+    // Keep consistent with socket.ts format
+    const namespaceName = `ws-${worksapce}`;
+    const channel = `/${namespaceName}-${id}`;
 
     // dispatch to channel "message"
     //*******************************************중요!!!!
     // Workspace를 사용하는 io일 경우에는 of(`ws-${worksapce}`) 이 부분이 매우 중요함. 반드시 사용해야함.
     //****************************************************
-    res?.socket?.server?.io?.of(`ws-${worksapce}`).to(channel).emit("message", message);
+    res?.socket?.server?.io?.of(namespaceName).to(channel).emit("message", message);
     console.log(
       "workspace.channel 로 message 이벤트를 전송하였다: ",
-      worksapce,
+      namespaceName,
       channel,
       message.chatMsg
     );

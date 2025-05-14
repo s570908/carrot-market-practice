@@ -1,6 +1,6 @@
 import React, { useRef, useState, ReactNode } from "react";
 
-interface ModalAPI {
+export interface ModalAPI {
   isVisible: boolean;
   closeWithError: (error: any) => void;
   closeWithResult: (result: any) => void;

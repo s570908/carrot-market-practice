@@ -1,5 +1,5 @@
 import aclient from "./aclient";
-import { ChatFormResponse, ChatMessageResponse, ChatResponse } from "./atypes";
+import { ChatFormResponse, ChatMeetupParams, ChatMeetupResponse, ChatMessageResponse, ChatResponse } from "./atypes";
 
 // axios를 사용해 데이터를 가져오는 함수
 export async function getChat(id: number) {
@@ -22,4 +22,13 @@ export async function getUnreadMessagesForUser() {
     console.error("Error fetching unread messages:", error);
     return { ok: false, hasUnreadMessages: false };
   }
+}
+
+// Updated ChatMeetup creation API function
+export async function createChatMeetup(params: ChatMeetupParams) {
+  // Client should pass appointmentTime as ISO string (already in UTC)
+  console.log("createChatMeetup params:", params);
+  
+  const response = await aclient.post<ChatMeetupResponse>('/api/chat-meetups', params);
+  return response.data;
 }

@@ -722,3 +722,31 @@ export interface ApiResponseType {
 export type MethodType = "GET" | "POST" | "DELETE" | "PATCH" | "PUT";
 
 export { Kind };
+
+// ChatMeetup 생성을 위한 인터페이스
+export interface ChatMeetupParams {
+  appointmentTime: string; // ISO format UTC date-time string
+  place: string;
+  locationLatitude: number | null;
+  locationLongitude: number | null;
+  alertTime: string;
+  channelId: number;
+}
+
+// ChatMeetup 응답 인터페이스
+export interface ChatMeetupResponse {
+  ok: boolean;
+  chatMeetup?: {
+    id: number;
+    appointmentTime: string; // Will be returned in ISO format
+    place: string;
+    locationLatitude: number | null;
+    locationLongitude: number | null;
+    alertTime: string;
+    messageId: number;
+    createdAt: string;
+    updatedAt: string;
+  };
+  message?: any;
+  error?: string;
+}
