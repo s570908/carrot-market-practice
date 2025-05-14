@@ -149,24 +149,24 @@ const result = await client.lastReadMessage.upsert({
    - 서버 예시:
      ```typescript
      // 참여자 목록을 가져온다 (예: buyerId, sellerId)
-     const chatRoom = await client.chatRoom.findUnique({ where: { id: data.channelId } });
+     const chatRoom = await client.chatRoom.findUnique({ where: { id: data.chatRoomId } });
      const userIds = [chatRoom.buyerId, chatRoom.sellerId];
 
      for (const userId of userIds) {
        const lastRead = await client.lastReadMessage.findUnique({
-         where: { userId_chatRoomId: { userId, chatRoomId: data.channelId } },
+         where: { userId_chatRoomId: { userId, chatRoomId: data.chatRoomId } },
        });
        const unreadCount = await client.sellerChat.count({
          where: {
-           chatRoomId: data.channelId,
+           chatRoomId: data.chatRoomId,
            id: { gt: lastRead?.sellerChatId || 0 },
          },
        });
 
        // 4. unreadCount를 각 사용자에게 전송
        io.of(`ws-${workspace}`)
-         .to(data.channelId.toString())
-         .emit("chats-lastReadMessage", { chatRoomId: data.channelId, userId, unreadCount });
+         .to(data.chatRoomId.toString())
+         .emit("chats-lastReadMessage", { chatRoomId: data.chatRoomId, userId, unreadCount });
      }
      ```
 

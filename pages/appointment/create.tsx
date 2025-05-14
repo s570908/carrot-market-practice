@@ -38,19 +38,19 @@ const CreateAppointment = () => {
 
   const [alertTime, setAlertTime] = useState("30분 전");
 
-  const channelId = Number(router.query.channelId); // 숫자로 변환
-  console.log("CreateAppointment--channelId:", channelId);
+  const chatRoomId = Number(router.query.chatRoomId); // 숫자로 변환
+  console.log("CreateAppointment--chatRoomId:", chatRoomId);
 
-  const fetchChatRoomData = async (channelId: number) => {
-    const response = await axios.get(`/api/chat/${channelId}`);
+  const fetchChatRoomData = async (chatRoomId: number) => {
+    const response = await axios.get(`/api/chat/${chatRoomId}`);
     return response.data;
   };
 
   // React Query로 데이터 가져오기
   const { data, isLoading, error } = useQuery({
-    queryKey: ["chatRoom", channelId],
-    queryFn: () => fetchChatRoomData(channelId),
-    enabled: !!channelId, // channelId가 유효할 때만 실행
+    queryKey: ["chatRoom", chatRoomId],
+    queryFn: () => fetchChatRoomData(chatRoomId),
+    enabled: !!chatRoomId, // chatRoomId가 유효할 때만 실행
   });
 
   const otherName =
@@ -159,7 +159,7 @@ const CreateAppointment = () => {
     
     // Updated to use flat location properties
     const appointmentData = {
-      channelId: channelId,
+      chatRoomId: chatRoomId,
       appointmentTime: utcDateTime,
       place: selectedLocation.selectedAddress ?? "Unknown location",
       locationLatitude: selectedLocation.latitude,

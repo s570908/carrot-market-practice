@@ -80,14 +80,14 @@ const EachChatRoom = ({ chatRoomId, onlineUsers, shouldRefetch }: EachChatRoomPr
         //   shouldRefetch
         // );
         // console.log(
-        //   "::EachChatRoom--message.channelId, chatRoomId: ",
-        //   message.channelId,
+        //   "::EachChatRoom--message.chatRoomId, chatRoomId: ",
+        //   message.chatRoomId,
         //   chatRoomId
         // );
-        if (chatRoomId && message.channelId === chatRoomId) {
+        if (chatRoomId && message.chatRoomId === chatRoomId) {
           console.log(
-            "EachChatRoom--message.channelId과 chatRoomId 가 동일하다. reftech한다: ",
-            message.channelId,
+            "EachChatRoom--message.chatRoomId과 chatRoomId 가 동일하다. reftech한다: ",
+            message.chatRoomId,
             chatRoomId
           );
           refetch();

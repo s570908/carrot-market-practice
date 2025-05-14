@@ -398,7 +398,7 @@ const chatWithUser = await this.prismaService.channelChats.create(...)
 // socket.io로 워크스페이스 + 채널 사용자에게 전송
 this.eventsGateway.server
 // .of(`/ws-${url}`)
-.to(`/ws-${url}-${chatWithUser.ChannelId}`)
+.to(`/ws-${url}-${chatWithUser.chatRoomId}`)
 .emit('message', chatWithUser);
 
     																				pages/Channel/index.tsx

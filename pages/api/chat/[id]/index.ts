@@ -131,7 +131,7 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
       chatMsg: sellerChat.chatMsg,
       user: { id: user?.id },
       createdAt: sellerChat.createdAt,
-      channelId: +id,
+      chatRoomId: +id,
     };
 
     // const channel = `/ws-${worksapce}-${id}`;
@@ -161,7 +161,7 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
     // 가장 최신 메시지 recentMsg를 서버에 보내야 한다.
     // 필요하지 않을 수도 있다. 추후 체크요망. 필요한 것 같다.
     // EachChatRoom.tsx에서...
-    // message socket event를 받고, message.channelId와 EachChatRoom의 chatRoom id 가 일치하면
+    // message socket event를 받고, message.chatRoomId와 EachChatRoom의 chatRoom id 가 일치하면
     // client.chatRoom을 reftech하도록 만듣다. useQuery를 이용한다.
     const updatedChatRoom = await client.chatRoom.update({
       where: { id: +id },

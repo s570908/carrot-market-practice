@@ -15,7 +15,7 @@ async function handler(
     
     // Updated to use flattened location properties
     const {
-      body: { appointmentTime, place, locationLatitude, locationLongitude, alertTime, channelId },
+      body: { appointmentTime, place, locationLatitude, locationLongitude, alertTime, chatRoomId },
       session: { user },
     } = req;
 
@@ -24,14 +24,14 @@ async function handler(
     }
 
     // Updated validation
-    if (!appointmentTime || !place || !channelId) {
+    if (!appointmentTime || !place || !chatRoomId) {
       return res.status(400).json({ 
         ok: false, 
-        error: "필수 필드가 누락되었습니다 (appointmentTime, place, channelId)" 
+        error: "필수 필드가 누락되었습니다 (appointmentTime, place, chatRoomId)" 
       });
     }
 
-      const channel = `/ws-${worksapce}-${channelId}`;
+      const channel = `/ws-${worksapce}-${chatRoomId}`;
 
     try {
       // 트랜잭션으로 두 작업을 묶어서 처리
@@ -47,7 +47,7 @@ async function handler(
             },
             chatRoom: {
               connect: {
-                id: +channelId,
+                id: +chatRoomId,
               },
             },
           },
@@ -81,7 +81,7 @@ async function handler(
           id: message.id,
           chatMsg: message.chatMsg,
           userId: user.id,
-          channelId: +channelId,
+          chatRoomId: +chatRoomId,
           createdAt: message.createdAt,
           updatedAt: message.updatedAt,
           appointment: {

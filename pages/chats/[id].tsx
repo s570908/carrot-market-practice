@@ -576,14 +576,14 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       console.log(`Joined room: ${roomName}`);
 
       socket.on("message", (message: any) => {
-        console.log("id && message.channelId === id: message.channelId, id", message.channelId, id);
+        console.log("id && message.chatRoomId === id: message.chatRoomId, id", message.chatRoomId, id);
         console.log("socket message event received:", message);
         // message는 같은 채널에 있는 모든 사용자에게 전달된다.
-        // 따라서  if (id && message.channelId === id) 는 항상 true이다.
+        // 따라서  if (id && message.chatRoomId === id) 는 항상 true이다.
         // 그러나 메시지가 현재 채팅방에 해당하는지 확인하는 것이 좋다.
         // 애플리케이션 확장성: 향후 기능 확장 시 구현이 변경될 수 있으므로, 이 검사는 방어적 프로그래밍 측면에서 유용합니다.
         // 해당 chatRoom에서만 refetch하도록...
-        if (id && message.channelId === id) {
+        if (id && message.chatRoomId === id) {
           //console.log("socket message event received:", message);
           refetchChat();
         }
@@ -863,8 +863,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   };
 
   const handleAppointmentClick = () => {
-    const channelId = router.query.id; // 현재 채팅방방 ID
-    router.push(`/appointment/create?channelId=${channelId}`); // 채팅방 ID를 URL로 전달
+    const chatRoomId = router.query.id; // 현재 채팅방방 ID
+    router.push(`/appointment/create?chatRoomId=${chatRoomId}`); // 채팅방 ID를 URL로 전달
   };
 
   // 상태 표시 컴포넌트
@@ -1119,8 +1119,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 };
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
-  const channelId = Number(context.params?.id);
-  let chatRoomData = await getChatRoomData(channelId);
+  const chatRoomId = Number(context.params?.id);
+  let chatRoomData = await getChatRoomData(chatRoomId);
 
   if (!chatRoomData) {
     return {

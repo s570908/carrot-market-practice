@@ -533,7 +533,7 @@ export interface ChatMessageResponse {
       id: number;
     };
     createdAt: string;
-    channelId: number;
+    chatRoomId: number;
   };
 }
 
@@ -730,7 +730,7 @@ export interface ChatMeetupParams {
   locationLatitude: number | null;
   locationLongitude: number | null;
   alertTime: string;
-  channelId: number;
+  chatRoomId: number;
 }
 
 // ChatMeetup 응답 인터페이스
