@@ -10,6 +10,7 @@ import {
   SellerChat,
   Status,
   User as PrismaUser,
+  MessageType,
 } from "@prisma/client";
 import { useForm } from "react-hook-form";
 import Message from "@components/Message";
@@ -25,7 +26,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import useSocket from "@libs/client/useSocket";
 import dayjs from "@libs/dayjs";
-import { getChat, writeChatMessage } from "apiLibs/chats";
+import { createSystemMessage, getChat, SYSTEM_MESSAGES, writeChatMessage } from "apiLibs/chats";
 import { handleLoadingAndError } from "@components/LoadingError";
 import {
   getReservation,
@@ -33,9 +34,10 @@ import {
   writeSellComplete,
   writeToggleReservation,
 } from "apiLibs/products";
-import { ChatFormResponse } from "apiLibs/atypes";
+import { ChatFormResponse, ChatWithUser } from "apiLibs/atypes";
 import { useAwaitableModal } from "@libs/client/useAwaitableModal";
 import { ProductWithImages } from "@/types";
+//import { createSystemMessage, SYSTEM_MESSAGES } from "@libs/server/chatUtils";
 
 type Option = {
   value: string;
@@ -115,7 +117,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     // },
   });
 
-  console.log("/api/chat/${router.query.id}--data:", data);
+  //console.log("/api/chat/${router.query.id}--data:", data);
 
   // const { openModal: openReservedModal, renderModal: renderReservedModal } = useAwaitableModal(
   //   (modal, params) => {
@@ -359,21 +361,21 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     error: errorToggleReservation,
   } = useMutation({
     mutationFn: writeToggleReservation,
-    // onSuccess: () => {
-    //   // 즉시 데이터를 다시 가져옵니다
-    //   console.log("refetch(): ");
-    //   refetchChat();
-    //   // 쿼리를 무효화하고, 해당 쿼리가 다시 접근될 때 데이터를 가져오도록 하고 싶을 때 사용됩니다.
-    //   // queryClient.invalidateQueries({ queryKey: ["chat", id] });  // 새로운 형식으로 수정
-    // },
-  });
+    onSuccess: async (data, variables) => {
+      const stateObj = { productId, old: "판매중", new: "예약중" };
+      socket?.emit("changeState", stateObj);
+      setProductStatus("예약중");
 
-  // const sellComplete = async ({ productId, buyerId }: { productId: number; buyerId: number }) => {
-  //   const { data } = await axios.post(`/api/products/${productId}`, {
-  //     buyerId,
-  //   });
-  //   return data;
-  // };
+      // 시스템 메시지 추가
+      if (otherName) {
+        await createSystemMessage({
+          chatRoomId: id,
+          message: SYSTEM_MESSAGES.PRODUCT_RESERVED(otherName),
+        });
+        refetchChat();
+      }
+    },
+  });
 
   const {
     mutate: sendSellComplete,
@@ -382,9 +384,18 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     error: errorSendSellComplete,
   } = useMutation({
     mutationFn: writeSellComplete,
-    // onSuccess: () => {
-    //   queryClient.invalidateQueries({ queryKey: ["chat", id] }); // 새로운 형식으로 수정
-    // },
+    onSuccess: async (data, variables) => {
+      const stateObj = { productId, old: selling ? "판매중" : "예약중", new: "거래완료" };
+      socket?.emit("changeState", stateObj);
+      setProductStatus("거래완료");
+
+      // 시스템 메시지 추가
+      await createSystemMessage({
+        chatRoomId: id,
+        message: SYSTEM_MESSAGES.PRODUCT_SOLD(),
+      });
+      refetchChat();
+    },
   });
 
   const onValid = (chatForm: ChatFormResponse) => {
@@ -540,8 +551,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     }
   }, [socket, productId, updateProductStatus]);
 
-  // 초기 상태 설정
-  useEffect(() => {
+   // 초기 상태 설정
+   useEffect(() => {
     const initialStatus = productStatusInitial;
     setProductStatus(initialStatus);
 
@@ -583,7 +594,15 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         // 그러나 메시지가 현재 채팅방에 해당하는지 확인하는 것이 좋다.
         // 애플리케이션 확장성: 향후 기능 확장 시 구현이 변경될 수 있으므로, 이 검사는 방어적 프로그래밍 측면에서 유용합니다.
         // 해당 chatRoom에서만 refetch하도록...
+        console.log("id && message.chatRoomId === id: message.chatRoomId, id", message.chatRoomId, id);
+        console.log("socket message event received:", message);
+        // message는 같은 채널에 있는 모든 사용자에게 전달된다.
+        // 따라서  if (id && message.chatRoomId === id) 는 항상 true이다.
+        // 그러나 메시지가 현재 채팅방에 해당하는지 확인하는 것이 좋다.
+        // 애플리케이션 확장성: 향후 기능 확장 시 구현이 변경될 수 있으므로, 이 검사는 방어적 프로그래밍 측면에서 유용합니다.
+        // 해당 chatRoom에서만 refetch하도록...
         if (id && message.chatRoomId === id) {
+          //console.log("socket message event received:", message);
           //console.log("socket message event received:", message);
           refetchChat();
         }
@@ -1006,7 +1025,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                 </div>
               </div>
             )}
-            {data?.sellerChat?.map((message: any, index: number) => {
+            {data?.sellerChat?.map((message: ChatWithUser, index: number) => {
               //console.log("message: ", JSON.stringify(message, null, 2));
               const messageDate = dayjs(message.createdAt).format("YYYY-MM-DD"); // 메시지 날짜
               const showDate = lastMessageDate !== messageDate; // 날짜를 표시할지 여부
@@ -1016,26 +1035,35 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               const isAppointment = !!message.chatMeetup;
               
               // Format appointment data if this is an appointment message
-              const appointmentData = isAppointment 
+              const appointmentData = isAppointment && message.chatMeetup
                 ? {
                     appointmentTime: message.chatMeetup.appointmentTime,
-                    place: message.chatMeetup.place ,
-                    latitude: message.chatMeetup.locationLatitude ,
-                    longitude: message.chatMeetup.locationLongitude ,
+                    place: message.chatMeetup.place,
+                    latitude: message.chatMeetup.locationLatitude ?? undefined, // Convert null to undefined
+                    longitude: message.chatMeetup.locationLongitude ?? undefined, // Convert null to undefined
                   }
                 : undefined;
                 
               return (
                 <div
                   key={message.id}
+                  // DOM 요소 참조 관리:
+                  // ref 콜백은 해당 JSX 요소가 DOM에 마운트되거나 언마운트될 때 호출됩니다
+                  // el은 실제 DOM 요소를 가리키는 참조입니다
+                  // Map 컬렉션에 저장:
+                  // messageRefs는 useRef(new Map())로 생성된 Map 컬렉션의 참조입니다
+                  // 각 메시지 ID를 키로 사용하여 DOM 요소와 생성 시간을 저장합니다
+                  // 조건 처리:
+                  // if (el): 요소가 DOM에 추가될 때 (마운트)
+                  // else: 요소가 DOM에서 제거될 때 (언마운트)
                   ref={(el) => {
                     if (el) {
-                      messageRefs.current.set(message.id, {
+                      messageRefs.current.set(`${message.id}`, {
                         element: el,
-                        createdAt: message.createdAt,
+                        createdAt: message.createdAt.toString(),
                       });
                     } else {
-                      messageRefs.current.delete(message.id);
+                      messageRefs.current.delete(`${message.id}`);
                     }
                   }}
                   className="p-4 border-b border-gray-200"
@@ -1057,14 +1085,27 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                     </div>
                   )}
                   <Message
-                    reversed={message.userId === user?.id}
                     key={message.id}
-                    name={message.user.name}
+                    reversed={message.userId === user?.id}
+                    name={message.messageType === MessageType.SYSTEM ? "시스템" : (message.user?.name || "알 수 없음")}
                     message={message.chatMsg}
-                    avatar={message.user.avatar}
+                    avatar={message.user?.avatar}
                     date={message.createdAt}
                     isAppointment={isAppointment}
                     appointmentData={appointmentData}
+                    messageType={message.messageType || MessageType.USER}
+                    actions={
+                      message.messageType === MessageType.SYSTEM && message.chatMsg.includes("알림이 울릴 거예요") 
+                        ? [
+                            {
+                              type: 'button',
+                              label: '알림설정',
+                              value: 'set_alarm',
+                              onClick: () => alert('알림이 설정되었습니다.')
+                            }
+                          ] 
+                        : undefined
+                    }
                   />
                 </div>
               );

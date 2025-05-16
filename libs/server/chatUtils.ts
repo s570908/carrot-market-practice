@@ -1,5 +1,5 @@
-// libs/server/chatUtils.ts
-import client from "@libs/client/client"
+import client from "@libs/client/client";
+import { MessageType } from "@prisma/client";
 
 export async function getChatRoomData(chatRoomId: number) {
   const chatRoomData = await client.chatRoom.findUnique({
@@ -8,12 +8,9 @@ export async function getChatRoomData(chatRoomId: number) {
       buyer: true,
       seller: true,
       product: true,
-    //   chats: {
-    //     include: {
-    //       user: true,
-    //     },
-    //   },
     },
   });
   return chatRoomData;
 }
+
+

@@ -11,7 +11,8 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { TmapAddressInfo } from "@/types";
 import { ChatMeetupParams, ChatMeetupResponse } from "@/apiLibs/atypes";
-import { createChatMeetup } from "@/apiLibs/chats";
+import { createChatMeetup, createSystemMessage, SYSTEM_MESSAGES } from "@/apiLibs/chats";
+import dayjs from "dayjs";
 
 interface SelectedLocation {
   latitude: number;
@@ -65,8 +66,24 @@ const CreateAppointment = () => {
     ChatMeetupParams
   >({
     mutationFn: createChatMeetup,
-    onSuccess: (data) => {
-      console.log("약속이 성공적으로 생성되었습니다:", data);
+    onSuccess: async (responseData) => {
+      console.log("약속이 성공적으로 생성되었습니다:", responseData);
+      
+      // Only create system message if appointment time exists
+      if (responseData.chatMeetup?.appointmentTime) {
+        // 시스템 메시지 추가
+        await createSystemMessage({
+          chatRoomId: chatRoomId,
+          message: SYSTEM_MESSAGES.APPOINTMENT_CREATED(responseData.chatMeetup.appointmentTime),
+        });
+        
+        // 알림 메시지 추가
+        await createSystemMessage({
+          chatRoomId: chatRoomId,
+          message: SYSTEM_MESSAGES.APPOINTMENT_ALERT(alertTime),
+        });
+      }
+      
       alert("약속이 생성되었습니다!");
       router.back();
     },
@@ -155,12 +172,10 @@ const CreateAppointment = () => {
       return;
     }
     
-    const utcDateTime = localDateTime.toISOString();
-    
     // Updated to use flat location properties
     const appointmentData = {
       chatRoomId: chatRoomId,
-      appointmentTime: utcDateTime,
+      appointmentTime: localDateTime, 
       place: selectedLocation.selectedAddress ?? "Unknown location",
       locationLatitude: selectedLocation.latitude,
       locationLongitude: selectedLocation.longitude,

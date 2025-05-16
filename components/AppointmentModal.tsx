@@ -6,7 +6,7 @@ import 'dayjs/locale/ko';
 interface AppointmentModalProps {
   modal: ModalAPI;
   params: {
-    appointmentTime: string;
+    appointmentTime: Date;
     place: string;
     latitude: number;
     longitude: number;

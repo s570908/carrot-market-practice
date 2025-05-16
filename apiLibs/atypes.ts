@@ -17,6 +17,8 @@ import {
   Stream,
   ProductImage,
   Prisma,
+  MessageType,
+  ChatMeetup,
 } from "@prisma/client";
 
 /// User
@@ -541,8 +543,9 @@ export type UserWithwrittenReviews = PrismaUser & {
   writtenReviews: Review[];
 };
 
-interface ChatWithUser extends SellerChat {
+export interface ChatWithUser extends SellerChat {
   user: UserWithwrittenReviews;
+  chatMeetup?: ChatMeetup;
 }
 
 // API 응답 인터페이스 정의
@@ -725,7 +728,7 @@ export { Kind };
 
 // ChatMeetup 생성을 위한 인터페이스
 export interface ChatMeetupParams {
-  appointmentTime: string; // ISO format UTC date-time string
+  appointmentTime: Date; //format UTC date-time string
   place: string;
   locationLatitude: number | null;
   locationLongitude: number | null;
@@ -736,17 +739,44 @@ export interface ChatMeetupParams {
 // ChatMeetup 응답 인터페이스
 export interface ChatMeetupResponse {
   ok: boolean;
-  chatMeetup?: {
-    id: number;
-    appointmentTime: string; // Will be returned in ISO format
-    place: string;
-    locationLatitude: number | null;
-    locationLongitude: number | null;
-    alertTime: string;
-    messageId: number;
-    createdAt: string;
-    updatedAt: string;
-  };
+  chatMeetup?: ChatMeetup;
   message?: any;
   error?: string;
+}
+
+// Chat message interface
+export interface ChatMessage {
+  id: number;
+  createdAt: string;
+  updatedAt: string;
+  userId?: number;
+  chatMsg: string;
+  chatRoomId: number;
+  messageType?: MessageType;
+  user?: {
+    name: string;
+    avatar: string;
+  };
+  chatMeetup?: ChatMeetup;
+}
+
+// SystemMessage 응답 인터페이스
+export interface SystemMessageResponse {
+  ok: boolean;
+  systemMessage?: {
+    id: number;
+    chatMsg: string;
+    messageType: string;
+    createdAt: string;
+    updatedAt: string;
+    chatRoomId: number;
+    chatMeetup?: any;
+  };
+  error?: string;
+}
+
+export interface SystemMessageParams {
+  chatRoomId: number;
+  message: string;
+  meta?: Record<string, any>;
 }

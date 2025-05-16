@@ -18,7 +18,7 @@ interface MessageProps {
   date?: Date | string;
   isAppointment?: boolean;
   appointmentData?: {
-    appointmentTime: string; // Single UTC datetime string
+    appointmentTime: Date; // Single UTC datetime string
     place: string;
     latitude?: number;
     longitude?: number;
