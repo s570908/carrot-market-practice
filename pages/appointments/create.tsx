@@ -68,7 +68,7 @@ export default function CreateAppointment() {
   } | null>(null);
 
   const location = selectedLocationByAddressInfo;
-  console.log("create--Selected location:", location);
+  //console.log("create--Selected location:", location);
 
   // 시작 날짜와 시간을 위한 상태 추가
   const [startDate, setStartDate] = useState<Date>(new Date());
@@ -108,9 +108,9 @@ export default function CreateAppointment() {
 
     try {
       // location 정보를 인자로 전달하여 MapModal이 초기화될 때 이 정보를 사용하도록 함
-      console.log("openMapModal 직전--location:", location);
+      //console.log("openMapModal 직전--location:", location);
       const result = await openMapModal(location);
-      console.log("Modal closed--result: ", result);
+      //console.log("Modal closed--result: ", result);
       if (result) {
         const { latitude, longitude, addressInfo, selectedAddress, locationName } = result;
         setSelectedLocationByAddressInfo({
@@ -121,7 +121,7 @@ export default function CreateAppointment() {
           locationName,
         });
       } else {
-        console.log("Modal closed without selecting a location.");
+        //console.log("Modal closed without selecting a location.");
         // 선택된 위치를 초기화하지 않도록 수정 (기존 위치 유지)
         // setSelectedLocationByAddressInfo(null);
       }

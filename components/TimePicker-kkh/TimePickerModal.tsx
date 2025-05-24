@@ -44,7 +44,7 @@ const TimePickerModal: React.FC<TimePickerModalProps> = ({
   };
 
   const handleTimeChange = (newTime: any) => {
-    console.log("handleTimeChange--newTime: ", newTime);
+    //console.log("handleTimeChange--newTime: ", newTime);
     tempTimeRef.current = newTime;
     setTempTime((prev) => ({
       hour: newTime.hour !== undefined ? newTime.hour : prev.hour,
@@ -122,10 +122,10 @@ const TimePickerModal: React.FC<TimePickerModalProps> = ({
     const formattedHour = String(currentTempTime.hour).padStart(2, "0");
     const formattedMinute = formatDisplayMinute(currentTempTime.minute);
 
-    console.log(
-      "formattedHour, formattedMinute: ",
-      `${formattedHour}:${formattedMinute}`
-    );
+    // console.log(
+    //   "formattedHour, formattedMinute: ",
+    //   `${formattedHour}:${formattedMinute}`
+    // );
     onConfirm(`${formattedHour}:${formattedMinute}`);
   }, [formatDisplayMinute, onConfirm]);
 

@@ -31,12 +31,12 @@ const LocationSelectorPage: NextPage = () => {
   const handleOpenModal = async () => {
     try {
       const result = await openMapModal(null);
-      console.log("Modal closed--result: ", result);
+      //console.log("Modal closed--result: ", result);
       if (result) {
         const { latitude, longitude, addressInfo } = result;
         setSelectedLocationByAddressInfo({ latitude, longitude, addressInfo });
       } else {
-        console.log("Modal closed without selecting a location.");
+        //console.log("Modal closed without selecting a location.");
         setSelectedLocationByAddressInfo(null); // 선택된 위치를 초기화
       }
     } catch (error) {

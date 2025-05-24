@@ -41,34 +41,43 @@ async function handler(
   // })
 
 
-  const { chatRoomId, message, meta = {} } = req.body;
+  const { chatRoomId, message, userId, meta = {} } = req.body;
+
+  console.log("api/chat/system-message--req.body:", req.body);
 
   if (!chatRoomId || !message) {
     return res.status(400).json({ ok: false, error: "Missing required fields" });
   }
 
   try {
-    // 시스템 메시지 생성
+    // 시스템 메시지 생성 - 메타 데이터만 저장하고 별도 조회 로직 제거
     const systemMessage = await client.sellerChat.create({
       data: {
         chatMsg: message,
         messageType: MessageType.SYSTEM,
-        chatRoom: {
-          connect: { id: chatRoomId }
-        },
-        // 약속 관련 데이터가 있는 경우 챗미팅 생성
-        ...(meta.chatMeetup && {
-          chatMeetup: {
-            create: meta.chatMeetup
+        // userId가 있는 경우 user 연결, 없으면 user 필드 자체를 생략
+        ...(userId ? {
+          user: {
+            connect: {
+              id: userId
+            }
           }
-        })
-      },
-      include: {
-        chatMeetup: true
+        } : {}),
+        chatRoom: {
+          connect: { id: +chatRoomId }
+        },
+        // 메타데이터 필드 저장 - meta 객체 전체를 JSON 문자열로 변환하여 저장
+        ...(Object.keys(meta).length > 0 ? { meta: JSON.stringify(meta) } : {})
       }
     });
 
-    return res.status(200).json({ ok: true, systemMessage });
+    console.log("System message created--systemMessage:", systemMessage);
+
+    return res.status(200).json({ 
+      ok: true, 
+      systemMessage
+      // 필요한 모든 정보는 이미 meta에 포함되어 있음
+    });
   } catch (error) {
     console.error("Error creating system message:", error);
     return res.status(500).json({ ok: false, error: "Failed to create system message" });

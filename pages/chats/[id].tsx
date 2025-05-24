@@ -26,7 +26,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import useSocket from "@libs/client/useSocket";
 import dayjs from "@libs/dayjs";
-import { createSystemMessage, getChat, SYSTEM_MESSAGES, writeChatMessage } from "apiLibs/chats";
+import { writeSystemMessage, getChat, SYSTEM_MESSAGES, writeChatMessage, writeAlarmSettings } from "apiLibs/chats";
 import { handleLoadingAndError } from "@components/LoadingError";
 import {
   getReservation,
@@ -37,7 +37,7 @@ import {
 import { ChatFormResponse, ChatWithUser } from "apiLibs/atypes";
 import { useAwaitableModal } from "@libs/client/useAwaitableModal";
 import { ProductWithImages } from "@/types";
-//import { createSystemMessage, SYSTEM_MESSAGES } from "@libs/server/chatUtils";
+import ActionSheet from "@components/ActionSheet";
 
 type Option = {
   value: string;
@@ -55,28 +55,10 @@ interface ReviewWritableResponse {
   message?: string;
 }
 
-// interface SellerChatResponse {
-//   ok: boolean;
-//   sellerChat: ChatWithUser[];
-//   chatRoomOfSeller: {
-//     buyerId: number;
-//     sellerId: number;
-//     productId: number;
-//     buyer: User;
-//     seller: User;
-//     product: Product;
-//   };
-// }
-
-// interface ChatFormResponse {
-//   chatMsg: string;
-// }
-
 interface ChatRoomWithDetails extends ChatRoom {
   buyer: User;
   seller: User;
   product: ProductWithImages;
-  // chats: ChatMessage[];
 }
 
 interface ChatDetailProps {
@@ -86,15 +68,20 @@ interface ChatDetailProps {
 const workspace = "market"; // 추후 다른 workspace를 추가하려면 로직을 개편해야 한다.
 
 const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
-  // console.log("chatRoomData: ", chatRoomData);
   const [newMessageSubmitted, setNewMessageSubmitted] = useState(false);
-  const [currentVisibleDate, setCurrentVisibleDate] = useState<string | null>(null);
+  //const [currentVisibleDate, setCurrentVisibleDate] = useState<string | null>(null);
   const [isScrolling, setIsScrolling] = useState(false);
   const { user } = useUser();
   const queryClient = useQueryClient();
   const [socket, disconnectSocket] = useSocket(workspace);
   const router = useRouter();
   const id = (router.query.id !== undefined ? parseId(router.query.id) : 0) ?? 0;
+
+  // 알림 ActionSheet 상태 관리
+  const [alarmSheetOpen, setAlarmSheetOpen] = useState(false);
+  
+  // 현재 메시지 ID 저장 (알림 설정 버튼이 클릭된 메시지)
+  const [currentMessageId, setCurrentMessageId] = useState<number | null>(null);
 
   // 헤더 상태 관련
   const [productStatus, setProductStatus] = useState<string>("");
@@ -199,10 +186,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   const sold = data?.chatRoomOfSeller?.product?.status === Status.Sold ? true : false;
   const unregistered =
     data?.chatRoomOfSeller?.product?.status === Status.Unregistered ? true : false;
-  // selling은 Status.Registered와 동일하다.
   const selling = !reserved && !sold && !unregistered;
-  // const productStatus =
-  //   (reserved && "예약중") || (sold && "거래완료") || (selling && "판매중") || "미등록";
 
   const isProvider = data?.chatRoomOfSeller?.sellerId === user?.id;
   const isConsumer = data?.chatRoomOfSeller?.buyerId === user?.id;
@@ -217,10 +201,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     const { data } = await axios.get(`/api/products/${productId}/reservation`);
     return data;
   };
-  // const fetchReservation = async (productId: string) => {
-  //   const { data } = await axios.get(`/api/products/${productId}/reservation`);
-  //   return data;
-  // };
 
   const productId = data?.chatRoomOfSeller?.productId;
   const buyerId = data?.chatRoomOfSeller?.buyerId;
@@ -248,6 +228,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     queryFn: () => getReviewWritable({ productId: productId!, otherId: otherId!, reviewType }),
     enabled: !!id && !!productId && !!otherId, // 모든 값이 있을 때만 쿼리를 실행
   });
+
+  //console.log("reviewWritableData================: ", reviewWritableData);
 
   //console.log("reviewWritableData================: ", reviewWritableData);
 
@@ -289,16 +271,23 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     data: sendChatData,
   } = useMutation({
     mutationFn: writeChatMessage,
-    onMutate: async (params: { chatForm: ChatFormResponse; chatId: number }) => {
+    onMutate: async (params) => {
+      // 기존 쿼리 취소 및 이전 데이터 저장
       await queryClient.cancelQueries({ queryKey: ["chat", params.chatId] });
       const previousChatData = queryClient.getQueryData(["chat", params.chatId]);
+      
+      // optimistic update
       queryClient.setQueryData(["chat", params.chatId], (prev: any) => {
         if (prev) {
+          const now = new Date();
           const newMessage = {
             id: Date.now(),
             chatMsg: params.chatForm.chatMsg,
             user: { ...user },
             userId: user?.id,
+            createdAt: now.toISOString(), // 현재 시간을 추가
+            updatedAt: now.toISOString(), // 필요한 경우 updatedAt도 추가
+            messageType: "USER" // MessageType.USER 대신 문자열로
           };
           return {
             ...prev,
@@ -313,7 +302,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     },
     onError: (error, variables, context) => {
       if (context?.previousChatData) {
-        queryClient.setQueryData(["chat", variables.chatId], context.previousChatData); // 이전 데이터로 롤백
+        queryClient.setQueryData(["chat", variables.chatId], context.previousChatData);
       }
     },
     onSettled: () => {
@@ -323,15 +312,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     },
   });
 
-  // // 채팅 보내기 mutation
-  // const { mutate: sendChat, isPending: isLoadingSendChat } = useMutation({
-  //   mutationFn: writeChatMessage,
-  //   onSuccess: () => {
-  //     refetchChat();
-  //   },
-  // });
-
-  // 캐시 업데이트 함수
   const updateProductStatus = useCallback(
     (newState: string, status: Status) => {
       queryClient.setQueryData(["chat", id], (oldData: any) => {
@@ -368,7 +348,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
       // 시스템 메시지 추가
       if (otherName) {
-        await createSystemMessage({
+        await writeSystemMessage({
           chatRoomId: id,
           message: SYSTEM_MESSAGES.PRODUCT_RESERVED(otherName),
         });
@@ -390,12 +370,66 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       setProductStatus("거래완료");
 
       // 시스템 메시지 추가
-      await createSystemMessage({
+
+      await writeSystemMessage({
         chatRoomId: id,
         message: SYSTEM_MESSAGES.PRODUCT_SOLD(),
       });
       refetchChat();
     },
+  });
+
+  const {
+    mutate: setAlarmSettings,
+    isPending: isSettingAlarm,
+    isError: isErrorSettingAlarm,
+    error: errorSettingAlarm,
+  } = useMutation({
+    mutationFn:  writeAlarmSettings,
+    onSuccess: (data) => {
+      alert(`${data.disableAlarm ? "알림이 해제되었습니다." : `${data.alarmTime} 알림이 설정되었습니다.`}`);
+      refetchChat();
+    },
+    onError: (error: any) => {
+      console.error("알림 설정 중 오류 발생:", error);
+      
+      // 오류 원인 확인 및 사용자 친화적인 메시지 제공
+      let errorMessage = "알림 설정에 실패했습니다.";
+      
+      if (error.response) {
+        // 서버 응답이 있는 경우 (상태 코드가 2xx 범위 밖)
+        const status = error.response.status;
+        const serverMessage = error.response.data?.error || error.response.data?.message;
+        const errorCode = error.response.data?.code; // 서버에서 보내는 구체적인 에러 코드
+        
+        if (status === 400) {
+          // 잘못된 요청에 대한 더 상세한 메시지
+          if (serverMessage?.includes('past') && serverMessage?.includes('appointment')) {
+            errorMessage = '지난 약속에는 알림을 설정할 수 없습니다.';
+          } else if (serverMessage?.includes('alarm') && serverMessage?.includes('past')) {
+            errorMessage = '설정하려는 알림 시간이 이미 지났습니다. 다른 시간을 선택해주세요.';
+          } else {
+            errorMessage = `알림 설정 오류: ${serverMessage || '필수 정보가 누락되었습니다.'}`;
+          }
+        } else if (status === 404) {
+          // 404 에러에 대한 더 상세한 메시지
+          if (serverMessage?.includes('past')) {
+            errorMessage = '이미 지난 약속입니다. 새로운 약속을 잡아 주세요.';
+          } else if (serverMessage?.includes('appointment')) {
+            errorMessage = '약속 정보가 변경되었거나 삭제되었습니다.';
+          } else {
+            errorMessage = '약속 정보를 찾을 수 없습니다. 새로고침 후 다시 시도해주세요.';
+          }
+        } else if (status === 500) {
+          errorMessage = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+        } else if (serverMessage) {
+          errorMessage = `알림 설정 오류: ${serverMessage}`;
+        }
+      }
+      // ...existing error handling code...
+      
+      alert(errorMessage);
+    }
   });
 
   const onValid = (chatForm: ChatFormResponse) => {
@@ -404,9 +438,10 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
     setNewMessageSubmitted(true);
 
-    sendChat({ chatForm, chatId: id }); //  지금 여기서 서버의 데이터를 업데이트한다.
+    sendChat({ chatForm, chatId: id });
   };
 
+  // 새로운 메시지를 작성하고 submit하면 scroll to bottom이 되게 한다.
   // useEffect(() => {
   //   const chatBox = document.getElementById("chatBox") as HTMLElement;
   //   //// scrollTop 의 최대치는 scrollHeight-clientHeght. scrollTop에 이 최대치보다 큰 수를 넣더라도 scrollTop은 최대치 만큼만 반응한다.
@@ -423,7 +458,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   useEffect(() => {
     scrollToBottom(scrollRef);
-  }, [data?.sellerChat]); // chat data를 모두 가져온 후에만 scrollRef의 값을 가져올 수 있다.
+  }, [data?.sellerChat]);
 
   const initialOptions = useMemo(
     () => [
@@ -463,23 +498,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   const [connected, setConnected] = useState<boolean>(false);
 
-  // useEffect(() => {
-  //   if (socket) {
-  //     socket.on("changeState", async (data) => {
-  //       console.log("changeState socket event received:", data);
-  //       await refetchChat();
-  //       await refetchReservation();
-  //       await refetchReviewWritable();
-  //     });
-  //   }
-  //   return () => {
-  //     if (socket) {
-  //       socket.off("changeState");
-  //     }
-  //   };
-  // }, [socket]);
-
-  // 소켓 이벤트 리스너
   useEffect(() => {
     if (socket) {
       const handleChangeState = (eventData: any) => {
@@ -515,44 +533,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     }
   }, [socket, productId, updateProductStatus]);
 
-  // 소켓 이벤트 리스너
   useEffect(() => {
-    if (socket) {
-      const handleChangeState = (eventData: any) => {
-        const { productId: changedProductId, new: newState } = eventData;
-
-        if (productId === changedProductId) {
-          setProductStatus(newState);
-
-          let newStatus: Status;
-          switch (newState) {
-            case "예약중":
-              newStatus = Status.Reserved;
-              break;
-            case "거래완료":
-              newStatus = Status.Sold;
-              break;
-            case "판매중":
-              newStatus = Status.Registered;
-              break;
-            default:
-              newStatus = Status.Unregistered;
-          }
-
-          updateProductStatus(newState, newStatus);
-        }
-      };
-
-      socket.on("changeState", handleChangeState);
-
-      return () => {
-        socket.off("changeState", handleChangeState);
-      };
-    }
-  }, [socket, productId, updateProductStatus]);
-
-   // 초기 상태 설정
-   useEffect(() => {
     const initialStatus = productStatusInitial;
     setProductStatus(initialStatus);
 
@@ -582,44 +563,86 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   useEffect(() => {
     if (socket) {
-      const roomName = `/ws-${workspace}-${id}`;
-      socket.emit("joinRoom", { room: roomName });
-      console.log(`Joined room: ${roomName}`);
-
+      //const roomName = `/ws-${workspace}-${id}`;
+      
+      // 2. 모든 이벤트 리스너 등록
       socket.on("message", (message: any) => {
-        console.log("id && message.chatRoomId === id: message.chatRoomId, id", message.chatRoomId, id);
-        console.log("socket message event received:", message);
-        // message는 같은 채널에 있는 모든 사용자에게 전달된다.
-        // 따라서  if (id && message.chatRoomId === id) 는 항상 true이다.
-        // 그러나 메시지가 현재 채팅방에 해당하는지 확인하는 것이 좋다.
-        // 애플리케이션 확장성: 향후 기능 확장 시 구현이 변경될 수 있으므로, 이 검사는 방어적 프로그래밍 측면에서 유용합니다.
-        // 해당 chatRoom에서만 refetch하도록...
-        console.log("id && message.chatRoomId === id: message.chatRoomId, id", message.chatRoomId, id);
-        console.log("socket message event received:", message);
-        // message는 같은 채널에 있는 모든 사용자에게 전달된다.
-        // 따라서  if (id && message.chatRoomId === id) 는 항상 true이다.
-        // 그러나 메시지가 현재 채팅방에 해당하는지 확인하는 것이 좋다.
-        // 애플리케이션 확장성: 향후 기능 확장 시 구현이 변경될 수 있으므로, 이 검사는 방어적 프로그래밍 측면에서 유용합니다.
-        // 해당 chatRoom에서만 refetch하도록...
+        console.log("message socket event received:", message);
+        
+        // 약속 메시지 로직
+        const isAppointmentMessage = message.type === 'appointment' || 
+                                    (message.chatMeetup && Object.keys(message.chatMeetup).length > 0);
+        
         if (id && message.chatRoomId === id) {
-          //console.log("socket message event received:", message);
-          //console.log("socket message event received:", message);
+          // 여기서 발신자에게도 메시지를 표시하는 것이 타당함:
+          
+          // 1. 약속 메시지는 대화의 중요 기록이며, 발신자도 이 내용을 볼 수 있어야 함
+          // 2. 발신자도 자신이 제안한 약속 내용을 확인하고 알림을 설정할 수 있어야 함
+          // 3. 일반 메시지와 달리 약속은 "공유된 약속 정보"의 성격을 가짐
+          // 4. 발신자에게 보이지 않으면 약속이 생성되었는지 확인이 어려움
+          // 5. 양방향 소통에서 발신자도 동일한 대화 컨텍스트를 볼 수 있어야 함
+          
           refetchChat();
         }
       });
-    }
-      return () => {
-        if (socket) {
-        socket.off("message");
+      
+      socket.on("alarm_setting_changed", (data: any) => {
+        console.log("alarm_setting_changed event received:", data);
+        if (id && data.chatRoomId === id) {
+          // 나 자신이 보낸 이벤트가 아닌 경우에만 refetch (이미 로컬에서 처리했으므로)
+          if (data.updatedBy !== user?.id) {
+            refetchChat();
+          }
         }
-      };
-  }, [socket, id, refetchChat, router.query.id]);
+      });
+      
+      // // 3. 리스너 등록 후 룸 참여 요청 (roomName 재선언 없이 사용)
+      // socket.emit("joinRoom", { room: roomName });
+      // console.log(`Joined room: ${roomName}`);
 
-  // 드롭다운에서 선택 변경 시 호출되는 함수
-  // const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-  //   //console.log("handleChange called --- event.target.value: ", event.target.value);
-  //   setSelectedValue(event.target.value); // 새로운 값으로 설정
-  // };
+      socket.on("joined_room", (data) => {
+        console.log(`Successfully joined room: ${data.room}`);
+      });
+      
+      return () => {
+        socket.off("message");
+        socket.off("alarm_setting_changed");
+        socket.off("joined_room")
+      };
+    }
+  }, [socket, id, refetchChat, router.query.id, user?.id]);
+
+const [shouldRefetch, setShouldRefetch] = useState(false);
+
+//   실행 순서
+
+// 사용자가 약속 생성 페이지에서 router.back()으로 채팅방으로 돌아옴
+// Next.js가 라우팅 완료 후 'routeChangeComplete' 이벤트 발생
+// handleRouteChange 함수가 현재 URL을 파라미터로 받아 실행됨
+// URL이 현재 채팅방 URL과 일치하면 shouldRefetch를 true로 설정
+// shouldRefetch가 true이고 router.isReady이면 채팅 데이터 갱신
+// 이 방식은 약속 생성 페이지에서 채팅방으로 돌아올 때만 선택적으로 데이터를 갱신할 수 있게 해줍니다.
+useEffect(() => {
+  // 약속 생성 페이지에서 돌아온 경우에만 refetch
+  const handleRouteChange = (url: string) => {
+    if (url.includes(`/chats/${id}`)) {
+      setShouldRefetch(true);
+    }
+  };
+
+  router.events.on('routeChangeComplete', handleRouteChange);
+  
+  return () => {
+    router.events.off('routeChangeComplete', handleRouteChange);
+  };
+}, [id, router.events]);
+
+useEffect(() => {
+  if (shouldRefetch && router.isReady) {
+    refetchChat();
+    setShouldRefetch(false);
+  }
+}, [router.isReady, shouldRefetch, refetchChat]);
 
   const handleChange = async (event: React.ChangeEvent<HTMLSelectElement>) => {
     //console.log("handleChange--selling, reserved, sold: ", selling, reserved, sold);
@@ -747,16 +770,13 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     data?.chatRoomOfSeller?.buyerId === user?.id
       ? data?.chatRoomOfSeller?.sellerId
       : data?.chatRoomOfSeller?.buyerId;
-  //console.log("chatUser 채팅자: ", chatUserId);
 
   const sellerUserId = data?.chatRoomOfSeller?.sellerId;
 
   const reservationUserId = reservationData?.reserve?.userId;
 
-  let optionsMenu: Option[];
-
-  const [tooltipDate, setTooltipDate] = useState<string | null>(null); // 현재 툴팁에 표시될 날짜
-  const [showTooltip, setShowTooltip] = useState(false); // 툴팁 표시 여부
+  const [tooltipDate, setTooltipDate] = useState<string | null>(null);
+  const [showTooltip, setShowTooltip] = useState(false);
   const messageRefs = useRef<Map<string, { element: HTMLDivElement; createdAt: string }>>(
     new Map()
   );
@@ -788,7 +808,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       if (firstVisibleMessage) {
         const dateStr = firstVisibleMessage.createdAt;
         setTooltipDate(dayjs(dateStr).format("YYYY년 MM월 DD일 dddd"));
-        setCurrentVisibleDate(dateStr);
+        //setCurrentVisibleDate(dateStr);
       }
 
       // 스크롤이 멈춘 후 1초 후에 툴팁 숨기기
@@ -801,7 +821,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         setIsScrolling(false);
       }, 1000);
     }
-  }, [setShowTooltip, setTooltipDate, setCurrentVisibleDate, setIsScrolling, messageRefs]);
+  }, [setShowTooltip, setTooltipDate, setIsScrolling, messageRefs]);
 
   // scrollTimeoutRef.current와 관련된 메모리 누수 방지를 위해, 컴포넌트 언마운트 시 타이머를 정리합니다:
   useEffect(() => {
@@ -830,19 +850,174 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     };
   }, [data?.sellerChat, handleScroll]); // 의존성 배열은 필요에 따라 조정
 
-  if (selling) {
-    optionsMenu = [
-      { value: "예약중", label: "예약중", active: true },
-      { value: "거래완료", label: "거래완료", active: true },
-    ];
-  } else if (reserved) {
-    if (chatUserId === reservationUserId) {
-      [
-        { value: "판매중", label: "판매중", active: true },
-        { value: "거래완료", label: "거래완료", active: true },
-      ];
+  const handleAlarmTimeSelected = async (timeOption: string) => {
+    console.log('handleAlarmTimeSelected---알림 시간 선택됨: { currentMessageId, timeOption }: ', { currentMessageId, timeOption });
+    if (!currentMessageId) return;    
+    
+    try {
+      // 약속 정보 가져오기
+      const meetupMessage = data?.sellerChat?.find(
+        (msg: ChatWithUser) => msg.id === currentMessageId && msg.chatMeetup
+      );
+
+      console.log('handleAlarmTimeSelected---meetupMessage:', meetupMessage);
+      
+      if (!meetupMessage || !meetupMessage.chatMeetup) {
+        alert("약속 정보를 찾을 수 없습니다.");
+        return;
+      }
+      
+      // 약속 시간 가져오기
+      const meetupTime = new Date(meetupMessage.chatMeetup.appointmentTime);
+      
+      // 첫 번째 검증: 약속 시간이 이미 지났는지 확인
+      if (meetupTime < new Date()) {
+        alert("이미 지난 약속입니다. 알림을 설정할 수 없습니다.");
+        return;
+      }
+      
+      // 알람 트리거 시간 계산 (원본 시간을 복제하여 사용)
+      let triggerAt = new Date(meetupTime.getTime()); // Date 객체 복제를 위해 getTime() 사용
+      
+      switch (timeOption) {
+        case "10분 전":
+          triggerAt.setMinutes(triggerAt.getMinutes() - 10);
+          break;
+        case "30분 전":
+          triggerAt.setMinutes(triggerAt.getMinutes() - 30);
+          break;
+        case "1시간 전":
+          triggerAt.setHours(triggerAt.getHours() - 1);
+          break;
+        case "3시간 전":
+          triggerAt.setHours(triggerAt.getHours() - 3);
+          break;
+        case "1일 전":
+          triggerAt.setDate(triggerAt.getDate() - 1);
+          break;
+        case "알림 끄기":
+          // 알림 끄기 처리
+          setAlarmSettings({
+            chatId: id, // Add the chatId
+            messageId: currentMessageId,
+            alarmTime: timeOption,
+            disableAlarm: true
+          });
+          return;
+      }
+      
+      // 두 번째 검증: 알림 트리거 시간이 현재 시간보다 이전인지 확인
+      if (triggerAt < new Date()) {
+        alert(`선택한 알림 시간(${timeOption})이 이미 지났습니다. 다른 알림 시간을 선택해주세요.`);
+        return;
+      }
+      
+      // 1. 서버에 알림 설정 저장 API 호출
+      setAlarmSettings({
+        chatId: id, // Add the chatId
+        messageId: currentMessageId,
+        alarmTime: timeOption,
+        triggerAt: triggerAt.toISOString()
+      });
+      
+    } catch (error) {
+      console.error("알림 설정 중 오류 발생:", error);
+      alert("알림 설정에 실패했습니다.");
     }
+  };
+
+  // 객체인지 문자열인지 판단하는 유틸리티 함수
+  function getMetaData(meta: any) {
+    // 문자열인 경우 (JSON 문자열)
+    if (typeof meta === 'string') {
+      try {
+        return JSON.parse(meta);
+      } catch (e) {
+        console.error('JSON 파싱 실패:', e);
+        return {};
+      }
+    }
+    // 이미 객체인 경우
+    else if (typeof meta === 'object' && meta !== null) {
+      return meta;
+    }
+    // 다른 타입인 경우 빈 객체 반환
+    return {};
   }
+
+  const handleAlarmButtonClick = (messageId: number) => {
+    // 시스템 메시지 찾기 (알림 메시지)
+    const systemMessage = data?.sellerChat?.find(msg => msg.id === messageId);
+    
+    if (!systemMessage) {
+      alert('메시지 정보를 찾을 수 없습니다.');
+      return;
+    }
+    
+    // meta 속성 안전하게 처리
+    const metaObj = getMetaData(systemMessage.meta);
+    console.log('파싱된 meta 객체:', metaObj);
+    
+    const chatMeetupId = metaObj?.chatMeetupId;
+    console.log('handleAlarmButtonClick---chatMeetupId:', chatMeetupId);
+    
+    if (!chatMeetupId) {
+      console.error('메타데이터에서 chatMeetupId를 찾을 수 없습니다:', metaObj);
+      alert('관련 약속 정보를 찾을 수 없습니다.');
+      return;
+    }
+    
+    // chatMeetupId를 사용하여 약속 메시지 찾기
+    const appointmentMessage = data?.sellerChat?.find(msg => 
+      msg.chatMeetup && msg.chatMeetup.id === chatMeetupId
+    );
+    
+    // 약속 메시지가 있으면 약속 시간 검증
+    if (appointmentMessage?.chatMeetup) {
+      const appointmentTime = new Date(appointmentMessage.chatMeetup.appointmentTime);
+      const now = new Date();
+      const isPast = appointmentTime.getTime() < now.getTime();
+      
+      // 지난 약속이면 액션 시트를 열지 않음
+      if (isPast) {
+        alert('이미 지난 약속에는 알림을 설정할 수 없습니다.');
+        return;
+      }
+      
+      // 알림 설정 모달 열기
+      setCurrentMessageId(appointmentMessage.id); // 실제 약속 메시지 ID 저장
+      setAlarmSheetOpen(true);
+    } else {
+      // 관련 약속 메시지를 찾지 못한 경우
+      alert('관련 약속 정보를 찾을 수 없습니다.');
+    }
+  };
+
+    let optionsMenu: Option[] = selling 
+    ? [
+        { value: "예약중", label: "예약중", active: true },
+        { value: "거래완료", label: "거래완료", active: true },
+      ]
+    : reserved && chatUserId === reservationUserId
+      ? [
+          { value: "판매중", label: "판매중", active: true },
+          { value: "거래완료", label: "거래완료", active: true },
+        ]
+      : [];
+
+  // if (selling) {
+  //   optionsMenu = [
+  //     { value: "예약중", label: "예약중", active: true },
+  //     { value: "거래완료", label: "거래완료", active: true },
+  //   ];
+  // } else if (reserved) {
+  //   if (chatUserId === reservationUserId) {
+  //     optionsMenu = [
+  //       { value: "판매중", label: "판매중", active: true },
+  //       { value: "거래완료", label: "거래완료", active: true },
+  //     ];
+  //   }
+  // }
 
   // const isLoadingAny =
   //   isLoading ||
@@ -878,15 +1053,14 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   // 스티키 헤더용 포맷 함수
   const formatDateWithDay = (date: string | null) => {
     if (!date) return "";
-    return dayjs(date).locale('ko').format("YYYY. MM. DD. ddd");
+    return dayjs(date).locale("ko").format("YYYY. MM. DD. ddd");
   };
 
   const handleAppointmentClick = () => {
-    const chatRoomId = router.query.id; // 현재 채팅방방 ID
+    const chatRoomId = router.query.id; // 현재 채팅방 ID
     router.push(`/appointment/create?chatRoomId=${chatRoomId}`); // 채팅방 ID를 URL로 전달
   };
 
-  // 상태 표시 컴포넌트
   const ProductStatusDisplay = React.memo(({ status }: { status: string }) => {
     return <div>{status}</div>;
   });
@@ -895,12 +1069,24 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   return (
     <>
       {renderReservedModal()}
+      <ActionSheet
+        isOpen={alarmSheetOpen}
+        onClose={() => setAlarmSheetOpen(false)}
+        title="알림 시간 설정"
+        options={[
+          { label: "10분 전", onClick: () => handleAlarmTimeSelected("10분 전") },
+          { label: "30분 전", onClick: () => handleAlarmTimeSelected("30분 전") },
+          { label: "1시간 전", onClick: () => handleAlarmTimeSelected("1시간 전") },
+          { label: "3시간 전", onClick: () => handleAlarmTimeSelected("3시간 전") },
+          { label: "1일 전", onClick: () => handleAlarmTimeSelected("1일 전") },
+          { label: "알림 끄기", onClick: () => handleAlarmTimeSelected("알림 끄기"), color: "danger" },
+        ]}
+        maxWidth="max-w-xs" // 작은 폭 지정
+      />
       <Layout
         seoTitle={`${otherName} || 채팅`}
         title={`${otherName}`}
         canGoBack
-        // backUrl={"/chats"}
-        // backUrl={data?.chatRoomOfSeller?.buyerId === user?.id ? "/chats" : "back"}
         backUrl={"back"}
       >
         <div className="relative h-full px-4 pb-12">
@@ -1014,7 +1200,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
             ref={chatBoxRef}
           >
             {/* Sticky 날짜 헤더 - 투명 배경과 애니메이션 적용 */}
-            {currentVisibleDate && (
+            {/* {currentVisibleDate && (
               <div className="sticky z-10 w-full top-4">
                 <div
                   className={`mx-auto w-fit rounded-full bg-black/70 px-4 py-1.5 
@@ -1024,43 +1210,96 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                   {formatDateWithDay(currentVisibleDate)}
                 </div>
               </div>
-            )}
+            )} */}
             {data?.sellerChat?.map((message: ChatWithUser, index: number) => {
-              //console.log("message: ", JSON.stringify(message, null, 2));
+              //console.log("========>message: ", JSON.stringify(message, null, 2));
               const messageDate = dayjs(message.createdAt).format("YYYY-MM-DD"); // 메시지 날짜
               const showDate = lastMessageDate !== messageDate; // 날짜를 표시할지 여부
               lastMessageDate = messageDate; // 마지막 메시지 날짜 업데이트
               
-              // Check if this is an appointment message
+              // 약속 메시지 처리 관련 조건을 강화하되 발신자/수신자 구분하지 않음
               const isAppointment = !!message.chatMeetup;
               
+              // // 본인이 발신한 약속 메시지도 표시되도록 추가 로깅
+              // if (isAppointment && message.userId === user?.id) {
+              //   console.log("내가 보낸 약속 메시지 렌더링:", message);
+              // }
+
+              // 약속 시간이 지났는지 확인 - 현재 시간과 비교
+              const now = new Date();
+              const isAppointmentPassed = isAppointment && 
+                new Date(message.chatMeetup!.appointmentTime).getTime() < now.getTime();
+
+              // 알림 설정 버튼 표시 여부 결정 - 과거 약속이면 완전히 제거
+              const showAlarmButton = message.messageType === MessageType.SYSTEM && 
+                message.chatMsg.includes("알림이 울릴 거예요") && 
+                !isAppointmentPassed;
+
               // Format appointment data if this is an appointment message
               const appointmentData = isAppointment && message.chatMeetup
                 ? {
                     appointmentTime: message.chatMeetup.appointmentTime,
                     place: message.chatMeetup.place,
-                    latitude: message.chatMeetup.locationLatitude ?? undefined, // Convert null to undefined
-                    longitude: message.chatMeetup.locationLongitude ?? undefined, // Convert null to undefined
+                    latitude: message.chatMeetup.locationLatitude ?? undefined,
+                    longitude: message.chatMeetup.locationLongitude ?? undefined,
+                    isPast: isAppointment && new Date(message.chatMeetup.appointmentTime) < new Date()
                   }
                 : undefined;
-                
+
+              // 알림 설정 버튼이 비활성화된 경우 툴팁 메시지
+              const disabledButtonTooltip = isAppointmentPassed ? 
+                "이미 지난 약속입니다" : undefined;
+
+              // 약속 정보 확인 및 디버깅
+              const debugData = {
+                messageId: message.id,
+                messageType: message.messageType,
+                hasAppointment: isAppointment,
+                appointmentTime: message.chatMeetup?.appointmentTime,
+                currentTime: now.toISOString(),
+                formattedAppointmentTime: isAppointment ? 
+                  new Date(message.chatMeetup!.appointmentTime).toISOString() : null,
+                appointmentTimestamp: isAppointment ? 
+                  new Date(message.chatMeetup!.appointmentTime).getTime() : null,
+                currentTimestamp: now.getTime(),
+                isAppointmentPassed,
+                isSystemMessage: message.messageType === MessageType.SYSTEM,
+                containsAlarmText: message.chatMsg.includes("알림이 울릴 거예요"),
+                showAlarmButton
+              };
+              
+
+
+              // Message 컴포넌트 반환 전 props 디버깅
+              const messageProps = {
+                appointmentData: appointmentData,
+                messageType: message.messageType || MessageType.USER,
+                actions: showAlarmButton 
+                  ? [{ 
+                      type: 'button' as const, 
+                      label: '알림설정', 
+                      value: 'set_alarm',
+                      onClick: () => handleAlarmButtonClick(message.id),
+                      disabled: isAppointmentPassed,
+                      tooltip: disabledButtonTooltip
+                    }] 
+                  : undefined  
+              };
+              
+              // 메시지가 '약속을 만들었어요'인 경우에만 로그 출력
+              // if (message.chatMsg === '약속을 만들었어요') {
+              //   console.log('약속 알림 디버그:', debugData);
+              //   console.log('Message 컴포넌트 props:', JSON.stringify(messageProps, null, 2));
+              // }
+
               return (
                 <div
                   key={message.id}
-                  // DOM 요소 참조 관리:
-                  // ref 콜백은 해당 JSX 요소가 DOM에 마운트되거나 언마운트될 때 호출됩니다
-                  // el은 실제 DOM 요소를 가리키는 참조입니다
-                  // Map 컬렉션에 저장:
-                  // messageRefs는 useRef(new Map())로 생성된 Map 컬렉션의 참조입니다
-                  // 각 메시지 ID를 키로 사용하여 DOM 요소와 생성 시간을 저장합니다
-                  // 조건 처리:
-                  // if (el): 요소가 DOM에 추가될 때 (마운트)
-                  // else: 요소가 DOM에서 제거될 때 (언마운트)
                   ref={(el) => {
                     if (el) {
                       messageRefs.current.set(`${message.id}`, {
                         element: el,
-                        createdAt: message.createdAt.toString(),
+                        createdAt: message.createdAt.toString(), // 이제 안전하게 toString() 호출 가능
                       });
                     } else {
                       messageRefs.current.delete(`${message.id}`);
@@ -1079,7 +1318,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                     <div className="my-2 text-sm text-center text-white">
                       <span className="px-4 bg-gray-400 rounded-full">
                         {dayjs(message.createdAt)
-                          .locale('ko')
+                          .locale("ko")
                           .format("YYYY년 MM월 DD일 dddd")}
                       </span>
                     </div>
@@ -1095,16 +1334,18 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                     appointmentData={appointmentData}
                     messageType={message.messageType || MessageType.USER}
                     actions={
-                      message.messageType === MessageType.SYSTEM && message.chatMsg.includes("알림이 울릴 거예요") 
+                      showAlarmButton 
                         ? [
                             {
                               type: 'button',
                               label: '알림설정',
                               value: 'set_alarm',
-                              onClick: () => alert('알림이 설정되었습니다.')
+                              onClick: isAppointmentPassed ? undefined : () => handleAlarmButtonClick(message.id),
+                              disabled: isAppointmentPassed,
+                              tooltip: disabledButtonTooltip
                             }
                           ] 
-                        : undefined
+                        : undefined  
                     }
                   />
                 </div>
@@ -1177,3 +1418,4 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
 };
 
 export default ChatDetail;
+

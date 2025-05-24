@@ -67,6 +67,7 @@ const CACHE_ASSETS = [
   "/icons/soy-bean-192-192.png",
   "/icons/soy-bean-512-512.png",
   "/offline.html", // 오프라인 페이지 추가
+  "/dev-server-offline.html", // 개발 서버 중지 시 표시할 페이지 추가
 ];
 
 // 설치 이벤트 - 캐시 초기화
@@ -224,12 +225,26 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 네비게이션 요청 (HTML 페이지)에 대해 네트워크 우선 전략
+  // 네비게이션 요청 (HTML 페이지)에 대해 네트워크 우선 전략 - 개선된 오류 처리
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request).catch(() => {
-        return caches.match('/offline.html');
-      })
+      fetch(event.request)
+        .catch((error) => {
+          console.log('[Service Worker] Navigation fetch failed:', error);
+          
+          // 개발 서버 실행 중지 여부 확인
+          const url = new URL(event.request.url);
+          const isDevelopmentServer = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+          
+          if (isDevelopmentServer) {
+            // 개발 서버에 대한 요청이 실패한 경우 - 서버 중지 가능성 높음
+            return caches.match('/dev-server-offline.html')
+              .then(response => response || caches.match('/offline.html'));
+          } else {
+            // 일반적인 네트워크 오류 - 표준 오프라인 페이지
+            return caches.match('/offline.html');
+          }
+        })
     );
     return;
   }

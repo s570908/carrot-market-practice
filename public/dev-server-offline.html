@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>개발 서버 미실행</title>
+  <style>
+    body {
+      font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+      background-color: #f8f9fa;
+      color: #212529;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+    .container {
+      max-width: 500px;
+      padding: 30px;
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+      color: #ff6b00;
+      margin-bottom: 20px;
+    }
+    p {
+      line-height: 1.6;
+      margin-bottom: 15px;
+    }
+    .steps {
+      text-align: left;
+      background-color: #f1f3f5;
+      padding: 20px;
+      border-radius: 5px;
+      margin: 20px 0;
+    }
+    .steps ol {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .steps li {
+      margin-bottom: 10px;
+    }
+    .code {
+      background-color: #e9ecef;
+      padding: 5px 8px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>개발 서버가 실행되지 않았습니다</h1>
+    <p>인터넷 연결은 정상이지만, 애플리케이션의 개발 서버가 실행되지 않은 것 같습니다.</p>
+    
+    <div class="steps">
+      <p><strong>해결 방법:</strong></p>
+      <ol>
+        <li>터미널 창을 열고 프로젝트 디렉토리로 이동합니다.</li>
+        <li>다음 명령어를 실행하여 개발 서버를 시작합니다: <br>
+          <span class="code">yarn dev</span> 또는 <span class="code">npm run dev</span>
+        </li>
+        <li>서버가 시작된 후 페이지를 새로고침합니다.</li>
+      </ol>
+    </div>
+    
+    <p>계속해서 문제가 발생한다면, 서버 로그를 확인하여 오류 메시지를 확인하세요.</p>
+  </div>
+</body>
+</html>

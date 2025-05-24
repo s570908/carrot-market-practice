@@ -775,8 +775,29 @@ export interface SystemMessageResponse {
   error?: string;
 }
 
+// 알람 관련 시스템 메시지 생성시 약속 메시지 ID 저장을 위한 인터페이스 확장
 export interface SystemMessageParams {
   chatRoomId: number;
   message: string;
-  meta?: Record<string, any>;
+  userId?: number;
+  meta?: {
+    relatedAppointmentMessageId?: number;  // 약속 메시지 ID 저장 필드 추가
+    [key: string]: any;
+  };
+}
+
+export interface AlarmSettingsParams {
+  chatId: number;
+  messageId: number;
+  alarmTime: string;
+  triggerAt?: string;
+  disableAlarm?: boolean;
+}
+
+export interface AlarmSettingsResponse {
+  ok: boolean;
+  alarmTime?: string;
+  disableAlarm?: boolean;
+  error?: string;
+  message?: string;
 }

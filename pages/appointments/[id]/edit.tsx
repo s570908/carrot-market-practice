@@ -214,12 +214,12 @@ export default function EditAppointment() {
   const handleOpenMapModal = async () => {
     try {
       const result = await openMapModal(null);
-      console.log("Modal closed--result: ", result);
+      //console.log("Modal closed--result: ", result);
       if (result) {
         const { latitude, longitude, addressInfo } = result;
         setSelectedLocationByAddressInfo({ latitude, longitude, addressInfo });
       } else {
-        console.log("Modal closed without selecting a location.");
+        //console.log("Modal closed without selecting a location.");
         setSelectedLocationByAddressInfo(null); // 선택된 위치를 초기화
       }
     } catch (error) {
@@ -319,7 +319,7 @@ export default function EditAppointment() {
       <Layout seoTitle="약속 수정" title="약속 수정" canGoBack backUrl={`/appointments/${id}`}>
         {/* 스크롤 구조 수정 */}
         <div className="pb-20">
-          <div className="space-y-8 px-4 py-6">
+          <div className="px-4 py-6 space-y-8">
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               {/* 약속 제목 */}
               <Input
@@ -341,11 +341,11 @@ export default function EditAppointment() {
 
               {/* 날짜 선택 */}
               <div className="space-y-2">
-                <label className="mb-1 block text-sm font-medium text-gray-700">날짜</label>
+                <label className="block mb-1 text-sm font-medium text-gray-700">날짜</label>
                 <DatePicker
                   onChange={(date: Date) => setSelectedDate(date)}
                   value={selectedDate}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
                 {dateError && <p className="mt-1 text-sm text-red-600">{dateError}</p>}
               </div>
@@ -353,11 +353,11 @@ export default function EditAppointment() {
               {/* 시간 선택 */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="mb-1 block text-sm font-medium text-gray-700">시작 시간</label>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">시작 시간</label>
                   <TimePicker
                     onChange={(time: Date) => setStartTime(time)}
                     value={startTime}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
                   {timeError && !startTime && (
                     <p className="mt-1 text-sm text-red-600">{timeError}</p>
@@ -365,11 +365,11 @@ export default function EditAppointment() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="mb-1 block text-sm font-medium text-gray-700">종료 시간</label>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">종료 시간</label>
                   <TimePicker
                     onChange={(time: Date) => setEndTime(time)}
                     value={endTime}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
                   {timeError && startTime && !endTime && (
                     <p className="mt-1 text-sm text-red-600">{timeError}</p>
@@ -380,7 +380,7 @@ export default function EditAppointment() {
               {/* 위치 정보 표시 섹션 */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <h3 className="mb-1 block text-sm font-medium text-gray-700">약속 장소</h3>
+                  <h3 className="block mb-1 text-sm font-medium text-gray-700">약속 장소</h3>
                   <ModButton
                     onClick={handleOpenMapModal}
                     variant="outline"
@@ -394,7 +394,7 @@ export default function EditAppointment() {
                       viewBox="0 0 24 24"
                       strokeWidth={1.5}
                       stroke="currentColor"
-                      className="mr-1 h-4 w-4"
+                      className="w-4 h-4 mr-1"
                     >
                       <path
                         strokeLinecap="round"
@@ -412,7 +412,7 @@ export default function EditAppointment() {
                 </div>
                 {selectedLocationByAddressInfo || currentLocation ? (
                   <div className="space-y-4">
-                    <div className="rounded-md border border-gray-300 bg-white p-4">
+                    <div className="p-4 bg-white border border-gray-300 rounded-md">
                       <h4 className="font-medium text-gray-900">
                         {selectedLocationByAddressInfo
                           ? selectedLocationByAddressInfo.addressInfo?.buildingName || "선택된 위치"
@@ -425,7 +425,7 @@ export default function EditAppointment() {
                       </p>
                     </div>
                     {/* 선택한 위치를 지도에 표시 */}
-                    <div className="h-60 w-full overflow-hidden rounded-lg">
+                    <div className="w-full overflow-hidden rounded-lg h-60">
                       <MapViewer
                         lat={
                           selectedLocationByAddressInfo?.latitude ?? currentLocation?.latitude ?? 0
@@ -444,7 +444,7 @@ export default function EditAppointment() {
                     </div>
                   </div>
                 ) : (
-                  <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-4 text-center text-sm text-gray-500">
+                  <div className="p-4 text-sm text-center text-gray-500 border border-gray-300 border-dashed rounded-md bg-gray-50">
                     <p>
                       등록된 위치 정보가 없습니다. &apos;장소 변경&apos; 버튼을 눌러 위치를
                       설정해주세요.
@@ -455,7 +455,7 @@ export default function EditAppointment() {
 
               {/* 참석자 섹션 */}
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">참석자</label>
+                <label className="block mb-1 text-sm font-medium text-gray-700">참석자</label>
                 {friendsLoading ? (
                   <p className="py-2 text-center text-gray-500">참가자 목록을 불러오는 중...</p>
                 ) : friends.length > 0 ? (
@@ -477,7 +477,7 @@ export default function EditAppointment() {
                           imgName={friend.name}
                         />
                       ) : (
-                        <div className="mr-2 h-8 w-8 rounded-full bg-gray-300"></div>
+                        <div className="w-8 h-8 mr-2 bg-gray-300 rounded-full"></div>
                       )}
                       <span>{friend.name}</span>
                     </div>
@@ -489,7 +489,7 @@ export default function EditAppointment() {
 
               {/* 알림 설정 섹션 */}
               <div>
-                <div className="mb-1 flex items-center justify-between">
+                <div className="flex items-center justify-between mb-1">
                   <label className="text-sm font-medium text-gray-700">알림 설정</label>
                   <button type="button" onClick={addNotification} className="text-sm text-blue-500">
                     + 알림 추가
@@ -500,13 +500,13 @@ export default function EditAppointment() {
                   {notifications.map((notification, index) => (
                     <div
                       key={index}
-                      className="flex items-center space-x-2 rounded-md border border-gray-300 p-2"
+                      className="flex items-center p-2 space-x-2 border border-gray-300 rounded-md"
                     >
                       <input
                         type="text"
                         value={notification.title}
                         onChange={(e) => updateNotification(index, "title", e.target.value)}
-                        className="flex-1 rounded-md border border-gray-300 px-3 py-2"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
                         placeholder="알림 제목"
                       />
                       <select
@@ -514,7 +514,7 @@ export default function EditAppointment() {
                         onChange={(e) =>
                           updateNotification(index, "minutesBefore", Number(e.target.value))
                         }
-                        className="rounded-md border border-gray-300 py-2 pl-3 pr-9"
+                        className="py-2 pl-3 border border-gray-300 rounded-md pr-9"
                       >
                         <option value="5">5분 전</option>
                         <option value="15">15분 전</option>

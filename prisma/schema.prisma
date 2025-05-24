@@ -44,6 +44,7 @@ model User {
   // 친구 관계 (나를 친구로 추가한 사람들) - 이름 변경
   friendInvited             Friendship[]             @relation("FriendInvited")
   pushSubscriptions         PushSubscription[]
+  alarmSettings             AlarmSetting[]
 }
 
 model Token {
@@ -191,6 +192,8 @@ model SellerChat {
   //isNew                Boolean? //// 추후 지울 필요가 있는지 체크할 것
   lastReadMessage      LastReadMessage[] // 여러 명이 이 메시지까지 읽었음을 표시한다.
   chatMeetup           ChatMeetup?  
+  alarmSettings        AlarmSetting[] @relation("SellerChatToAlarmSetting")
+  meta                 Json?           // 메타데이터를 저장할 Json 필드 추가
 }
 
 model ChatRoom {
@@ -441,10 +444,10 @@ model PushSubscription {
   id              Int      @id @default(autoincrement())
   userId          Int
   endpoint        String   @db.VarChar(500)
+  endpointPattern String?  @db.VarChar(255) // 엔드포인트 기본 패턴
   p256dh          String   @db.VarChar(255)
   auth            String   @db.VarChar(255)
   browserId       String?  @db.VarChar(64) // 브라우저/기기 식별자
-  endpointPattern String?  @db.VarChar(255) // 엔드포인트 기본 패턴
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -456,16 +459,42 @@ model PushSubscription {
 
 // 채팅 약속 모델 수정
 model ChatMeetup {
-  id              Int      @id @default(autoincrement())
-  appointmentTime DateTime // Single field for date+time in UTC
-  place           String  
-  locationLatitude     Float?   // Latitude coordinate
-  locationLongitude    Float?   // Longitude coordinate
-  alertTime       String
+  id                   Int           @id @default(autoincrement())
+  appointmentTime      DateTime      // Single field for date+time in UTC
+  place                String  
+  locationLatitude     Float?        // Latitude coordinate
+  locationLongitude    Float?        // Longitude coordinate
+  alertTime            String
   
-  message         SellerChat @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  messageId       Int        @unique  // 하나의 챗밋업은 하나의 메시지만 가짐
+  message              SellerChat    @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId            Int           @unique  // 하나의 챗밋업은 하나의 메시지만 가짐
   
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  alarmSettings        AlarmSetting[]
+  
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+}
+
+// 사용자가 채팅 메시지에서 설정한 알림 설정 저장
+// 예: "이 약속 메시지에 대해 30분 전에 알림 설정함"
+// 각 메시지-사용자 조합에 대해 하나의 알람 설정만 가능하지만, 
+// 한 메시지에 여러 사용자가 알람을 설정할 수 있으므로 일대다(1:N) 관계입니다.
+model AlarmSetting {
+  id           Int        @id @default(autoincrement())
+  userId       Int
+  messageId    Int
+  alarmTime    String
+  triggerAt    DateTime
+  chatRoomId   Int
+  isTriggered  Boolean    @default(false)  // MeetupAlarm에서 이동된 필드
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sellerChat   SellerChat @relation("SellerChatToAlarmSetting", fields: [messageId], references: [id], onDelete: Cascade)
+  chatMeetup   ChatMeetup? @relation(fields: [chatMeetupId], references: [id], onDelete: Cascade)
+  chatMeetupId Int?
+
+  @@unique([messageId, userId])
+  @@index([chatRoomId])
+  @@index([triggerAt, isTriggered])  // 스케줄러 쿼리 최적화
 }

@@ -175,7 +175,7 @@ export const useMap = (
     };
 
     const handleMapClick = (e: TMapEvent) => {
-      console.log("맵 클릭 이벤트:");
+      //console.log("맵 클릭 이벤트:");
       const { latLng } = e;
       const position = new Tmapv2.LatLng(latLng.lat(), latLng.lng());
 
@@ -242,7 +242,7 @@ export const useMap = (
     };
 
     // 이벤트 리스너 등록 - isClickable에 따라 click 이벤트 조건부 등록
-    console.log("이벤트 리스너 등록 시도");
+    //console.log("이벤트 리스너 등록 시도");
     if (isClickable) {
       mapInstance.addListener("click", handleMapClick);
     }

@@ -216,9 +216,9 @@ export function MapModal() {
   const onClickConfirm = () => {
     const { latitude, longitude } = coord;
     if (!(latitude && longitude)) return;
-    console.log("선택한 주소:", selectedAddress);
-    console.log("latitude:", latitude);
-    console.log("longitude:", longitude);
+    // console.log("선택한 주소:", selectedAddress);
+    // console.log("latitude:", latitude);
+    // console.log("longitude:", longitude);
     //closeModal();
   };
 

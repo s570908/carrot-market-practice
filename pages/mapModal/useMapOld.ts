@@ -143,7 +143,7 @@ export const useMap = (mapRef: React.RefObject<HTMLDivElement>) => {
     const Tmapv2 = TmapRef.current;
 
     const handleMapClick = (e: TMapEvent) => {
-      console.log("맵 클릭 이벤트:");
+      //console.log("맵 클릭 이벤트:");
       const { latLng } = e;
       const position = new Tmapv2.LatLng(latLng.lat(), latLng.lng());
 
@@ -205,7 +205,7 @@ export const useMap = (mapRef: React.RefObject<HTMLDivElement>) => {
     };
 
     // 이벤트 리스너 등록 - 올바른 이벤트 이름 사용
-    console.log("이벤트 리스너 등록 시도");
+    //console.log("이벤트 리스너 등록 시도");
     //mapInstance.addListener("click", onClick);
     mapInstance.addListener("click", handleMapClick);
     mapInstance.addListener("zoom_changed", handleZoomChanged);

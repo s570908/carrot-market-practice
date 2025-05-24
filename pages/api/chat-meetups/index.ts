@@ -11,7 +11,7 @@ async function handler(
 ) {
   if (req.method === "POST") {
     // Add logging to match client-side function
-    console.log("API received params:", req.body);
+    //console.log("API received params:", req.body);
     
     // Updated to use flattened location properties
     const {
@@ -67,24 +67,30 @@ async function handler(
               },
             },
           },
+          include: { message: true } 
         });
 
         return [message, chatMeetup];
       });
 
       // Emit socket event after successful creation
-      if (res?.socket?.server?.io) {
-        console.log(`Emitting socket event to channel: ${channel}`);
-        
+      if (res?.socket?.server?.io) {        
+        // 트랜잭션 이후 최신 데이터 조회
+        const verifiedChatMeetup = await client.chatMeetup.findUnique({
+          where: { id: chatMeetup.id },
+          include: { message: true }
+        });
+
         // Create a formatted message object for socket emission
         const socketMessage = {
-          id: message.id,
+          id: verifiedChatMeetup?.message.id,
+          //id: message.id,
           chatMsg: message.chatMsg,
           userId: user.id,
           chatRoomId: +chatRoomId,
           createdAt: message.createdAt,
           updatedAt: message.updatedAt,
-          appointment: {
+          chatMeetup: { // <-- 여기서 appointment -> chatMeetup 으로 변경
             id: chatMeetup.id,
             appointmentTime: chatMeetup.appointmentTime,
             place: chatMeetup.place,
@@ -94,9 +100,12 @@ async function handler(
           },
           type: "appointment" // Add a type to differentiate from regular messages
         };
-
+   
         // Emit to the appropriate channel using the same pattern as your chat messages
         res?.socket?.server?.io?.of(`ws-${worksapce}`).to(channel).emit("message", socketMessage);
+        console.log(`Emitting message socket event to channel: ${channel}`);
+        console.log(`message socket event 페이로드 socketMessage: ${JSON.stringify(socketMessage, null, 2)}`);
+        console.log(`chatMeetup.message.id: ${chatMeetup.message.id}`);
       } else {
         console.log("Socket.io not initialized or not available");
       }

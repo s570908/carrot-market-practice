@@ -11,10 +11,19 @@ import { useAwaitableModal } from "@libs/client/useAwaitableModal";
 import AppointmentModal from "./AppointmentModal";
 import { MessageType } from "@prisma/client";
 
+interface MessageAction {
+  type: "link" | "button";
+  label: string;
+  value: string;
+  onClick?: () => void;
+  disabled?: boolean; // 새로 추가된 속성
+  tooltip?: string;   // 새로 추가된 속성
+}
+
 interface MessageProps {
   message: string;
   reversed?: boolean;
-  name: string;
+  name?: string;
   avatar?: string | null;
   date?: Date | string;
   isAppointment?: boolean;
@@ -23,14 +32,10 @@ interface MessageProps {
     place: string;
     latitude?: number;
     longitude?: number;
+    isPast?: boolean;
   };
   messageType?: MessageType; // 메시지 타입 추가
-  actions?: {
-    type: 'button' | 'link';
-    label: string;
-    value: string;
-    onClick?: () => void;
-  }[];
+  actions?: MessageAction[];
 }
 
 export default function Message({
@@ -44,6 +49,22 @@ export default function Message({
   messageType = MessageType.USER, // 기본값 설정
   actions,
 }: MessageProps) {
+
+  // // 메시지가 '약속을 만들었어요'인 경우에만 로그 출력
+  // if (message === '약속을 만들었어요') {
+  //   console.log("Message.tsx--props (약속 메시지):", {
+  //     message,
+  //     reversed,
+  //     name,
+  //     avatar,
+  //     date,
+  //     isAppointment,
+  //     appointmentData,
+  //     messageType,
+  //     actions
+  //   });
+  // }
+  
   const { openModal: openAppointmentModal, renderModal: renderAppointmentModal } = useAwaitableModal(
     (modal, params) => <AppointmentModal modal={modal} params={params} />
   );
@@ -60,6 +81,12 @@ export default function Message({
 
   // 시스템 메시지 처리 로직 추가
   if (messageType === MessageType.SYSTEM) {
+    // console.log('handleShowAppointment--시스템 메시지 렌더링:', {
+    //   message,
+    //   hasActions: actions && actions.length > 0,
+    //   actions
+    // });
+
     return (
       <div className="flex justify-center my-3">
         <div className="px-4 py-2 text-sm bg-gray-100 rounded-2xl text-gray-700 shadow-sm max-w-[80%]">
@@ -69,31 +96,79 @@ export default function Message({
           {actions && actions.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2">
               {actions.map((action, index) => {
+                // 액션 정보 로깅
+                // console.log(`Message.tsx--액션 버튼 ${index} 정보:`, {
+                //   type: action.type,
+                //   label: action.label,
+                //   disabled: action.disabled,
+                //   hasOnClick: !!action.onClick
+                // });
+                
                 if (action.type === 'button') {
                   return (
-                    <button 
-                      key={index}
-                      className="px-2 py-1 text-xs text-white transition-colors bg-orange-500 rounded-md hover:bg-orange-600"
-                      onClick={action.onClick}
-                    >
-                      {action.label}
-                    </button>
+                    <div key={index} className="relative group">
+                      <button 
+                        className={cls(
+                          "px-2 py-1 text-xs text-white transition-colors bg-orange-500 rounded-md hover:bg-orange-600",
+                          action.disabled ? "cursor-not-allowed opacity-50 bg-gray-400 hover:bg-gray-400" : ""
+                        )}
+                        onClick={(e) => {
+                          // console.log('버튼 클릭됨:', {
+                          //   type: action.type,
+                          //   label: action.label,
+                          //   disabled: action.disabled
+                          // });
+                          
+                          // disabled일 때는 이벤트를 중단
+                          if (action.disabled) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('버튼이 비활성화되어 있어 클릭 이벤트 무시됨');
+                            return;
+                          }
+                          
+                          if (action.onClick) {
+                            action.onClick();
+                          }
+                        }}
+                        disabled={action.disabled}
+                      >
+                        {action.label}
+                      </button>
+                      {action.tooltip && (
+                        <div className="absolute mb-2 transition-opacity transform -translate-x-1/2 opacity-0 bottom-full left-1/2 group-hover:opacity-100">
+                          <div className="px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap">
+                            {action.tooltip}
+                            <div className="absolute -mt-1 transform -translate-x-1/2 border-4 border-transparent top-full left-1/2 border-t-gray-800"></div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   );
                 } else if (action.type === 'link') {
                   return (
-                    <a 
-                      key={index}
-                      href={action.value}
-                      className="px-2 py-1 text-xs text-blue-500 underline hover:text-blue-600"
-                      onClick={(e) => {
-                        if (action.onClick) {
-                          e.preventDefault();
-                          action.onClick();
-                        }
-                      }}
-                    >
-                      {action.label}
-                    </a>
+                    <div key={index} className="relative group">
+                      <a 
+                        href={action.value}
+                        className="px-2 py-1 text-xs text-blue-500 underline hover:text-blue-600"
+                        onClick={(e) => {
+                          if (action.onClick) {
+                            e.preventDefault();
+                            action.onClick();
+                          }
+                        }}
+                      >
+                        {action.label}
+                      </a>
+                      {action.tooltip && (
+                        <div className="absolute mb-2 transition-opacity transform -translate-x-1/2 opacity-0 bottom-full left-1/2 group-hover:opacity-100">
+                          <div className="px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap">
+                            {action.tooltip}
+                            <div className="absolute -mt-1 transform -translate-x-1/2 border-4 border-transparent top-full left-1/2 border-t-gray-800"></div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   );
                 }
                 return null;
@@ -188,29 +263,53 @@ export default function Message({
                 {actions.map((action, index) => {
                   if (action.type === 'button') {
                     return (
-                      <button
-                        key={index}
-                        className="px-2 py-1 text-xs text-white transition-colors bg-orange-500 rounded-md hover:bg-orange-600"
-                        onClick={action.onClick}
-                      >
-                        {action.label}
-                      </button>
+                      <div key={index} className="relative group">
+                        <button 
+                          className={cls(
+                            "px-2 py-1 text-xs text-white transition-colors rounded-md",
+                            action.disabled 
+                              ? "cursor-not-allowed opacity-50 bg-gray-400 hover:bg-gray-400" 
+                              : "bg-orange-500 hover:bg-orange-600"
+                          )}
+                          onClick={action.disabled ? undefined : action.onClick} // disabled일 때 onClick을 완전히 제거
+                          disabled={action.disabled}
+                        >
+                          {action.label}
+                        </button>
+                        {action.tooltip && action.disabled && (
+                          <div className="absolute mb-2 transition-opacity transform -translate-x-1/2 opacity-0 bottom-full left-1/2 group-hover:opacity-100">
+                            <div className="px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap">
+                              {action.tooltip}
+                              <div className="absolute -mt-1 transform -translate-x-1/2 border-4 border-transparent top-full left-1/2 border-t-gray-800"></div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     );
                   } else if (action.type === 'link') {
                     return (
-                      <a 
-                        key={index}
-                        href={action.value}
-                        className="px-2 py-1 text-xs text-blue-500 underline hover:text-blue-600"
-                        onClick={(e) => {
-                          if (action.onClick) {
-                            e.preventDefault();
-                            action.onClick();
-                          }
-                        }}
-                      >
+                      <div key={index} className="relative group">
+                        <a 
+                          href={action.value}
+                          className="px-2 py-1 text-xs text-blue-500 underline hover:text-blue-600"
+                          onClick={(e) => {
+                            if (action.onClick) {
+                              e.preventDefault();
+                              action.onClick();
+                            }
+                          }}
+                        >
                         {action.label}
-                      </a>
+                        </a>
+                        {action.tooltip && (
+                          <div className="absolute mb-2 transition-opacity transform -translate-x-1/2 opacity-0 bottom-full left-1/2 group-hover:opacity-100">
+                            <div className="px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap">
+                              {action.tooltip}
+                              <div className="absolute -mt-1 transform -translate-x-1/2 border-4 border-transparent top-full left-1/2 border-t-gray-800"></div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     );
                   }
                   return null;

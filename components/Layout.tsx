@@ -118,13 +118,13 @@ export default function Layout({
     <>
       {renderPostOptionsModal()}
       {renderDeleteModal()}
-      <div>
+      <div className="z-10">
         <Head>
           <title>{titleHead}</title>
         </Head>
         <div
           {...rest}
-          className="fixed top-0 z-[100] flex h-12 w-full max-w-xl items-center justify-center border-b bg-white px-10 text-lg font-medium text-gray-800"
+          className="fixed top-0 z-10 flex items-center justify-center w-full h-12 max-w-xl px-10 text-lg font-medium text-gray-800 bg-white border-b"
         >
           {canGoBack ? (
             <button onClick={onClick} className="absolute left-4 z-[2]">

@@ -662,7 +662,7 @@ const ItemDetail: NextPage = () => {
             <h2 className="text-2xl font-bold text-gray-900">Similar Items</h2>
             <div className="grid grid-cols-2 gap-4">
               {data?.relatedProducts.map((product) => {
-                console.log("product: ", product);
+                //console.log("product: ", product);
                 return (
                   <Link href={`/products/${product.id}`} key={product.id}>
                     <a className="cursor-pointer">

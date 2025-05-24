@@ -230,7 +230,7 @@ export function MapModal({
   // useMemo는 의존성 배열([tmapResponse])의 값이 변경될 때만 새로운 값을 계산합니다.
   // tmapResponse가 동일하다면 이전과 동일한 addressData 참조를 반환합니다.
   // 이로 인해 AddressList의 props가 변경되지 않아 리렌더링이 발생하지 않습니다.
-  console.log("tmapResponse", tmapResponse);
+  //console.log("tmapResponse", tmapResponse);
   const addressData = useMemo(() => {
     return tmapResponse?.searchPoiInfo?.pois?.poi || [];
   }, [tmapResponse]);
@@ -247,10 +247,10 @@ export function MapModal({
   const onClickConfirm = () => {
     const { latitude, longitude } = coord;
     if (!(latitude && longitude)) return;
-    console.log("선택한 주소--selectedAddress:", selectedAddress);
-    console.log("주소 정보--addressInfo:", addressInfo); // 주소 정보 콘솔에 출력 (확인용)
-    console.log("latitude:", latitude);
-    console.log("longitude:", longitude);
+    // console.log("선택한 주소--selectedAddress:", selectedAddress);
+    // console.log("주소 정보--addressInfo:", addressInfo); // 주소 정보 콘솔에 출력 (확인용)
+    // console.log("latitude:", latitude);
+    // console.log("longitude:", longitude);
     onLocationSelectAddressInfo(latitude, longitude, addressInfo ?? null, selectedAddress ?? null); // 선택된 위치를 부모에게 전달
 
     onClose(); // 모달 닫기
