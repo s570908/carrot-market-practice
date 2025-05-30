@@ -4,6 +4,17 @@ import withHandler from "@libs/server/withHandler";
 import { withApiSession } from "@libs/server/withSession";
 import { sendPushNotification } from "@libs/server/webPushUtils";
 
+// PushPayload 타입에 requireInteraction 추가
+type PushPayload = {
+  title: string;
+  body: string;
+  icon?: string;
+  badge?: string;
+  timestamp?: number;
+  data?: any;
+  requireInteraction?: boolean;
+};
+
 // 디버깅 로그 추가
 function debugLog(message: string, data?: any) {
   console.log(`[PUSH_DEBUG] ${message}`);
@@ -117,13 +128,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             };
           }
 
-          const payload = {
+
+          const payload: PushPayload = {
             title,
             body,
             icon: icon || "/icons/carrot-logo.png",
             badge: "/icons/carrot-badge.png",
             timestamp: Date.now(),
             data,
+            requireInteraction: true
           };
 
           // 원본 구독 정보 그대로 전달

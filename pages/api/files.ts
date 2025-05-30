@@ -4,6 +4,10 @@ import client from "@libs/client/client";
 import { withApiSession } from "@libs/server/withSession";
 
 async function handler(req: NextApiRequest, res: NextApiResponse<ResponseType>) {
+  if (req.method !== "GET") {
+    return res.status(405).json({ ok: false, error: "Method Not Allowed" });
+  }
+
   const { count } = req.query; // 요청에서 필요한 URL 개수를 받음
   const urlCount = Number(count) || 1; // 기본적으로 1개의 URL 생성
 

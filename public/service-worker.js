@@ -295,6 +295,7 @@ self.addEventListener("push", (event) => {
           title: "닫기",
         },
       ],
+      requireInteraction: data.requireInteraction === true,    // 사용자가 직접 닫거나 클릭할 때까지 유지
     };
 
     // permissionState는 사용하지 않음 - 서비스 워커 내에서는 항상 권한이 있다고 가정
@@ -305,6 +306,7 @@ self.addEventListener("push", (event) => {
 
 // 알림 클릭 이벤트
 self.addEventListener("notificationclick", (event) => {
+  // 사용자가 클릭했을 때만 알림 닫기
   event.notification.close();
 
   if (event.action === "view" && event.notification.data) {

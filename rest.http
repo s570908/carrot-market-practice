@@ -1026,3 +1026,126 @@ mutation {
     }
   )
 }
+
+### @index=100
+# @title = POST /api/chat/[id]/alarm-settings (알림 예약)
+@cookieAlarm=carrotsession=YOUR_SESSION_COOKIE_HERE
+@chatRoomId=1
+@messageId=1
+POST http://localhost:3000/api/chat/{{chatRoomId}}/alarm-settings
+Cookie: {{cookieAlarm}}
+Content-Type: application/json
+
+{
+  "messageId": {{messageId}},
+  "alarmTime": "10분 전",
+  "triggerAt": "{{$datetime iso8601 10m}}"
+}
+
+### @index=101
+# @title = POST /api/chat/[id]/alarm-settings (알림 해제)
+@cookieAlarm=carrotsession=YOUR_SESSION_COOKIE_HERE
+@chatRoomId=1
+@messageId=1
+POST http://localhost:3000/api/chat/{{chatRoomId}}/alarm-settings
+Cookie: {{cookieAlarm}}
+Content-Type: application/json
+
+{
+  "messageId": {{messageId}},
+  "disableAlarm": true
+}
+
+### @index=102
+# @title = POST /api/chat/[id]/alarm-settings (알림 예약 - 과거 시간, 실패 케이스)
+@cookieAlarm=carrotsession=YOUR_SESSION_COOKIE_HERE
+@chatRoomId=1
+@messageId=1
+POST http://localhost:3000/api/chat/{{chatRoomId}}/alarm-settings
+Cookie: {{cookieAlarm}}
+Content-Type: application/json
+
+{
+  "messageId": {{messageId}},
+  "alarmTime": "10분 전",
+  "triggerAt": "2020-01-01T00:00:00.000Z"
+}
+
+### @index=103
+# @title = POST /api/chat/[id]/alarm-settings (필수 파라미터 누락, 실패 케이스)
+@cookieAlarm=carrotsession=YOUR_SESSION_COOKIE_HERE
+@chatRoomId=1
+POST http://localhost:3000/api/chat/{{chatRoomId}}/alarm-settings
+Cookie: {{cookieAlarm}}
+Content-Type: application/json
+
+{
+  "alarmTime": "10분 전"
+}
+
+### @index=104
+# @title = GET /api/chat/[id]/alarm-settings (알림 설정 조회, 구현 필요시)
+@cookieAlarm=carrotsession=YOUR_SESSION_COOKIE_HERE
+@chatRoomId=1
+GET http://localhost:3000/api/chat/{{chatRoomId}}/alarm-settings
+Cookie: {{cookieAlarm}}
+Content-Type: application/json
+
+### @index=200
+# @title = POST /api/chat/:id (약속 메시지 생성)
+@cookieChat=carrotsession=carrotsession=Fe26.2*1*a1a486d961c167b0394fe9b18eb506de6510bd6fa6b2c97e13b6d08527d2cfb1*LeSXcMCF7Aix_ULFROH-tA*USfZjXqerQg_-QUXWVrmc41UZInKA1MZ1nry_8N23U4*1749385640268*1ff8cef576ef7e69bea26b1bfe79544b1225a396f999345eb626bd942bd6a0cf*K2Usjr6IWV7ldIiohiQIXIb8AgkVCBgSUfV4ON7uLa0~2; Max-Age=1295940; Path=/; HttpOnly; Secure; SameSite=Lax
+@chatId=20
+POST http://localhost:3000/api/chat/{{chatId}}
+Cookie: {{cookieChat}}
+Content-Type: application/json
+
+{
+  "chatForm": {
+    "message": "약속을 잡아요!",
+    "type": "SYSTEM"
+  },
+  "chatMeetupForm": {
+    "place": "강남역 스타벅스",
+    "appointmentTime": "{{$datetime iso8601 1d}}",
+    "alarmTime": "10분 전",
+    "locationLatitude": 37.498095,
+    "locationLongitude": 127.027610
+  }
+}
+
+### @index=201
+# @title = GET /api/chat/:id (약속 메시지 확인)
+@cookieChat=carrotsession=YOUR_SESSION_COOKIE_HERE
+@chatId=1
+GET http://localhost:3000/api/chat/{{chatId}}
+Cookie: {{cookieChat}}
+Content-Type: application/json
+
+### @index=202
+# @title = POST /api/chat/:id/alarm-settings (약속 알림 설정)
+@cookieAlarm=carrotsession=YOUR_SESSION_COOKIE_HERE
+@chatId=1
+# @prompt messageId 약속 메시지 ID (위 요청 결과에서 확인)
+POST http://localhost:3000/api/chat/{{chatId}}/alarm-settings
+Cookie: {{cookieAlarm}}
+Content-Type: application/json
+
+{
+  "messageId": {{messageId}},
+  "alarmTime": "10분 전",
+  "triggerAt": "{{$datetime iso8601 -10m add_to='appointmentTime'}}"
+}
+
+### @index=203
+# @title = POST /api/chat/:id/alarm-settings (알림 해제)
+@cookieAlarm=carrotsession=YOUR_SESSION_COOKIE_HERE
+@chatId=1
+# @prompt messageId 약속 메시지 ID
+POST http://localhost:3000/api/chat/{{chatId}}/alarm-settings
+Cookie: {{cookieAlarm}}
+Content-Type: application/json
+
+{
+  "messageId": {{messageId}},
+  "disableAlarm": true
+}

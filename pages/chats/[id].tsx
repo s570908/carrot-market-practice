@@ -197,11 +197,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   const productStatusInitial =
     (reserved && "예약중") || (sold && "거래완료") || (selling && "판매중") || "미등록";
 
-  const fetchReservation = async (productId: string) => {
-    const { data } = await axios.get(`/api/products/${productId}/reservation`);
-    return data;
-  };
-
   const productId = data?.chatRoomOfSeller?.productId;
   const buyerId = data?.chatRoomOfSeller?.buyerId;
 
@@ -385,9 +380,13 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     isError: isErrorSettingAlarm,
     error: errorSettingAlarm,
   } = useMutation({
-    mutationFn:  writeAlarmSettings,
+    mutationFn: writeAlarmSettings,
     onSuccess: (data) => {
-      alert(`${data.disableAlarm ? "알림이 해제되었습니다." : `${data.alarmTime} 알림이 설정되었습니다.`}`);
+      console.log("알림 설정 성공 데이터:", data);
+      // data.alarmTime이 undefined인 경우를 방지
+      const alarmTimeText = data.alarmTime || "알림";
+      alert(`${data.disableAlarm ? "알림이 해제되었습니다." : `${alarmTimeText} 알림이 설정되었습니다.`}`);
+      setAlarmSheetOpen(false); // ActionSheet 닫기 추가
       refetchChat();
     },
     onError: (error: any) => {
@@ -426,7 +425,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
           errorMessage = `알림 설정 오류: ${serverMessage}`;
         }
       }
-      // ...existing error handling code...
       
       alert(errorMessage);
     }
@@ -851,34 +849,87 @@ useEffect(() => {
   }, [data?.sellerChat, handleScroll]); // 의존성 배열은 필요에 따라 조정
 
   const handleAlarmTimeSelected = async (timeOption: string) => {
-    console.log('handleAlarmTimeSelected---알림 시간 선택됨: { currentMessageId, timeOption }: ', { currentMessageId, timeOption });
-    if (!currentMessageId) return;    
+    console.log('=== 알림 시간 선택 디버깅 시작 ===');
+    console.log('선택된 알림 시간:', timeOption);
+    console.log('현재 메시지 ID:', currentMessageId);
     
+    if (!currentMessageId) return;    
+
     try {
-      // 약속 정보 가져오기
-      const meetupMessage = data?.sellerChat?.find(
-        (msg: ChatWithUser) => msg.id === currentMessageId && msg.chatMeetup
+      // currentMessageId는 알림 메시지의 ID
+      const alertMessage = data?.sellerChat?.find(
+        (msg: ChatWithUser) => msg.id === currentMessageId
       );
 
-      console.log('handleAlarmTimeSelected---meetupMessage:', meetupMessage);
+      console.log("알림 메시지:", alertMessage);
+
+      if (!alertMessage) {
+        alert("알림 메시지를 찾을 수 없습니다.");
+        return;
+      }
+
+      // 메타데이터에서 chatMeetupId 추출
+      const parsedMeta = getMetaData(alertMessage.meta);
+      const chatMeetupId = parsedMeta.chatMeetupId;
       
-      if (!meetupMessage || !meetupMessage.chatMeetup) {
+      console.log("메타데이터에서 추출한 chatMeetupId:", chatMeetupId);
+      
+      if (!chatMeetupId) {
+        alert("약속 정보를 찾을 수 없습니다.");
+        return;
+      }
+
+      // chatMeetupId로 실제 약속 메시지 찾기 - 개선된 로직
+      let appointmentMessage = data?.sellerChat?.find(
+        (msg: ChatWithUser) => msg.chatMeetup?.id === chatMeetupId
+      );
+
+      // 숫자/문자열 타입 불일치 문제 해결
+      if (!appointmentMessage) {
+        appointmentMessage = data?.sellerChat?.find(
+          (msg: ChatWithUser) => msg.chatMeetup?.id?.toString() === chatMeetupId?.toString()
+        );
+      }
+
+      // 여전히 못 찾으면 가장 최근 약속 사용
+      if (!appointmentMessage) {
+        const appointmentMessages = data?.sellerChat?.filter(msg => msg.chatMeetup);
+        if (appointmentMessages && appointmentMessages.length > 0) {
+          appointmentMessage = appointmentMessages[appointmentMessages.length - 1];
+          console.log("대안으로 선택된 약속 메시지:", appointmentMessage);
+        }
+      }
+
+      console.log("최종 약속 메시지:", appointmentMessage);
+
+      if (!appointmentMessage || !appointmentMessage.chatMeetup) {
         alert("약속 정보를 찾을 수 없습니다.");
         return;
       }
       
       // 약속 시간 가져오기
-      const meetupTime = new Date(meetupMessage.chatMeetup.appointmentTime);
+      const meetupTime = new Date(appointmentMessage.chatMeetup.appointmentTime);
       
       // 첫 번째 검증: 약속 시간이 이미 지났는지 확인
       if (meetupTime < new Date()) {
         alert("이미 지난 약속입니다. 알림을 설정할 수 없습니다.");
         return;
       }
-      
+
+      // 알림 끄기 처리
+      if (timeOption === "알림 끄기") {
+        setAlarmSettings({
+          chatId: id,
+          messageId: currentMessageId, 
+          alarmTime: timeOption,
+          disableAlarm: true
+        });
+        return;
+      }
+
       // 알람 트리거 시간 계산 (원본 시간을 복제하여 사용)
       let triggerAt = new Date(meetupTime.getTime()); // Date 객체 복제를 위해 getTime() 사용
-      
+    
       switch (timeOption) {
         case "10분 전":
           triggerAt.setMinutes(triggerAt.getMinutes() - 10);
@@ -895,30 +946,33 @@ useEffect(() => {
         case "1일 전":
           triggerAt.setDate(triggerAt.getDate() - 1);
           break;
-        case "알림 끄기":
-          // 알림 끄기 처리
-          setAlarmSettings({
-            chatId: id, // Add the chatId
-            messageId: currentMessageId,
-            alarmTime: timeOption,
-            disableAlarm: true
-          });
+        default:
+          alert("올바르지 않은 알림 시간입니다.");
           return;
       }
-      
+    
       // 두 번째 검증: 알림 트리거 시간이 현재 시간보다 이전인지 확인
       if (triggerAt < new Date()) {
         alert(`선택한 알림 시간(${timeOption})이 이미 지났습니다. 다른 알림 시간을 선택해주세요.`);
         return;
       }
       
+      console.log("알림 설정 API 호출 준비");
+      console.log("chatId:", id);
+      console.log("messageId:", currentMessageId);
+      console.log("alarmTime:", timeOption);
+      console.log("triggerAt:", triggerAt.toISOString());
+      
       // 1. 서버에 알림 설정 저장 API 호출
       setAlarmSettings({
-        chatId: id, // Add the chatId
-        messageId: currentMessageId,
+        chatId: id,
+       messageId: currentMessageId, 
         alarmTime: timeOption,
-        triggerAt: triggerAt.toISOString()
+        triggerAt: triggerAt.toISOString(),
+        disableAlarm: false
       });
+      
+      console.log('=== 알림 시간 선택 디버깅 완료 ===');
       
     } catch (error) {
       console.error("알림 설정 중 오류 발생:", error);
@@ -945,51 +999,101 @@ useEffect(() => {
     return {};
   }
 
-  const handleAlarmButtonClick = (messageId: number) => {
-    // 시스템 메시지 찾기 (알림 메시지)
-    const systemMessage = data?.sellerChat?.find(msg => msg.id === messageId);
-    
-    if (!systemMessage) {
-      alert('메시지 정보를 찾을 수 없습니다.');
-      return;
-    }
-    
-    // meta 속성 안전하게 처리
-    const metaObj = getMetaData(systemMessage.meta);
-    console.log('파싱된 meta 객체:', metaObj);
-    
-    const chatMeetupId = metaObj?.chatMeetupId;
-    console.log('handleAlarmButtonClick---chatMeetupId:', chatMeetupId);
-    
-    if (!chatMeetupId) {
-      console.error('메타데이터에서 chatMeetupId를 찾을 수 없습니다:', metaObj);
-      alert('관련 약속 정보를 찾을 수 없습니다.');
-      return;
-    }
-    
-    // chatMeetupId를 사용하여 약속 메시지 찾기
-    const appointmentMessage = data?.sellerChat?.find(msg => 
-      msg.chatMeetup && msg.chatMeetup.id === chatMeetupId
-    );
-    
-    // 약속 메시지가 있으면 약속 시간 검증
-    if (appointmentMessage?.chatMeetup) {
+  const handleAlarmButtonClick = async (messageId: number) => {
+    try {
+      console.log("=== 알림 버튼 클릭 디버깅 시작 ===");
+      console.log("클릭된 messageId:", messageId);
+      console.log("전체 채팅 데이터:", data?.sellerChat);
+      
+      // 알림 설정 메시지를 찾기 (APPOINTMENT_ALERT 타입)
+      const alertMessage = data?.sellerChat?.find(
+        (msg: ChatWithUser) => msg.id === messageId
+      );
+
+      console.log("찾은 알림 메시지:", alertMessage);
+
+      if (!alertMessage) {
+        throw new Error('메시지를 찾을 수 없습니다');
+      }
+
+      // 메타데이터에서 chatMeetupId 추출
+      let parsedMeta;
+      try {
+        parsedMeta = getMetaData(alertMessage.meta);
+        console.log("파싱된 메타데이터:", parsedMeta);
+      } catch (e) {
+        console.error("메타데이터 파싱 오류:", e);
+        throw new Error('메타데이터 파싱에 실패했습니다');
+      }
+
+      const chatMeetupId = parsedMeta.chatMeetupId;
+      console.log("추출된 chatMeetupId:", chatMeetupId);
+      
+      if (!chatMeetupId) {
+        console.error('전체 메타데이터:', parsedMeta);
+        throw new Error(`chatMeetupId를 찾을 수 없습니다: ${JSON.stringify(parsedMeta)}`);
+      }
+
+      // 모든 약속 메시지들을 로깅
+      const allAppointmentMessages = data?.sellerChat?.filter(msg => msg.chatMeetup);
+      console.log("모든 약속 메시지들:", allAppointmentMessages?.map(msg => ({
+        messageId: msg.id,
+        chatMeetupId: msg.chatMeetup?.id,
+        appointmentTime: msg.chatMeetup?.appointmentTime,
+        messageType: msg.messageType,
+        chatMsg: msg.chatMsg
+      })));
+
+      // chatMeetupId로 실제 약속 메시지 찾기 - 조건을 완화
+      let appointmentMessage = data?.sellerChat?.find(
+        (msg: ChatWithUser) => msg.chatMeetup?.id === chatMeetupId
+      );
+
+      // 첫 번째 시도 실패 시, 문자열 비교로 재시도
+      if (!appointmentMessage) {
+        console.log("숫자 비교 실패, 문자열 비교 시도");
+        appointmentMessage = data?.sellerChat?.find(
+          (msg: ChatWithUser) => msg.chatMeetup?.id?.toString() === chatMeetupId?.toString()
+        );
+      }
+
+      // 여전히 실패 시, 가장 최근 약속 메시지 사용
+      if (!appointmentMessage) {
+        console.log("chatMeetupId로 찾기 실패, 가장 최근 약속 메시지 사용");
+        const appointmentMessages = data?.sellerChat?.filter(msg => msg.chatMeetup);
+        if (appointmentMessages && appointmentMessages.length > 0) {
+          appointmentMessage = appointmentMessages[appointmentMessages.length - 1];
+          console.log("대안으로 선택된 약속 메시지:", appointmentMessage);
+        }
+      }
+
+      console.log("최종 선택된 약속 메시지:", appointmentMessage);
+
+      if (!appointmentMessage || !appointmentMessage.chatMeetup) {
+        console.error("약속 메시지를 찾을 수 없음");
+        throw new Error('약속 정보를 찾을 수 없습니다');
+      }
+
+      // 약속 시간이 이미 지났는지 확인
       const appointmentTime = new Date(appointmentMessage.chatMeetup.appointmentTime);
       const now = new Date();
-      const isPast = appointmentTime.getTime() < now.getTime();
       
-      // 지난 약속이면 액션 시트를 열지 않음
-      if (isPast) {
-        alert('이미 지난 약속에는 알림을 설정할 수 없습니다.');
-        return;
+      console.log("약속 시간:", appointmentTime);
+      console.log("현재 시간:", now);
+      
+      if (appointmentTime < now) {
+        throw new Error('이미 지난 약속입니다. 알림을 설정할 수 없습니다.');
       }
-      
-      // 알림 설정 모달 열기
-      setCurrentMessageId(appointmentMessage.id); // 실제 약속 메시지 ID 저장
+
+      // 알림 설정을 위해 alertMessage의 ID를 사용 (알림 메시지 ID)
+      setCurrentMessageId(alertMessage.id); // 알림 메시지의 ID를 설정
       setAlarmSheetOpen(true);
-    } else {
-      // 관련 약속 메시지를 찾지 못한 경우
-      alert('관련 약속 정보를 찾을 수 없습니다.');
+      
+      console.log("=== 알림 버튼 클릭 디버깅 완료 ===");
+      
+    } catch (error: any) {
+      console.error('알림 설정 중 오류:', error);
+      alert(error.message || '알림 설정에 실패했습니다.');
     }
   };
 

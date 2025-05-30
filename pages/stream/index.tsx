@@ -28,14 +28,6 @@ const Streams: NextPage = () => {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
 
-  // const fetchStreams = async ({ queryKey }: QueryFunctionContext<any>) => {
-  //   const [, page, limit] = queryKey; // queryKey에서 page와 limit 추출
-  //   const { data } = await axios.get<StreamsResponse>(
-  //     `/api/streams?page=${page}&limit=${limit}`
-  //   );
-  //   return data;
-  // };
-
   const {
     data: streamsData,
     isLoading,

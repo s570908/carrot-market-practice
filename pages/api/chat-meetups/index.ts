@@ -4,7 +4,19 @@ import { withApiSession } from "@libs/server/withSession";
 import withHandler from "@libs/server/withHandler";
 import { NextApiResponseServerIo } from "@/types/types";
 
-const worksapce = "market";
+const workspace = "market"; // 오타 수정
+
+// 이 파일(chat-meetups/index.ts)은 약속(chatMeetup) 생성 및 관련 메시지 생성까지 트랜잭션으로 처리합니다.
+// 즉, meetup.ts 없이도 약속(chatMeetup) DB 저장이 가능합니다.
+// 
+// 주요 기능:
+// 1. sellerChat 메시지("약속을 만들었어요") 생성
+// 2. chatMeetup(약속) 생성 및 메시지와 연결
+// 3. 소켓 이벤트로 약속 메시지 전송
+// 
+// 따라서 meetup.ts 없이 이 파일만으로 약속 생성 및 메시지 생성이 모두 가능합니다.
+// 
+// 단, 알람(AlarmSetting) 생성/스케줄링은 별도의 alarm-settings API에서 처리해야 합니다.
 
 async function handler(
   req: NextApiRequest, res: NextApiResponseServerIo
@@ -15,7 +27,7 @@ async function handler(
     
     // Updated to use flattened location properties
     const {
-      body: { appointmentTime, place, locationLatitude, locationLongitude, alertTime, chatRoomId },
+      body: { appointmentTime, place, locationLatitude, locationLongitude,alarmTime, chatRoomId },
       session: { user },
     } = req;
 
@@ -31,81 +43,68 @@ async function handler(
       });
     }
 
-      const channel = `/ws-${worksapce}-${chatRoomId}`;
+    // 유효한 날짜 확인
+    if (isNaN(new Date(appointmentTime).getTime())) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: "유효하지 않은 약속 시간 형식입니다" 
+      });
+    }
+
+    const channel = `/ws-${workspace}-${chatRoomId}`; // 오타 수정
 
     try {
-      // 트랜잭션으로 두 작업을 묶어서 처리
+      // Prisma $transaction을 사용해 메시지와 약속을 원자적으로 생성
       const [message, chatMeetup] = await client.$transaction(async (prisma) => {
-        // 1. 메시지 생성
-        const message = await prisma.sellerChat.create({
+        const createdMessage = await prisma.sellerChat.create({
           data: {
             chatMsg: "약속을 만들었어요",
-            user: {
-              connect: {
-                id: user.id,
-              },
-            },
-            chatRoom: {
-              connect: {
-                id: +chatRoomId,
-              },
-            },
+            user: { connect: { id: user.id } },
+            chatRoom: { connect: { id: +chatRoomId } },
           },
         });
-
-        // 2. 약속 생성 및 메시지와 연결 - Using direct location properties
-        const chatMeetup = await prisma.chatMeetup.create({
+        
+        const createdChatMeetup = await prisma.chatMeetup.create({
           data: {
             appointmentTime: new Date(appointmentTime),
             place,
             locationLatitude,
             locationLongitude,
-            alertTime,
-            message: {
-              connect: {
-                id: message.id,
-              },
-            },
+           alarmTime,
+            message: { connect: { id: createdMessage.id } },
           },
-          include: { message: true } 
-        });
-
-        return [message, chatMeetup];
-      });
-
-      // Emit socket event after successful creation
-      if (res?.socket?.server?.io) {        
-        // 트랜잭션 이후 최신 데이터 조회
-        const verifiedChatMeetup = await client.chatMeetup.findUnique({
-          where: { id: chatMeetup.id },
           include: { message: true }
         });
+        
+        return [createdMessage, createdChatMeetup];
+      });
 
-        // Create a formatted message object for socket emission
-        const socketMessage = {
-          id: verifiedChatMeetup?.message.id,
-          //id: message.id,
-          chatMsg: message.chatMsg,
-          userId: user.id,
-          chatRoomId: +chatRoomId,
-          createdAt: message.createdAt,
-          updatedAt: message.updatedAt,
-          chatMeetup: { // <-- 여기서 appointment -> chatMeetup 으로 변경
-            id: chatMeetup.id,
-            appointmentTime: chatMeetup.appointmentTime,
-            place: chatMeetup.place,
-            locationLatitude: chatMeetup.locationLatitude,
-            locationLongitude: chatMeetup.locationLongitude,
-            alertTime: chatMeetup.alertTime
-          },
-          type: "appointment" // Add a type to differentiate from regular messages
-        };
-   
-        // Emit to the appropriate channel using the same pattern as your chat messages
-        res?.socket?.server?.io?.of(`ws-${worksapce}`).to(channel).emit("message", socketMessage);
-        console.log(`Emitting message socket event to channel: ${channel}`);
-        console.log(`message socket event 페이로드 socketMessage: ${JSON.stringify(socketMessage, null, 2)}`);
-        console.log(`chatMeetup.message.id: ${chatMeetup.message.id}`);
+      // 소켓 이벤트 - 더 안전한 에러 처리 추가
+      if (res?.socket?.server?.io) {
+        try {
+          const socketMessage = {
+            id: message.id,
+            chatMsg: message.chatMsg,
+            userId: user.id,
+            chatRoomId: +chatRoomId,
+            createdAt: message.createdAt,
+            updatedAt: message.updatedAt,
+            chatMeetup: {
+              id: chatMeetup.id,
+              appointmentTime: chatMeetup.appointmentTime,
+              place: chatMeetup.place,
+              locationLatitude: chatMeetup.locationLatitude,
+              locationLongitude: chatMeetup.locationLongitude,
+             alarmTime: chatMeetup.alarmTime
+            },
+            type: "appointment"
+          };
+          res?.socket?.server?.io?.of(`ws-${workspace}`).to(channel).emit("message", socketMessage);
+          console.log(`Emitting message socket event to channel: ${channel}`);
+        } catch (socketError) {
+          console.error("소켓 이벤트 전송 실패:", socketError);
+          // 소켓 실패해도 API 응답은 성공으로 처리
+        }
       } else {
         console.log("Socket.io not initialized or not available");
       }
@@ -119,7 +118,7 @@ async function handler(
       console.error("Error creating chat meetup:", error);
       return res.status(500).json({
         ok: false,
-        error: "Failed to create chat meetup",
+        error: "약속 생성에 실패했습니다: " + (error instanceof Error ? error.message : String(error))
       });
     }
   }

@@ -82,8 +82,7 @@ async function handler(
           data: {
             p256dh: p256dhValue,
             auth: authValue,
-            browserId,
-            endpointPattern
+            browserId
           }
         });
         
@@ -96,11 +95,9 @@ async function handler(
             endpoint: endpointValue,
             p256dh: p256dhValue,
             auth: authValue,
-            browserId,
-            endpointPattern
+            browserId
           }
         });
-        
         console.log(`새 구독 생성: 사용자 ${user.id}, 엔드포인트: ${endpointValue.substring(0, 30)}...`);
       }
 

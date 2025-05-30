@@ -11,8 +11,10 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { TmapAddressInfo } from "@/types";
 import { ChatMeetupParams, ChatMeetupResponse } from "@/apiLibs/atypes";
-import { writeChatMeetup, writeSystemMessage, SYSTEM_MESSAGES } from "@/apiLibs/chats";
+import { writeChatMeetup, writeSystemMessage, SYSTEM_MESSAGES, createAlarmSettings, getChat } from "@/apiLibs/chats";
 import dayjs from "dayjs";
+import { toast } from "react-toastify";
+
 
 interface SelectedLocation {
   latitude: number;
@@ -37,20 +39,15 @@ const CreateAppointment = () => {
   const selectedLocation = selectedLocationByAddressInfo;
   //console.log("create--Selected location:", selectedLocation);
 
-  const [alertTime, setAlertTime] = useState("30분 전");
+  const [alarmTime, setAlarmTime] = useState("30분 전");
 
   const chatRoomId = Number(router.query.chatRoomId); // 숫자로 변환
   //console.log("CreateAppointment--chatRoomId:", chatRoomId);
 
-  const fetchChatRoomData = async (chatRoomId: number) => {
-    const response = await axios.get(`/api/chat/${chatRoomId}`);
-    return response.data;
-  };
-
   // React Query로 데이터 가져오기
   const { data, isLoading, error } = useQuery({
     queryKey: ["chatRoom", chatRoomId],
-    queryFn: () => fetchChatRoomData(chatRoomId),
+    queryFn: () =>getChat(chatRoomId),
     enabled: !!chatRoomId, // chatRoomId가 유효할 때만 실행
   });
 
@@ -65,34 +62,89 @@ const CreateAppointment = () => {
     Error, 
     ChatMeetupParams
   >({
-    mutationFn: writeChatMeetup,
+    mutationFn: writeChatMeetup, // 약속 생성 맟 약속 메시지 생성
     onSuccess: async (responseData) => {
-      //console.log("약속이 성공적으로 생성되었습니다:", responseData);
-      
-      // Only create system message if appointment time exists
-      if (responseData.chatMeetup?.appointmentTime) {
-        // 시스템 메시지 추가 - 일반 생성 메시지
-        await writeSystemMessage({
-          chatRoomId: chatRoomId,
-          message: SYSTEM_MESSAGES.APPOINTMENT_CREATED(responseData.chatMeetup.appointmentTime),
-          userId: user?.id,
-        });
+      try {
+        console.log("약속 생성 성공:", responseData);
+        if (responseData.chatMeetup?.appointmentTime) {
+          // 시스템 메시지 추가 - 일반 생성 메시지
+          try {
+            // 이 시스템 메시지로 채팅창에서 다음의 UI를 만든다.
+            // 예: 약속이 생성되었습니다. (5월 27일 오후 7:28)
+            await writeSystemMessage({
+              chatRoomId: chatRoomId,
+              message: SYSTEM_MESSAGES.APPOINTMENT_CREATED(responseData.chatMeetup.appointmentTime),
+              userId: user?.id,
+            });
+          } catch (systemMessageError) {
+            console.error("시스템 메시지 생성 실패:", systemMessageError);
+            // 시스템 메시지 실패는 치명적이지 않으므로 계속 진행
+          }
+                  
+          // 알림 설정 및 관련 메시지 처리
+          if (responseData.chatMeetup?.alarmTime && responseData.message?.id) {
+            try {
+              // 알람 설정 성공 시에만 알림 메시지 추가
+              const appointmentAlertInfo = SYSTEM_MESSAGES.APPOINTMENT_ALERT(
+                responseData.chatMeetup.alarmTime, 
+                responseData.chatMeetup.id,  // chatMeetupId를 올바르게 전달
+                responseData.message.id      // 약속 메시지의 ID (알림 메시지의 ID가 아님)
+              );
+              
+              // 알림 메시지를 생성하고 그 결과에서 메시지 ID를 가져옴
+              // 이 시스템 메시지로 채팅창에서 다음의 UI를 만든다. 
+              // 예: 약속시간 10분 전에 알림이 울릴 거예요
+              //     버튼: 알림설정    
+              const alertMessageResult = await writeSystemMessage({
+                chatRoomId: chatRoomId,
+                message: appointmentAlertInfo.message,
+                userId: user?.id,
+                meta: appointmentAlertInfo.meta,
+              });
+
+              // UTC 기준으로 트리거 시간 계산
+              const appointmentTime = new Date(responseData.chatMeetup.appointmentTime);
+              const triggerAt = calculateTriggerTime(appointmentTime, responseData.chatMeetup.alarmTime);
+              const utcTriggerAt = new Date(triggerAt.toISOString());
+
+              // systemMessage 존재 여부 검증
+              if (!alertMessageResult?.systemMessage?.id) {
+                throw new Error("알림 메시지 생성 실패: systemMessage ID가 없습니다.");
+              }
+
+              // 알람 설정 API 호출 - 알림 메시지 ID 사용
+              await createAlarmSettings({
+                chatId: chatRoomId,
+                messageId: alertMessageResult.systemMessage.id, // 검증 후 안전하게 사용
+                alarmTime: responseData.chatMeetup.alarmTime,
+                triggerAt: utcTriggerAt.toISOString(),
+                disableAlarm: false
+              });
+
+              console.log("알람 설정 및 알림 메시지 생성 완료");
+            } catch (alarmError) {
+              console.error("알람 설정 중 오류 발생:", alarmError);
+              // 알람 설정 실패 시 사용자에게 알림
+              toast.error("알람 설정에 실패했습니다. 채팅방에서 다시 설정해주세요.");              
+            }
+          }
+        }
         
-        // 알림 메시지 추가 - APPOINTMENT_ALERT에서 반환된 객체 구조 활용
-        const appointmentAlertInfo = SYSTEM_MESSAGES.APPOINTMENT_ALERT(alertTime, responseData.chatMeetup.id);
-        await writeSystemMessage({
-          chatRoomId: chatRoomId,
-          message: appointmentAlertInfo.message,
-          userId: user?.id,
-          meta: appointmentAlertInfo.meta
-        });
+        // 성공 메시지 표시
+        toast.success("약속이 생성되었습니다!");
+        
+        // 페이지A → 채팅방 → 약속생성 → 채팅방 흐름으로 수정
+        // 약속 생성 후 채팅방으로 돌아가기 (페이지A로 바로 이동하지 않음)
+        router.back(); // 채팅방으로 돌아감 (뒤로가기)
+        
+      } catch (error) {
+        console.error("약속 생성 후처리 중 전체 오류 발생:", error);
+        // 전체적인 실패 시 사용자에게 알림
+        toast.error("약속은 생성되었으나 일부 기능에 문제가 발생했습니다.");
+        
+        // 심각한 오류라도 채팅방으로는 돌아가도록 함
+        router.back();
       }
-      
-      alert("약속이 생성되었습니다!");
-      
-      // 페이지A → 채팅방 → 약속생성 → 채팅방 흐름으로 수정
-      // 약속 생성 후 채팅방으로 돌아가기 (페이지A로 바로 이동하지 않음)
-      router.back(); // 채팅방으로 돌아감 (뒤로가기)
     },
     onError: (error) => {
       console.error("약속 생성 중 오류 발생:", error);
@@ -154,83 +206,140 @@ const CreateAppointment = () => {
     setSelectedLocationByAddressInfo(null);
   };
 
-  const validateAlertTime = (appointmentTime: Date, alertTime: string) => {
-    const now = new Date();
-    const alertTriggerTime = new Date(appointmentTime);
-
-    // 알림 시간 계산
-    switch (alertTime) {
-      case "10분 전": alertTriggerTime.setMinutes(alertTriggerTime.getMinutes() - 10); break;
-      case "30분 전": alertTriggerTime.setMinutes(alertTriggerTime.getMinutes() - 30); break;
-      case "1시간 전": alertTriggerTime.setHours(alertTriggerTime.getHours() - 1); break;
-      case "1일 전": alertTriggerTime.setDate(alertTriggerTime.getDate() - 1); break;
+  const validatealarmTime = (appointmentTime: Date,alarmTime: string) => {
+    // 알림 없이 생성 옵션이면 항상 유효
+    if (alarmTime === "알림 없이 생성") {
+      return { isValid: true, timeDiffInMinutes: 0, alertTriggerTime: new Date() };
     }
 
-    // 알림 시간이 현재 시간과 얼마나 차이나는지 계산 (분 단위)
+    const now = new Date();
+    // 약속 시간과 현재 시간의 차이를 먼저 계산
+    const appointmentDiffInMinutes = Math.floor((appointmentTime.getTime() - now.getTime()) / (1000 * 60));
+
+    // 알림 시간(분)을 계산
+    let alertMinutesBefore = 0;
+    switch (alarmTime) {
+      case "10분 전": alertMinutesBefore = 10; break;
+      case "30분 전": alertMinutesBefore = 30; break;
+      case "1시간 전": alertMinutesBefore = 60; break;
+      case "1일 전": alertMinutesBefore = 1440; break; // 24시간 * 60분
+    }
+
+    // 알림이 가능한지 확인: 약속시간까지 남은 시간이 알림 시간보다 크거나 같아야 함
+    const isValid = appointmentDiffInMinutes >= alertMinutesBefore;
+
+    // 알림 발송 시간 계산
+    const alertTriggerTime = new Date(appointmentTime.getTime() - (alertMinutesBefore * 60 * 1000));
     const timeDiffInMinutes = Math.floor((alertTriggerTime.getTime() - now.getTime()) / (1000 * 60));
 
     return {
-      isValid: timeDiffInMinutes > 0,
+      isValid,
       timeDiffInMinutes,
       alertTriggerTime
     };
   };
 
   // 알림 시간 선택 컴포넌트를 동적으로 렌더링
-  const AlertTimeSelector = ({ value, onChange, appointmentTime }: { 
+  const AlarmTimeSelector = ({ value, onChange, appointmentTime }: { 
     value: string;
     onChange: (time: string) => void;
     appointmentTime: Date;
   }) => {
-    const alertOptions = [
-      { label: "10분 전", value: "10분 전" },
+    const baseAlertOptions = [
       { label: "30분 전", value: "30분 전" },
+      { label: "10분 전", value: "10분 전" },
       { label: "1시간 전", value: "1시간 전" },
-      { label: "1일 전", value: "1일 전" }
+      { label: "1일 전", value: "1일 전" },
+      { label: "알림 없이 생성", value: "알림 없이 생성" },
     ];
 
     // 날짜와 시간이 모두 선택되었는지 확인
     const isDateTimeSelected = !isNaN(appointmentTime.getTime());
 
-    // 각 옵션의 유효성을 검사하여 disabled 상태 결정
-    const validOptions = alertOptions.map(option => {
-      const { isValid, timeDiffInMinutes } = validateAlertTime(appointmentTime, option.value);
-      return {
-        ...option,
-        disabled: isDateTimeSelected ? !isValid : false, // 날짜/시간 미선택시 비활성화하지 않음
-        warning: isDateTimeSelected && timeDiffInMinutes < 30 && isValid,
-      };
-    });
+    // 각 옵션의 유효성을 검사하고 유효한 것부터 정렬
+    const sortedOptions = baseAlertOptions
+      .map(option => {
+        if (option.value === "알림 없이 생성") {
+          return { ...option, disabled: false, warning: false, isValid: true };
+        }
+        const { isValid, timeDiffInMinutes } = validatealarmTime(appointmentTime, option.value);
+        return {
+          ...option,
+          disabled: isDateTimeSelected ? !isValid : false,
+          warning: isDateTimeSelected && timeDiffInMinutes < 30 && isValid,
+          isValid
+        };
+      })
+      .sort((a, b) => {
+        // 유효한 옵션을 먼저 정렬
+        if (a.isValid && !b.isValid) return -1;
+        if (!a.isValid && b.isValid) return 1;
+        return 0;
+      });
+
+    // 현재 선택된 값이 무효하면 첫 번째 유효한 옵션으로 자동 변경
+    useEffect(() => {
+      if (isDateTimeSelected) {
+        const currentOption = sortedOptions.find(opt => opt.value === value);
+        if (currentOption?.disabled) {
+          const firstValidOption = sortedOptions.find(opt => !opt.disabled);
+          if (firstValidOption) {
+            onChange(firstValidOption.value);
+          }
+        }
+      }
+    }, [isDateTimeSelected, onChange, sortedOptions, value]);
+
+    // "알림 없이 생성"을 제외한 옵션 중 하나라도 enabled라면 안내 메시지 표시하지 않음
+    const allExceptNoneDisabled = isDateTimeSelected &&
+      sortedOptions
+        .filter(opt => opt.value !== "알림 없이 생성")
+        .every(opt => opt.disabled);
 
     return (
       <div className="flex flex-col space-y-2">
         <div className="flex items-center justify-between">
-          <span className="font-medium text-gray-700">약속 전 나에게 알림</span>
+          <span className="font-medium text-gray-700">약속 알림</span>
           <select
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className="w-2/3 px-3 py-2 text-gray-700 border border-gray-300 rounded-md"
+            className="w-2/3 px-3 py-2 text-gray-700 border border-gray-300 rounded-md focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+            title="알림 시간을 선택하세요"
           >
-            {validOptions.map((option) => (
+            <option value="" disabled hidden className="text-gray-500">
+              알림 시간을 선택하세요
+            </option>
+            {sortedOptions.map((option) => (
               <option 
                 key={option.value} 
                 value={option.value}
                 disabled={option.disabled}
                 className={`
-                  ${option.disabled ? 'text-gray-400' : ''}
-                  ${option.warning ? 'text-orange-500' : ''}
+                  ${option.disabled 
+                    ? 'text-gray-300 bg-gray-50' 
+                    : 'text-gray-900 font-medium bg-white hover:bg-orange-50'
+                  }
+                  ${option.warning ? 'text-orange-600 font-semibold' : ''}
                 `}
+                style={{
+                  fontWeight: option.disabled ? 'normal' : '500',
+                  opacity: option.disabled ? 0.4 : 1
+                }}
               >
                 {option.label}
                 {option.warning ? ' (임박!)' : ''}
-                {option.disabled ? ' (불가)' : ''}
+                {option.disabled ? ' 선택불가' : ''}
               </option>
             ))}
           </select>
         </div>
-        {isDateTimeSelected && validOptions.every(opt => opt.disabled) && (
-          <div className="p-2 text-sm text-red-500 rounded bg-red-50">
-            ⚠️ 선택 가능한 알림 시간이 없습니다. 약속 시간을 다시 설정해주세요.
+        {/* 더 명확한 안내 메시지 */}
+        {allExceptNoneDisabled && (
+          <div className="p-3 text-sm border rounded-lg text-amber-700 bg-amber-50 border-amber-200">
+            <div className="flex items-center gap-2">
+              <span className="text-amber-600">⚠️</span>
+              <span>선택한 시간으로는 알림 설정이 불가능하여 <strong>알림 없이 생성</strong>됩니다.</span>
+            </div>
           </div>
         )}
       </div>
@@ -256,34 +365,52 @@ const CreateAppointment = () => {
 
     // Format date and time as ISO string for proper UTC conversion
     const localDateTime = new Date(`${date}T${time}`);
-    const { isValid, timeDiffInMinutes } = validateAlertTime(localDateTime, alertTime);
+    const now = new Date();
 
-    if (!isValid) {
-      alert("선택한 알림 시간이 이미 지났거나 너무 임박했습니다. 다른 알림 시간을 선택해주세요.");
-      return;
-    }
+    // // 현재 시간과 선택된 약속 시간 로그 출력 (한국 로컬시간으로)
+    // console.log("현재 시간(now, KST):", dayjs(now).format("YYYY-MM-DD HH:mm:ss"));
+    // console.log("선택된 약속 시간(localDateTime, KST):", dayjs(localDateTime).format("YYYY-MM-DD HH:mm:ss"));
 
-    if (timeDiffInMinutes < 30) {
+    // 최종 알림 시간 결정 로직 통합
+    let finalalarmTime =alarmTime;
+
+    // 약속시간이 과거인 경우
+    if (localDateTime < now) {
       const proceed = confirm(
-        "알림 시간이 30분 미만으로 남았습니다. 계속 진행하시겠습니까?"
+        "선택하신 약속 시간이 이미 지났습니다.\n그래도 약속을 생성하시겠습니까?\n\n(과거의 약속에는 알림이 설정되지 않습니다)"
       );
       if (!proceed) return;
+      finalalarmTime = "알림 없이 생성";
+    } 
+    // 미래 시간이지만 현재 알림 시간이 유효하지 않은 경우
+    else if (alarmTime !== "알림 없이 생성") {
+      const { isValid } = validatealarmTime(localDateTime,alarmTime);
+      if (!isValid) {
+        console.log(`현재 설정된 알림 시간 "${alarmTime}"이 유효하지 않아 "알림 없이 생성"으로 변경됩니다.`);
+        const proceed = confirm(`현재 약속 시간으로는 "${alarmTime}" 알림을 설정할 수 없습니다.\n알림 없이 약속을 생성하시겠습니까?`);
+        if (!proceed) return;
+        finalalarmTime = "알림 없이 생성";
+      }
     }
 
-    // Updated to use flat location properties
+    // UI 상태도 업데이트 (다음 렌더링을 위해)
+    if (finalalarmTime !==alarmTime) {
+      setAlarmTime(finalalarmTime);
+    }
+
     const appointmentData = {
       chatRoomId: chatRoomId,
       appointmentTime: localDateTime, 
       place: selectedLocation.selectedAddress ?? "Unknown location",
       locationLatitude: selectedLocation.latitude,
       locationLongitude: selectedLocation.longitude,
-      alertTime,
+     alarmTime: finalalarmTime === "알림 없이 생성" ? null : finalalarmTime,
     };
 
     console.log("CreateAppointment--handleSubmit-appointmentData: ", JSON.stringify(appointmentData, null, 2));
     
     // useMutation을 사용하여 약속 생성 요청
-    createMeetup(appointmentData);
+    createMeetup(appointmentData); // 여기서 appointmentData에alarmTime이 포함됨
     // router.back()은 mutation의 onSuccess에서 처리됨
   };
 
@@ -293,8 +420,22 @@ const CreateAppointment = () => {
     setDate("");
     setTime("");
     setSelectedLocationByAddressInfo(null);
-    setAlertTime("30분 전");
+     setAlarmTime("30분 전");
   }, [router.query.chatRoomId]); // chatRoomId가 변경될 때마다 실행
+
+  // 트리거 시간 계산 함수
+  const calculateTriggerTime = (appointmentTime: Date,alarmTime: string) => {
+    const triggerTime = new Date(appointmentTime);
+    
+    switch (alarmTime) {
+      case "10분 전": triggerTime.setMinutes(triggerTime.getMinutes() - 10); break;
+      case "30분 전": triggerTime.setMinutes(triggerTime.getMinutes() - 30); break;
+      case "1시간 전": triggerTime.setHours(triggerTime.getHours() - 1); break;
+      case "1일 전": triggerTime.setDate(triggerTime.getDate() - 1); break;
+    }
+    
+    return triggerTime;
+  };
 
   return (
     <>
@@ -311,7 +452,18 @@ const CreateAppointment = () => {
             <DatePicker value={date} onChange={(newDate) => setDate(newDate)} />
 
             {/* 시간 */}
-            <TimePicker value={time} onChange={setTime} />
+            <TimePicker
+              value={time}
+              onChange={(newTime) => {
+                setTime(newTime);
+                // 현재 시간과 선택된 시간 로그 (한국 로컬타임)
+                const now = new Date();
+                const selectedDateTime = new Date(`${date}T${newTime}`);
+                console.log("현재 시간(now, KST):", dayjs(now).format("YYYY-MM-DD HH:mm:ss"));
+                console.log("선택된 약속 시간(localDateTime, KST):", dayjs(selectedDateTime).format("YYYY-MM-DD HH:mm:ss"));
+                 setAlarmTime((prev) => prev); // 상태 변경 트리거 (불필요하면 생략 가능)
+              }}
+            />
 
             {/* 장소 */}
             <div className="flex flex-col w-full">
@@ -378,9 +530,9 @@ const CreateAppointment = () => {
             </div>
 
             {/* 알림 시간 */}
-            <AlertTimeSelector 
-              value={alertTime} 
-              onChange={setAlertTime}
+            <AlarmTimeSelector 
+              value={alarmTime} 
+              onChange={setAlarmTime}
               appointmentTime={new Date(`${date}T${time}`)}
             />
           </div>

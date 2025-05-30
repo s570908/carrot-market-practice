@@ -728,12 +728,12 @@ export { Kind };
 
 // ChatMeetup 생성을 위한 인터페이스
 export interface ChatMeetupParams {
+  chatRoomId: number;
   appointmentTime: Date; //format UTC date-time string
   place: string;
-  locationLatitude: number | null;
-  locationLongitude: number | null;
-  alertTime: string;
-  chatRoomId: number;
+  locationLatitude: number;
+  locationLongitude: number;
+ alarmTime: string | null;  // null 허용하도록 수정
 }
 
 // ChatMeetup 응답 인터페이스
@@ -781,8 +781,12 @@ export interface SystemMessageParams {
   message: string;
   userId?: number;
   meta?: {
-    relatedAppointmentMessageId?: number;  // 약속 메시지 ID 저장 필드 추가
-    [key: string]: any;
+    type?: string;  // APPOINTMENT_ALERT의 type 필드
+    chatMeetupId?: number;  // APPOINTMENT_ALERT의 chatMeetupId 필드
+    appointmentMessageId?: number;  // APPOINTMENT_ALERT의 appointmentMessageId 필드
+    alarmTime?: string;  // APPOINTMENT_ALERT의 alarmTime 필드
+    relatedAppointmentMessageId?: number;  // 기존 필드 유지 (다른 용도로 사용될 수 있음)
+    [key: string]: any;  // 확장성을 위한 인덱스 시그니처 유지
   };
 }
 
@@ -790,14 +794,20 @@ export interface AlarmSettingsParams {
   chatId: number;
   messageId: number;
   alarmTime: string;
+  /**
+   * 알람 트리거 시간 (UTC ISO string, 서버 스케줄러가 이 시간에 알림을 트리거함)
+   * 예: "2024-06-01T12:34:56.000Z"
+   */
   triggerAt?: string;
   disableAlarm?: boolean;
 }
 
+// 알람 예약/취소/트리거 응답
 export interface AlarmSettingsResponse {
   ok: boolean;
   alarmTime?: string;
   disableAlarm?: boolean;
   error?: string;
   message?: string;
+  // 서버 디버그 정보 등 추가 필드가 있을 수 있음
 }

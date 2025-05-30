@@ -15,7 +15,7 @@
         "place": "서울특별시 중구 세종대로21길 33 조선일보사",
         "locationLatitude": 37.56786495519389,
         "locationLongitude": 126.9751524925236,
-        "alertTime": "30분 전",
+        "alarmTime": "30분 전",
         "messageId": 588,
         "createdAt": "2025-05-13T18:17:57.876Z",
         "updatedAt": "2025-05-13T18:17:57.876Z"

@@ -71,26 +71,6 @@ const Chats: NextPage = () => {
     }
   }, [data, url]);
 
-  async function fetchAndAddReservationData(chatRoomList: ChatRoom[]) {
-    try {
-      const reservationPromises = chatRoomList.map((chatRoom: ChatRoom) =>
-        axios.get(`/api/products/${chatRoom.productId}/reservation`)
-      );
-
-      const responses = await Promise.all(reservationPromises);
-
-      const updatedChatRoomList = chatRoomList.map((chatRoom, index) => ({
-        ...chatRoom,
-        reservation: responses[index].data,
-      }));
-
-      return updatedChatRoomList;
-    } catch (error) {
-      console.error("예약 데이터를 가져오는 중 오류 발생:", error);
-      throw error;
-    }
-  }
-
   const handleClick = () => {
     console.log("chatRoomList Product Detail clicked");
     router.push(`/products/${productId}`);

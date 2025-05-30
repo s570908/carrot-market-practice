@@ -19,11 +19,6 @@ import StarRating from "@components/StarRating";
 // }
 
 const Reviews = () => {
-  // const { data } = useSWR<ReviewsResponse>("/api/reviews");
-  // const fetchReviews = async () => {
-  //   const { data } = await axios.get<ReviewsResponse>("/api/reviews");
-  //   return data;
-  // };
 
   const {
     data: reviewsData,

@@ -4,6 +4,17 @@ import { withApiSession } from "@libs/server/withSession";
 import client from "@libs/client/client";
 import { sendPushNotification } from "@libs/server/webPushUtils";
 
+// PushPayload 타입에 requireInteraction 추가
+type PushPayload = {
+  title: string;
+  body: string;
+  icon?: string;
+  badge?: string;
+  timestamp?: number;
+  data?: any;
+  requireInteraction?: boolean;
+};
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -52,10 +63,15 @@ async function handler(
     };
 
     try {
+      const payload: PushPayload ={
+          title: "Validation",
+          body: "This is a test notification for validation.",
+          requireInteraction: true
+        }
       // 실제 메시지를 보내지 않고 유효성만 검사
       const testResult = await sendPushNotification(
         subscriptionObject,
-        { title: "Validation", body: "This is a test notification for validation." }
+        payload
       );
 
       return res.json({ 

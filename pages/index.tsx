@@ -3,14 +3,9 @@ import FloatingButton from "@components/FloatingButton";
 import Item from "@components/Item";
 import Layout from "@components/Layout";
 import useUser from "@libs/client/useUser";
-//import useSWR, { SWRConfig } from "swr";
 import { Fav, Product, ProductImage, Status } from "@prisma/client";
-import { useRouter } from "next/router";
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
-import PaginationButton from "@components/PaginationButton";
-import client from "@libs/client/client";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
 import useSocket from "@libs/client/useSocket";
 import { ChatRoomType, UserID } from "apiLibs/atypes";
 import { getChatRoomIDs } from "apiLibs/chatRooms";
@@ -111,13 +106,6 @@ const Home: NextPage = () => {
   const queryClient = useQueryClient();
   const [isNew, setIsNew] = useState(false); // isNew 상태 추가
   const [changedProductId, setChangedProductId] = useState<number | null>(null); // 변경된 제품 ID 추적
-  // console.log("Home socket: ", socket);
-  // const { data } = useSWR<ProductsResponse>(`/api/products?page=${page}`);
-  // ProductsResponse 타입에 맞는 데이터 요청 함수
-  const fetchProducts = async (page: number, limit: number) => {
-    const response = await axios.get(`/api/products?page=${page}&limit=${limit}`);
-    return response.data;
-  };
 
   const { data: channelData } = useQuery({
     queryKey: ["chatRoomIDs"],

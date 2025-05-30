@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import useUser from '@libs/client/useUser';
 import axios from 'axios';
+import { getVapidKey, subscribePush } from '@/apiLibs/push';
 
 // 서비스 워커 등록 및 푸시 구독 관리 컴포넌트
 const PushNotificationService = () => {
@@ -36,7 +37,7 @@ const PushNotificationService = () => {
     const registerPushNotifications = async () => {
       try {
         // 1. 서버에서 VAPID 공개 키 가져오기
-        const { data: { vapidPublicKey, ok } } = await axios.get('/api/push/vapid-key');
+        const { vapidPublicKey, ok } = await getVapidKey();
         
         if (!ok || !vapidPublicKey) {
           console.error('VAPID 공개 키를 가져오는데 실패했습니다.');
@@ -62,8 +63,8 @@ const PushNotificationService = () => {
         // 5. 구독이 없으면 새로 생성
         if (!pushSubscription) {
           pushSubscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true, // 모든 메시지는 사용자에게 표시되어야 함
-            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
           });
           
           console.log('새 푸시 구독이 생성되었습니다:', pushSubscription);
@@ -72,7 +73,7 @@ const PushNotificationService = () => {
         setSubscription(pushSubscription);
 
         // 6. 서버에 구독 정보 저장
-        await axios.post('/api/push/subscribe', {
+        await subscribePush({
           endpoint: pushSubscription.endpoint,
           p256dh: btoa(String.fromCharCode(...new Uint8Array(pushSubscription.getKey('p256dh')!))),
           auth: btoa(String.fromCharCode(...new Uint8Array(pushSubscription.getKey('auth')!))),

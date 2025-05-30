@@ -1,3 +1,4 @@
+import { co } from "@fullcalendar/core/internal-common";
 import aclient from "./aclient";
 import { AlarmSettingsParams, AlarmSettingsResponse, ChatFormResponse, ChatMeetupParams, ChatMeetupResponse, ChatMessageResponse, ChatResponse, SystemMessageParams, SystemMessageResponse } from "./atypes";
 import dayjs from "dayjs";
@@ -28,13 +29,10 @@ export async function getUnreadMessagesForUser() {
 
 // Updated ChatMeetup creation API function
 export async function writeChatMeetup(params: ChatMeetupParams) {
-  // Client should pass appointmentTime as ISO string (already in UTC)
-  // console.log("writeChatMeetup params:", params);  
+  // 약속 생성 + 약속 메시지 생성 API 호출
   const response = await aclient.post<ChatMeetupResponse>('/api/chat-meetups', params);
   return response.data;
 }
-
-
 
 export const writeSystemMessage = async ({ chatRoomId, message, userId, meta = {} }: SystemMessageParams) => {
   const response = await aclient.post<SystemMessageResponse>('/api/chat/system-message', {
@@ -65,24 +63,94 @@ export const SYSTEM_MESSAGES = {
       return `약속이 생성되었습니다.`;
     }
   },
-  APPOINTMENT_ALERT: (time: string, chatMeetupId?: number) => ({
-    message: `약속시간 ${time}에 알림이 울릴 거예요`,
+  APPOINTMENT_ALERT: (alarmTime: string, chatMeetupId: number, appointmentMessageId?: number) => ({
+    message: `약속시간 ${alarmTime}에 알림이 울릴 거예요`,
     meta: {
-      type: "appointment_alert",
-      chatMeetupId: chatMeetupId // ID만 전달하여 연결
+      type: 'APPOINTMENT_ALERT',
+      chatMeetupId: chatMeetupId,  // 이것이 핵심: chatMeetupId를 올바르게 설정
+      appointmentMessageId: appointmentMessageId,  // 약속 메시지의 ID
+      alarmTime:alarmTime
     }
   }),
   PRODUCT_RESERVED: (username: string) => `${username}님이 상품을 예약했습니다.`,
   PRODUCT_SOLD: () => `거래가 완료되었습니다.`,
 };
 
-export async function writeAlarmSettings(params: AlarmSettingsParams) {
-  const { chatId, messageId, alarmTime, triggerAt, disableAlarm } = params;
-  const response = await aclient.post<AlarmSettingsResponse>(`/api/chat/${chatId}/alarm-settings`, {
-    messageId,
-    alarmTime,
-    triggerAt,
-    disableAlarm
+// 기존 알람 설정을 조회하는 함수
+export const getAlarmSettings = async (chatId: number, messageId: number) => {
+  try {
+    const response = await aclient.get(`/api/chat/${chatId}/alarm-settings/${messageId}`);
+    return response.data;
+  } catch (error) {
+    // 404 에러는 설정이 없다는 의미이므로 정상 처리
+    if ((error as any)?.response?.status === 404) {
+      return { ok: false, exists: false };
+    }
+    throw error;
+  }
+};
+
+// 새로운 알람 설정 생성
+export const createAlarmSettings = async (params: {
+  chatId: number;
+  messageId: number; 
+  alarmTime: string;
+  triggerAt?: string;
+  disableAlarm: boolean;
+}) => {
+  console.log("createAlarmSettings params:", params);
+  
+  // POST 방식으로 새로운 알람 생성
+  const response = await aclient.post(`/api/chat/${params.chatId}/alarm-settings`, {
+    messageId: params.messageId,
+    alarmTime: params.alarmTime,
+    triggerAt: params.triggerAt,
+    disableAlarm: params.disableAlarm,
   });
   return response.data;
-}
+};
+
+// 기존 알람 설정 전체 업데이트 또는 생성 (upsert)
+export const writeAlarmSettings = async (params: {
+  chatId: number;
+  messageId: number; 
+  alarmTime: string;
+  triggerAt?: string;
+  disableAlarm: boolean;
+}) => {
+  console.log("writeAlarmSettings params:", params);
+  
+  // PUT 방식으로 upsert (있으면 업데이트, 없으면 생성)
+  const response = await aclient.put(`/api/chat/${params.chatId}/alarm-settings`, {
+    messageId: params.messageId,
+    alarmTime: params.alarmTime,
+    triggerAt: params.triggerAt,
+    disableAlarm: params.disableAlarm,
+  });
+  return response.data;
+};
+
+// 기존 알람 설정 부분 수정
+export const updateAlarmSettings = async (params: {
+  chatId: number;
+  messageId: number; 
+  alarmTime?: string;
+  triggerAt?: string;
+  disableAlarm?: boolean;
+}) => {
+  console.log("updateAlarmSettings params:", params);
+  
+  // PATCH 방식으로 부분 업데이트
+  const response = await aclient.patch(`/api/chat/${params.chatId}/alarm-settings/${params.messageId}`, {
+    alarmTime: params.alarmTime,
+    triggerAt: params.triggerAt,
+    disableAlarm: params.disableAlarm,
+  });
+  return response.data;
+};
+
+// 알람 설정을 삭제하는 함수
+export const deleteAlarmSettings = async (chatId: number, messageId: number) => {
+  const response = await aclient.delete(`/api/chat/${chatId}/alarm-settings/${messageId}`);
+  return response.data;
+};

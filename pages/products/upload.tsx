@@ -98,19 +98,6 @@ const Upload: NextPage = () => {
   const [deletedCLImage, setDeletedCLImage] = useState([]); // 삭제된 Cloudflare 이미지 배열
   const [formSize, setFormSize] = useState({ width: 0, height: 0 }); // form 크기 저장
 
-  // const [uploadProduct, { loading, data }] = useMutation<UploadProductMutation>("/api/products");
-  // const uploadProduct = async (
-  //   // formData: UploadProductForm & { imageIds?: string[] }
-  //   uploadProduct: UploadProduct
-  // ) => {
-  //   const response = await axios.post("/api/products", uploadProduct, {
-  //     headers: {
-  //       "Content-Type": "application/json",
-  //     },
-  //   });
-  //   return response.data;
-  // };
-
   const {
     mutate,
     isPending: isLoading,
