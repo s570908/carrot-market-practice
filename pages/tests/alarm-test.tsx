@@ -471,7 +471,7 @@ const AlarmTest = () => {
       addTestResult(`알림 ID ${alarmId}를 수동으로 트리거합니다...`);
       
       // 수동 트리거 API 호출
-      const response = await axios.post(`/api/alarm/trigger/${alarmId}`);
+      const response = await axios.post(`/api/alarm/trigger/test/d}`);
       
       if (response.data.ok) {
         const { alarm, pushResult } = response.data;

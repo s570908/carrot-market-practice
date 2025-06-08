@@ -21,6 +21,6 @@
       "@/*": ["./*"],
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "pages/index.tsx.Ssr", "pages/mapModal"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "pages/index.tsx.Ssr", "pages/mapModal", "libs/server/webPushUtils.ts.old"],
   "exclude": ["node_modules"]
 }

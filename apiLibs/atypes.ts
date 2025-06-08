@@ -811,3 +811,28 @@ export interface AlarmSettingsResponse {
   message?: string;
   // 서버 디버그 정보 등 추가 필드가 있을 수 있음
 }
+
+/**
+ * 푸시 알림 관련 타입 정의
+ */
+
+// 웹 푸시 구독 정보 인터페이스
+export interface PushSubscription {
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+  expirationTime?: number | null;
+}
+
+// 푸시 알림 페이로드 인터페이스
+export interface PushPayload {
+  title: string;
+  body: string;
+  icon?: string;
+  badge?: string;
+  data?: any;
+  timestamp?: number;
+  requireInteraction?: boolean; // 사용자 상호작용이 필요한지 여부
+}

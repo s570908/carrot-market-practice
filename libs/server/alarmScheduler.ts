@@ -2,8 +2,7 @@ import schedule from 'node-schedule';
 import client from "@/libs/client/client";
 import dayjs from 'dayjs';
 import { AlarmStatus, ChatMeetup } from "@prisma/client";
-import { triggerAlarm } from '@/apiLibs/alarm';
-//import { triggerAlarm, TriggerAlarmParams } from '@/apiLibs/alarm';
+import { triggerAlarmById } from '@/apiLibs/alarm';
 
 // 활성 작업 추적을 위한 Map (job ID => scheduled job)
 const activeJobs = new Map();
@@ -61,7 +60,7 @@ export async function loadAlarms(baseUrl: string) {
 
 interface AlarmWithMeetup {
   id: number;
- alarmTime: string;
+  alarmTime: string;
   status: AlarmStatus;
   triggerAt: Date;
   chatMeetup: ChatMeetup | null;
@@ -116,13 +115,14 @@ export function scheduleAlarm(alarm: AlarmWithMeetup, baseUrl: string) {
         },
       });
 
-      // API 호출
-      // 아래 코드는 예약된 알람이 트리거되는 시점에 서버의 /api/alarm/trigger 엔드포인트로 HTTP POST 요청을 보냅니다.
+      // API 호출 - URL 라우트 방식으로 변경됨
+      // 아래 코드는 예약된 알람이 트리거되는 시점에 서버의 /api/alarm/trigger/{id} 엔드포인트로 HTTP POST 요청을 보냅니다.
+      // 기존 /api/alarm/trigger와 달리 URL 경로에 alarmId를 포함하여 RESTful한 방식으로 호출합니다.
       // 이 요청의 목적은 실제 알림(푸시 등)을 사용자에게 발송하는 트리거 역할을 하며,
-      // alarmId를 포함한 JSON 데이터를 서버에 전달합니다.
-      // 서버는 이 alarmId를 바탕으로 알람 정보를 조회하고, 알림 전송 및 상태 업데이트 등의 후속 처리를 수행합니다.
-      await triggerAlarm({ baseUrl, alarmId: alarm.id });
-      
+      // 서버는 URL 파라미터의 alarmId를 바탕으로 알람 정보를 조회하고, 알림 전송 및 상태 업데이트 등의 후속 처리를 수행합니다.
+      // triggerAlarmById 함수는 POST /api/alarm/trigger/{id} 형태로 요청을 보내며, body는 비어있습니다.
+      await triggerAlarmById({ baseUrl, alarmId: alarm.id });
+
       console.log(`Alarm triggered successfully`);
       
       // 작업 완료 후 Map에서 제거

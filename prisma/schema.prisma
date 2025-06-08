@@ -481,7 +481,7 @@ model ChatMeetup {
   place                String  
   locationLatitude     Float?        // Latitude coordinate
   locationLongitude    Float?        // Longitude coordinate
- alarmTime            String?       // optional로 변경
+  alarmTime            String?       // optional로 변경
   
   message              SellerChat    @relation(fields: [messageId], references: [id], onDelete: Cascade)
   messageId            Int           @unique  // 하나의 챗밋업은 하나의 메시지만 가짐
@@ -522,7 +522,7 @@ model AlarmSetting {
   sellerChat   SellerChat @relation("SellerChatToAlarmSetting", fields: [messageId], references: [id], onDelete: Cascade)
   chatMeetup   ChatMeetup @relation(fields: [chatMeetupId], references: [id], onDelete: Cascade)
 
-  @@unique([messageId, userId])
+  @@unique([messageId, userId]) // 이 제약 조건 유지
   @@index([chatRoomId])
   @@index([triggerAt, status]) // 알림 트리거 시간과 상태로 인덱스 최적화
   @@index([chatMeetupId]) // ChatMeetup 관련 쿼리 최적화
