@@ -84,47 +84,23 @@ const CreateAppointment = () => {
           // 알림 설정 및 관련 메시지 처리
           if (responseData.chatMeetup?.alarmTime && responseData.message?.id) {
             try {
-              // 알람 설정 성공 시에만 알림 메시지 추가
-              const appointmentAlertInfo = SYSTEM_MESSAGES.APPOINTMENT_ALERT(
-                responseData.chatMeetup.alarmTime, 
-                responseData.chatMeetup.id,  // chatMeetupId를 올바르게 전달
-                responseData.message.id      // 약속 메시지의 ID (알림 메시지의 ID가 아님)
-              );
-              
-              // 알림 메시지를 생성하고 그 결과에서 메시지 ID를 가져옴
-              // 이 시스템 메시지로 채팅창에서 다음의 UI를 만든다. 
-              // 예: 약속시간 10분 전에 알림이 울릴 거예요
-              //     버튼: 알림설정    
-              const alertMessageResult = await writeSystemMessage({
-                chatRoomId: chatRoomId,
-                message: appointmentAlertInfo.message,
-                userId: user?.id,
-                meta: appointmentAlertInfo.meta,
-              });
-
-              // UTC 기준으로 트리거 시간 계산
+              // 알람 메시지 안내 및 알림설정 메시지 생성 코드 전체 제거
+              // 알람 설정 메시지 없이 바로 알람만 설정
               const appointmentTime = new Date(responseData.chatMeetup.appointmentTime);
               const triggerAt = calculateTriggerTime(appointmentTime, responseData.chatMeetup.alarmTime);
               const utcTriggerAt = new Date(triggerAt.toISOString());
 
-              // systemMessage 존재 여부 검증
-              if (!alertMessageResult?.systemMessage?.id) {
-                throw new Error("알림 메시지 생성 실패: systemMessage ID가 없습니다.");
-              }
-
-              // 알람 설정 API 호출 - 알림 메시지 ID 사용
               await createAlarmSettings({
                 chatId: chatRoomId,
-                messageId: alertMessageResult.systemMessage.id, // 검증 후 안전하게 사용
+                messageId: responseData.message.id,
                 alarmTime: responseData.chatMeetup.alarmTime,
                 triggerAt: utcTriggerAt.toISOString(),
                 disableAlarm: false
               });
 
-              console.log("알람 설정 및 알림 메시지 생성 완료");
+              console.log("알람 설정 완료 (알림 메시지 안내 없이)");
             } catch (alarmError) {
               console.error("알람 설정 중 오류 발생:", alarmError);
-              // 알람 설정 실패 시 사용자에게 알림
               toast.error("알람 설정에 실패했습니다. 채팅방에서 다시 설정해주세요.");              
             }
           }

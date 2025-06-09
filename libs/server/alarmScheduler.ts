@@ -2,7 +2,7 @@ import schedule from 'node-schedule';
 import client from "@/libs/client/client";
 import dayjs from 'dayjs';
 import { AlarmStatus, ChatMeetup } from "@prisma/client";
-import { triggerAlarmById } from '@/apiLibs/alarm';
+import { callAlarmTrigger } from "@/libs/server/callAlarmTrigger";
 
 // 활성 작업 추적을 위한 Map (job ID => scheduled job)
 const activeJobs = new Map();
@@ -24,16 +24,6 @@ export async function loadAlarms(baseUrl: string) {
     // 하지만 alarmSetting의alarmTime은 루트에 있으므로, filter는 alarm.alarmTime !== null로 사용
     const alarms = alarmsRaw.filter(alarm => (alarm as any).alarmTime !== null);
 
-    // 만약 위에서 오류가 난다면 아래처럼 사용하세요:
-    // const alarmsRaw = await client.alarmSetting.findMany({
-    //   where: {
-    //     status: AlarmStatus.SCHEDULED,
-    //     triggerAt: { gt: new Date() },
-    //   },
-    //   include: { chatMeetup: true },
-    // });
-    // const alarms = alarmsRaw.filter(alarm => alarm.alarmTime !== null);
-
     console.log(`Found ${alarms.length} upcoming alarms to schedule`);
     
     // 각 알람 예약 설정
@@ -42,7 +32,7 @@ export async function loadAlarms(baseUrl: string) {
         // 명시적으로 AlarmWithMeetup 타입으로 매핑
         const alarmWithMeetup: AlarmWithMeetup = {
           id: alarm.id,
-         alarmTime: (alarm as any).alarmTime,
+          alarmTime: (alarm as any).alarmTime,
           status: alarm.status,
           triggerAt: alarm.triggerAt,
           chatMeetup: alarm.chatMeetup,
@@ -97,31 +87,15 @@ export function scheduleAlarm(alarm: AlarmWithMeetup, baseUrl: string) {
     try {
       console.log(`Triggering alarm ID: ${alarm.id} at ${new Date().toISOString()}`);
       
-      // AlarmSetting 업데이트: status를 SENT로 변경 (isTriggered 제거)
-      const updatedAlarm = await client.alarmSetting.update({
-        where: { id: alarm.id },
-        data: { status: AlarmStatus.SENT }, // enum 사용
-        include: {
-          chatMeetup: {
-            include: {
-              message: {
-                include: {
-                  chatRoom: true
-                }
-              }
-            }
-          },
-          user: true,
-        },
-      });
+      // 중복 상태 업데이트 제거 - callAlarmTrigger에서 처리하도록 함
+      // const updatedAlarm = await client.alarmSetting.update({
+      //   where: { id: alarm.id },
+      //   data: { status: AlarmStatus.SENT },
+      //   include: { ... }
+      // });
 
-      // API 호출 - URL 라우트 방식으로 변경됨
-      // 아래 코드는 예약된 알람이 트리거되는 시점에 서버의 /api/alarm/trigger/{id} 엔드포인트로 HTTP POST 요청을 보냅니다.
-      // 기존 /api/alarm/trigger와 달리 URL 경로에 alarmId를 포함하여 RESTful한 방식으로 호출합니다.
-      // 이 요청의 목적은 실제 알림(푸시 등)을 사용자에게 발송하는 트리거 역할을 하며,
-      // 서버는 URL 파라미터의 alarmId를 바탕으로 알람 정보를 조회하고, 알림 전송 및 상태 업데이트 등의 후속 처리를 수행합니다.
-      // triggerAlarmById 함수는 POST /api/alarm/trigger/{id} 형태로 요청을 보내며, body는 비어있습니다.
-      await triggerAlarmById({ baseUrl, alarmId: alarm.id });
+      // callAlarmTrigger에서 모든 처리를 담당
+      await callAlarmTrigger({ baseUrl, alarmId: alarm.id });
 
       console.log(`Alarm triggered successfully`);
       
@@ -159,7 +133,9 @@ export async function scheduleAlarmById(alarmId: number, baseUrl: string) {
     where: { id: alarmId },
     include: { chatMeetup: true },
   });
-  console.log(`Scheduling alarm by ID: ${alarmId}`, alarm);
+  
+  console.log(`Scheduling alarm by ID: ${alarmId} for ${alarm?.triggerAt?.toISOString() || 'NO_TRIGGER_TIME'}`);
+  
   if (
     alarm &&
     (alarm as any).alarmTime &&
@@ -172,13 +148,13 @@ export async function scheduleAlarmById(alarmId: number, baseUrl: string) {
     }
     const alarmWithMeetup: AlarmWithMeetup = {
       id: alarm.id,
-     alarmTime: (alarm as any).alarmTime,
+      alarmTime: (alarm as any).alarmTime,
       status: alarm.status,
       triggerAt: alarm.triggerAt,
       chatMeetup: alarm.chatMeetup,
     };
 
-    console.log(`scheduleAlarm 직전: Scheduling alarm with meetup: ${JSON.stringify(alarmWithMeetup)}`);
+    //console.log(`scheduleAlarm 직전: Scheduling alarm with meetup: ${JSON.stringify(alarmWithMeetup)}`);
     scheduleAlarm(alarmWithMeetup, baseUrl);
     return true;
   }
@@ -298,30 +274,32 @@ const appointmentAlertInfo = SYSTEM_MESSAGES.APPOINTMENT_ALERT(
 - alarmTime: alarm_time
 */
 
-// Prisma의 타입 시스템은 include 옵션을 사용하면 반환 타입을
-// { chatMeetup: ... } & AlarmSetting 형태로 만듭니다.
-// 하지만 실제 런타임 객체에는 alarm.alarmTime(알람 설정의 컬럼)이 항상 존재합니다.
-// 타입스크립트는 타입 추론상 alarm.alarmTime이 없다고 생각할 수 있으나,
-// 실제로는 alarm.alarmTime이 포함되어 있으므로 (alarm as any).alarmTime으로 접근하면 런타임에서 안전하게 동작합니다.
-
-// activeJobs.get(alarmId).cancel() 및 activeJobs.delete(alarmId)의 의미:
-
-// 1. activeJobs는 Map 객체로, 현재 스케줄된 알람 작업들을 메모리에서 추적합니다
-// 2. activeJobs.get(alarmId)는 해당 알람 ID에 대응하는 node-schedule Job 객체를 가져옵니다
-// 3. .cancel()은 node-schedule의 Job 메소드로, 예약된 작업을 취소합니다
-// 4. activeJobs.delete(alarmId)는 Map에서 해당 알람 ID 엔트리를 제거합니다
-
 /*
-예시:
-- 알람 ID 123이 "2024-01-15 14:00"에 실행되도록 스케줄되어 있음
-- activeJobs에는 { 123 => Job객체 } 형태로 저장됨
-- cancel() 호출 시: node-schedule에서 해당 시간에 실행될 작업이 취소됨
-- delete() 호출 시: activeJobs Map에서 123번 엔트리가 제거됨
+알람 스케줄러 주요 개념 설명:
 
-이렇게 하는 이유:
-1. 메모리 누수 방지 (완료/취소된 작업은 Map에서 제거)
-2. 중복 스케줄링 방지 (같은 알람을 여러 번 스케줄하지 않음)
-3. 정확한 작업 상태 관리 (어떤 알람이 현재 활성화되어 있는지 추적)
+1. activeJobs Map 객체:
+   - 현재 스케줄된 알람 작업들을 메모리에서 추적하는 Map
+   - key: alarmId, value: node-schedule Job 객체
+
+2. Job 취소 및 정리:
+   - activeJobs.get(alarmId).cancel(): node-schedule Job을 취소
+   - activeJobs.delete(alarmId): Map에서 해당 작업 제거
+
+3. 작업 관리의 목적:
+   - 메모리 누수 방지 (완료/취소된 작업은 Map에서 제거)
+   - 중복 스케줄링 방지 (같은 알람을 여러 번 스케줄하지 않음)
+   - 정확한 작업 상태 관리 (어떤 알람이 현재 활성화되어 있는지 추적)
+
+4. Prisma 타입 시스템 참고:
+   - include 옵션 사용 시 반환 타입이 확장됨
+   - alarmTime 등 일부 필드는 타입 추론상 없다고 보일 수 있지만
+   - 실제 런타임에서는 존재하므로 (alarm as any).alarmTime으로 안전하게 접근 가능
+
+작업 생명주기 예시:
+- 알람 ID 123이 "2024-01-15 14:00"에 실행되도록 스케줄됨
+- activeJobs에 { 123 => Job객체 } 형태로 저장
+- 실행 시간이 되면 Job이 자동 실행되고 완료 후 Map에서 제거
+- 수동 취소 시에도 cancel() 호출 후 Map에서 제거
 */
 
 

@@ -9,6 +9,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const { user } = req.session;
     const { id } = req.query; // URL 파라미터에서 id 추출
 
+    console.log("pages/api/alarm/trigger/[id].ts--요청된 알림 ID:", user, id);
+
     if (!user?.id) {
       return res.status(401).json({ ok: false, error: "로그인이 필요합니다" });
     }
@@ -18,6 +20,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     const alarmId = Number(id);
+
+    console.log("pages/api/alarm/trigger/[id].ts--알림 트리거 요청:", { userId: user.id, alarmId });
 
     // 알림 정보 조회
     const alarm = await client.alarmSetting.findUnique({
@@ -91,7 +95,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           alarmId: alarm.id,
           chatRoomId: chatRoom.id,
           appointmentId: meetup?.id,
-          isManualTrigger: false,
           timestamp: new Date().getTime(),
         },
         requireInteraction: true
@@ -175,7 +178,7 @@ export default withApiSession(
 5. 알림이 존재하는지, 요청자가 알림 소유자인지, 알림 상태가 SCHEDULED인지 확인
 6. 알림 상태를 SENT로 업데이트
 7. 사용자의 모든 푸시 구독 정보 조회 (여러 기기 지원)
-8. 푸시 알림 페이로드를 구성 (약속 장소, 채팅방 등 정보 포함, 수동 트리거 표시)
+8. 푸시 알림 페이로드를 구성 (약속 장소, 채팅방 등 정보 포함)
 9. 모든 구독에 대해 푸시 알림을 개별 전송하고 결과 집계
 10. 결과(알림 정보, 푸시 전송 통계)를 JSON으로 반환
 11. 오류 발생 시 적절한 에러 메시지와 함께 4xx/5xx 응답 반환
@@ -186,6 +189,7 @@ export default withApiSession(
 - 다중 기기 푸시 알림 지원
 - 성공/실패 개별 추적 및 통계 제공
 - 권한 확인 및 상태 검증
+- 세션 기반 인증 필요
 
 사용 예:
 POST /api/alarm/trigger/123

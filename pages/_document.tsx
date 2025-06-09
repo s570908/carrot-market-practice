@@ -5,6 +5,33 @@ export default function Document() {
   return (
     <Html lang="ko">
       <Head>
+        <meta name="darkreader-lock" />
+        <style
+          id="darkreader-disable"
+          dangerouslySetInnerHTML={{
+            __html: `
+            [data-darkreader-disable] {
+              --darkreader-inline-bgcolor: initial !important;
+              --darkreader-inline-border-top: initial !important;
+              --darkreader-inline-border-right: initial !important;
+              --darkreader-inline-border-bottom: initial !important;
+              --darkreader-inline-border-left: initial !important;
+              --darkreader-inline-bgimage: initial !important;
+            }
+            img[data-darkreader-disable] {
+              display: block !important;
+              max-width: 100% !important;
+              width: initial !important;
+              height: initial !important;
+              background: none !important;
+              opacity: 1 !important;
+              border: 0 !important;
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+          `
+          }}
+        />
         {/* 
          * 1. rel="preconnect": 도메인과의 연결 설정
          * - DNS, TCP, TLS 연결을 미리 설정

@@ -1,6 +1,6 @@
 import { cls } from "@libs/utils";
 import Image from "next/image";
-import { Suspense } from "react";
+import { useEffect, useState } from "react";
 
 interface ImgComponentProps {
   isLayout?: boolean;
@@ -42,6 +42,26 @@ const ImgComponent = ({
   layoutHeight,
   imgName,
 }: ImgComponentProps) => {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // SSR에서는 placeholder만 렌더링
+  if (!mounted) {
+    return (
+      <div
+        className={`bg-gray-200 animate-pulse ${clsProps}`}
+        style={{
+          width: isLayout ? undefined : width,
+          height: isLayout ? undefined : height,
+          aspectRatio: width && height ? `${width}/${height}` : undefined,
+        }}
+      />
+    );
+  }
+
   return (
     <div>
       <div className={cls(isLayout ? `relative ${layoutHeight}` : "flex items-center")}>

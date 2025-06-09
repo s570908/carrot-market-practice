@@ -7,13 +7,12 @@ import { AlarmStatus } from "@prisma/client";
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
-  const { messageId, alarmTime, triggerAt, disableAlarm, isTestMode, forceTestMode } = req.body;
+  const { messageId, alarmTime, triggerAt, disableAlarm } = req.body;
   const { user } = req.session;
 
-  // 테스트 모드 로깅
+  // 기본 요청 로깅
   console.log("=====> 알람 설정 요청:", { 
     id, messageId, alarmTime, triggerAt, 
-    isTestMode, forceTestMode,
     userId: user?.id 
   });
 
@@ -31,7 +30,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     // 알림 메시지 조회 (시스템 메시지)
     const alertMessage = await client.sellerChat.findUnique({
-      where: { id: +messageId }
+      where: { id: +messageId },
+      include: { chatMeetup: true }
     });
 
     console.log("=====> alertMessage:", alertMessage);
@@ -44,97 +44,33 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     // 메타데이터에서 chatMeetupId 추출
-    let chatMeetupId;
-    let metaIsTestMode = false;
-    let virtualAppointment = null;
+    const chatMeetupId = alertMessage.chatMeetup?.id;
     
-    try {
-      const meta = typeof alertMessage.meta === 'string' 
-        ? JSON.parse(alertMessage.meta) 
-        : alertMessage.meta;
-      chatMeetupId = meta?.chatMeetupId;
-      metaIsTestMode = meta?.isTestMode === true;
-      virtualAppointment = meta?.virtualAppointment || null;
-      
-      console.log("=====> meta 파싱 결과:", { 
-        chatMeetupId, 
-        metaIsTestMode, 
-        virtualAppointment 
-      });
-    } catch (e) {
-      console.error('메타데이터 파싱 오류:', e);
-      return res.status(400).json({ 
-        ok: false, 
-        error: "Invalid message metadata" 
-      });
-    }
-
-    // 테스트 모드 확인 (메타데이터 또는 요청 본문에서)
-    const isInTestMode = metaIsTestMode || isTestMode === true || forceTestMode === true;
-    console.log("=====> 테스트 모드 여부:", isInTestMode);
-
-    if (!chatMeetupId && !isInTestMode) {
+    if (!chatMeetupId) {
       return res.status(400).json({ 
         ok: false, 
         error: "ChatMeetup ID not found in message metadata" 
       });
     }
 
-    // 약속 메시지 조회 또는 가상 약속 생성
-    let appointmentMessage = null;
-    let fakeChatMeetup = null;
+    // 약속 메시지 조회
+    const appointmentMessage = await client.sellerChat.findFirst({
+      where: {
+        chatMeetup: {
+          id: chatMeetupId
+        }
+      },
+      include: { chatMeetup: true }
+    });      
 
-    if (!isInTestMode) {
-      // 실제 모드: 약속 정보 조회
-      appointmentMessage = await client.sellerChat.findFirst({
-        where: {
-          chatMeetup: {
-            id: chatMeetupId
-          }
-        },
-        include: { chatMeetup: true }
-      });      
+      console.log("=========================> 약속 메시지 조회 결과:", appointmentMessage);
 
-      //nsole.log("=========================> 약속 메시지 조회 결과:", appointmentMessage);
-
-      if (!appointmentMessage?.chatMeetup) {
-        console.error("=====> 약속 메시지 조회 실패:", { chatMeetupId });
-        return res.status(404).json({ 
-          ok: false, 
-          error: "Appointment not found" 
-        });
-      }
-    } else {
-      // 테스트 모드: 가상 약속 데이터 생성
-      console.log("=====> 테스트 모드 활성화: 가상 약속 데이터 생성");
-      
-      // 트리거 시간 계산 (triggerAt보다 10분 이후로 설정)
-      const triggerDate = new Date(triggerAt);
-      const futureAppointmentTime = new Date(triggerDate.getTime() + 10 * 60 * 1000);
-      
-      // 가상 약속 ID
-      const fakeAppointmentId = virtualAppointment?.id || 999999;
-      
-      // 가상 ChatMeetup 생성
-      fakeChatMeetup = {
-        id: fakeAppointmentId,
-        appointmentTime: virtualAppointment?.appointmentTime || futureAppointmentTime.toISOString(),
-        place: virtualAppointment?.place || "가상 테스트 위치",
-        locationLatitude: 37.5665,
-        locationLongitude: 126.9780,
-       alarmTime: alarmTime || "테스트 알림",
-        messageId: +messageId,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      
-      // 가상 약속 메시지 생성
-      appointmentMessage = {
-        id: +messageId,
-        chatMeetup: fakeChatMeetup
-      };
-      
-      console.log("=====> 생성된 가상 약속 데이터:", appointmentMessage);
+    if (!appointmentMessage?.chatMeetup) {
+      console.error("=====> 약속 메시지 조회 실패:", { chatMeetupId });
+      return res.status(404).json({ 
+        ok: false, 
+        error: "Appointment not found" 
+      });
     }
 
     // POST 메소드 - 새로운 알림 생성
@@ -149,7 +85,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         isPast: triggerTime < now
       });
       
-      if (triggerTime < now && !isInTestMode) {  // 테스트 모드에서는 과거 시간 허용
+      if (triggerTime < now) {
         return res.status(400).json({ 
           ok: false, 
           error: "Trigger time cannot be in the past" 
@@ -162,8 +98,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           error: "Appointment information is missing." 
         });
       }
+      
       const appointmentTime = new Date(appointmentMessage.chatMeetup.appointmentTime);
-      if (appointmentTime < now && !isInTestMode) {  // 테스트 모드에서는 과거 약속 허용
+      if (appointmentTime < now) {
         return res.status(400).json({ 
           ok: false, 
           error: "past appointment: 이미 지난 약속에는 알림을 설정할 수 없습니다." 
@@ -228,7 +165,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             userId: user.id,
             chatRoomId: +id,
             messageId: +messageId,
-            chatMeetupId: isInTestMode ? (fakeChatMeetup?.id || 999999) : (appointmentMessage.chatMeetup?.id ?? 999999),
+            chatMeetupId: appointmentMessage.chatMeetup!.id,
             alarmTime,
             triggerAt: new Date(triggerAt),
             status: AlarmStatus.SCHEDULED
@@ -241,15 +178,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       if (result.canceled) {
         await cancelExistingAlarm(result.canceled);
       }
+      
       console.log("=====> 새 알람 생성 결과:", result.newAlarm);
       if (result.newAlarm) {
-        // ✅ scheduleAlarmById를 사용하여 스케줄링 방식으로 통일
-        // baseUrl 생성 부분 수정
         const isLocalhost = req.headers.host?.startsWith('localhost');
         const baseUrl =
           process.env.NEXT_PUBLIC_API_URL ||
           `${isLocalhost ? 'http' : 'https'}://${req.headers.host}`;
-        console.log("=====> scheduleAlarmById 수행전, baseUrl: ", baseUrl);
+        //console.log("=====> scheduleAlarmById 수행전, baseUrl: ", baseUrl);
         await scheduleAlarmById(result.newAlarm.id, baseUrl);
       }
 
@@ -260,15 +196,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         message: "Alarm scheduled successfully",
         disableAlarm: false,
         alarmTime,
-        isTestMode: isInTestMode,
-        // 추가 상태 정보
         debug: {
           scheduledAt: new Date().toISOString(),
           triggerTime: new Date(triggerAt).toISOString(),
           timeUntilTrigger: Math.floor((new Date(triggerAt).getTime() - new Date().getTime()) / 1000) + "초",
-          appointmentInfo: isInTestMode ? 
-            { isVirtual: true, id: fakeChatMeetup?.id } : 
-            { id: appointmentMessage.chatMeetup?.id }
+          appointmentInfo: { id: appointmentMessage.chatMeetup.id }
         }
       });
     }
@@ -361,7 +293,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
 
       if (result.newAlarm) {
-        // baseUrl 생성 부분 수정
         const isLocalhost = req.headers.host?.startsWith('localhost');
         const baseUrl =
           process.env.NEXT_PUBLIC_API_URL ||
