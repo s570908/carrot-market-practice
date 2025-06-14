@@ -5,7 +5,6 @@ import MapViewer from "@components/MapViewer";
 import TimePicker from "@components/TimePicker-kkh";
 import { useAwaitableModal } from "@libs/client/useAwaitableModal";
 import useUser from "@libs/client/useUser";
-import axios from "axios";
 import { useRouter } from "next/router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -380,7 +379,7 @@ const CreateAppointment = () => {
       place: selectedLocation.selectedAddress ?? "Unknown location",
       locationLatitude: selectedLocation.latitude,
       locationLongitude: selectedLocation.longitude,
-     alarmTime: finalalarmTime === "알림 없이 생성" ? null : finalalarmTime,
+      alarmTime: finalalarmTime === "알림 없이 생성" ? null : finalalarmTime,
     };
 
     console.log("CreateAppointment--handleSubmit-appointmentData: ", JSON.stringify(appointmentData, null, 2));

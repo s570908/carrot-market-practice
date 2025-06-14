@@ -6,17 +6,22 @@ import { NextApiResponseServerIo } from "@/types/types";
 
 const workspace = "market"; // 오타 수정
 
-// 이 파일(chat-meetups/index.ts)은 약속(chatMeetup) 생성 및 관련 메시지 생성까지 트랜잭션으로 처리합니다.
-// 즉, meetup.ts 없이도 약속(chatMeetup) DB 저장이 가능합니다.
+// 이 파일(chat-meetups/index.ts)은 약속(chatMeetup) 생성 및 관련 메시지 생성을 트랜잭션으로 처리합니다.
 // 
 // 주요 기능:
 // 1. sellerChat 메시지("약속을 만들었어요") 생성
 // 2. chatMeetup(약속) 생성 및 메시지와 연결
-// 3. 소켓 이벤트로 약속 메시지 전송
+// 3. 소켓 이벤트로 실시간 약속 메시지 전송
+// 4. alarmTime을 포함한 약속 데이터 저장
 // 
-// 따라서 meetup.ts 없이 이 파일만으로 약속 생성 및 메시지 생성이 모두 가능합니다.
+// 처리 흐름:
+// - Prisma $transaction을 사용해 메시지와 약속을 원자적으로 생성
+// - 생성된 약속 정보를 Socket.io를 통해 채팅방 참여자들에게 실시간 전송
+// - appointmentTime, place, locationLatitude/Longitude, alarmTime 등 약속 상세 정보 저장
 // 
-// 단, 알람(AlarmSetting) 생성/스케줄링은 별도의 alarm-settings API에서 처리해야 합니다.
+// 참고사항:
+// - 알람(AlarmSetting) 생성 및 스케줄링은 별도의 alarm-settings API에서 처리
+// - 실제 알림 트리거는 alarmScheduler를 통해 관리
 
 async function handler(
   req: NextApiRequest, res: NextApiResponseServerIo
@@ -70,7 +75,7 @@ async function handler(
             place,
             locationLatitude,
             locationLongitude,
-           alarmTime,
+            alarmTime,
             message: { connect: { id: createdMessage.id } },
           },
           include: { message: true }

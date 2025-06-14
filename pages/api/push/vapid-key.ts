@@ -6,9 +6,9 @@ import { getVapidPublicKey } from "@libs/server/pushService";
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     // VAPID 공개키 반환
-    const publicKey = getVapidPublicKey();
+    const vapidPublicKey = getVapidPublicKey();
     
-    if (!publicKey) {
+    if (!vapidPublicKey) {
       return res.status(500).json({ 
         ok: false, 
         error: "VAPID 공개키가 설정되지 않았습니다." 
@@ -17,7 +17,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     
     return res.status(200).json({ 
       ok: true, 
-      publicKey 
+      vapidPublicKey 
     });
   } catch (error) {
     console.error("VAPID 키 반환 오류:", error);

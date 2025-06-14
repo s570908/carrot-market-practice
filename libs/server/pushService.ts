@@ -117,6 +117,7 @@ export async function sendPushNotificationToUser(userId: number, payload: PushPa
 
 // 클라이언트에서 사용할 공개 키 반환 함수
 export function getVapidPublicKey() {
+  console.log("getVapidPublicKey()--VAPID Public Key:", vapidPublicKey);
   return vapidPublicKey;
 }
 

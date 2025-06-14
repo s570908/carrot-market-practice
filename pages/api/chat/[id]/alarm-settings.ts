@@ -185,7 +185,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         const baseUrl =
           process.env.NEXT_PUBLIC_API_URL ||
           `${isLocalhost ? 'http' : 'https'}://${req.headers.host}`;
-        //console.log("=====> scheduleAlarmById 수행전, baseUrl: ", baseUrl);
+        console.log("=====> scheduleAlarmById 수행전, baseUrl: ", baseUrl);
         await scheduleAlarmById(result.newAlarm.id, baseUrl);
       }
 

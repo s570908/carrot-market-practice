@@ -9,48 +9,18 @@ import useSocket from "@libs/client/useSocket";
 import { useEffect } from "react";
 import { getChatRoomIDs } from "apiLibs/chatRooms";
 import { ChatRoomType } from "apiLibs/atypes";
+import PushNotificationService from "@components/PushNotificationService";
 
 // QueryClient 생성
 const queryClient = new QueryClient();
 
 function MyApp(appProps: AppProps) {
-  useEffect(() => {
-    // 서비스 워커 등록 - 앱 전체를 위한 단일 등록 지점
-    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-      // 이미 등록된 서비스 워커가 있는지 확인
-      navigator.serviceWorker.getRegistrations().then((registrations) => {
-        if (registrations.length === 0) {
-          // 등록된 서비스 워커가 없을 경우 새로 등록
-          navigator.serviceWorker
-            .register("/service-worker.js", { 
-              scope: "/",
-              // 서비스 워커에 푸시 기능도 포함되어 있음을 명시적으로 주석으로 표시
-              // 이 서비스 워커는 캐싱, 오프라인 지원, 푸시 알림 등 모든 기능 담당
-            })
-            .then((registration) => {
-              console.log("서비스 워커 등록 성공:", registration.scope);
-              // 등록 후 새로고침하여 서비스 워커가 활성화되도록 함
-              if (registration.installing) {
-                registration.installing.addEventListener("statechange", (e) => {
-                  if ((e.target as any).state === "activated") {
-                    console.log("서비스 워커 활성화됨");
-                  }
-                });
-              }
-            })
-            .catch((error) => {
-              console.error("서비스 워커 등록 실패:", error);
-            });
-        } else {
-          console.log("이미 등록된 서비스 워커가 있습니다:", registrations);
-        }
-      });
-    }
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
+      {/* 푸시 알림 서비스가 서비스 워커 등록도 담당 */}
+      <PushNotificationService />
       <AppContent {...appProps} />
+
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   );
