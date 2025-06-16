@@ -1,52 +1,42 @@
 import { useRouter } from "next/router";
-import { useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { User } from "@prisma/client";
+import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { getMe } from "@/apiLibs/users";
-import { MeResponse } from "@/apiLibs/atypes";
 
-// MeResponse 인터페이스 정의 (getMe()가 반환하는 데이터 구조)
-// interface MeResponse {
-//   ok: boolean;
-//   user: User;
-// }
+export default function useUser() {
+  const router = useRouter();
+  const [isMounted, setIsMounted] = useState(false);
 
-const useUser = () => {
-  const queryClient = useQueryClient();
+  // 클라이언트에서만 마운트 상태 설정
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
-  const { data, isLoading, isError } = useQuery({
+  // Enter 페이지에서는 useUser 실행하지 않음
+  const isEnterPage = router.pathname === "/enter";
+
+  const { data, error, isLoading } = useQuery({
     queryKey: ["user", "me"],
     queryFn: () => getMe(),
+    retry: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
+    staleTime: 5 * 60 * 1000, // 5분 캐시
+    gcTime: 10 * 60 * 1000, // 10분 가비지 컬렉션
+    // 🔑 핵심: Enter 페이지와 SSR 중에는 비활성화
+    enabled: isMounted && !isEnterPage,
   });
 
-  //console.log("useUser: data: ", data);
-
-  // 타입 안전한 mutate 함수 구현
-  const mutate = (newData?: MeResponse) => {
-    if (newData) {
-      // 새 데이터로 캐시 직접 업데이트
-      queryClient.setQueryData(["user", "me"], newData);
-    } else {
-      // 캐시 무효화하고 다시 가져오기
-      queryClient.invalidateQueries({ queryKey: ["user", "me"] });
-    }
-  };
-
-  const router = useRouter();
+  // 클라이언트에서만 리다이렉트 실행
   useEffect(() => {
-    if (data && !data.ok) {
-      router.replace("/enter");
+    if (isMounted && !isEnterPage && !isLoading && data && !data.ok) {
+      console.log("[useUser] Redirecting to /enter - not authenticated");
+      router.push("/enter");
     }
-  }, [data, router]);
+  }, [data, router, isMounted, isEnterPage, isLoading]);
 
   return {
     user: data?.profile,
-    isLoading: isLoading,
-    error: isError,
-    mutate,
+    isLoading: !isMounted || isLoading || (!data && !error),
   };
-};
-
-export default useUser;
+}

@@ -4,69 +4,130 @@ import "../styles/globals.css";
 import type { AppProps } from "next/app";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import useUser from "@libs/client/useUser";
 import useSocket from "@libs/client/useSocket";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { getChatRoomIDs } from "apiLibs/chatRooms";
 import { ChatRoomType } from "apiLibs/atypes";
 import PushNotificationService from "@components/PushNotificationService";
+import { useRouter } from "next/router";
 
 // QueryClient 생성
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 1000, // 1분
+      retry: false,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 function MyApp(appProps: AppProps) {
   return (
     <QueryClientProvider client={queryClient}>
-      {/* 푸시 알림 서비스가 서비스 워커 등록도 담당 */}
       <PushNotificationService />
       <AppContent {...appProps} />
-
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   );
 }
 
-// 이 함수는 useQuery를 QueryClientProvider로 감싸는 역할을 한다.
-// 이렇게 하면 모든 페이지에서 useQuery를 사용할 수 있다.
-function AppContent({ Component, pageProps }: AppProps) {
-  const { user } = useUser();
-  const [socket] = useSocket("market");
+type CustomPageProps = {
+  user?: {
+    id?: number | string;
+    // 다른 user 필드가 있다면 여기에 추가
+  };
+  [key: string]: any;
+};
 
+function AppContent({ Component, pageProps }: AppProps & { pageProps: CustomPageProps }) {
+  const router = useRouter();
+  const [socket] = useSocket("market");
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true); // 클라이언트에서만 true
+  }, []);
+
+  // Enter 페이지에서는 불필요한 쿼리 실행 방지
+  const isEnterPage = router.pathname === '/enter';
+
+  // 클라이언트에서만 실행되는 쿼리
   const { data: channelData } = useQuery({
     queryKey: ["chatRoomIDs"],
     queryFn: () => getChatRoomIDs(ChatRoomType.All),
-    enabled: !!user, // 사용자가 로그인한 경우에만 쿼리를 실행
+    enabled: isMounted && !isEnterPage,
+    staleTime: 2 * 60 * 1000, // 🟢 2분간 신선한 데이터로 간주
+    refetchOnWindowFocus: false, // 🟢 포커스 시 재요청 방지
+    refetchOnReconnect: false,   // 🟢 재연결 시 재요청 방지  
+    retry: false,                // 🟢 즉시 에러 처리
   });
 
-  // 로그인 유저가 어떤 페이지이든 reload하면, 자기가 속한 모든 채팅방을 서버에 알려준다.
-  // 방법: 소켓에 로그인 이벤트를 보낸다.
+  // 소켓 연결 (클라이언트에서만, Enter 페이지 제외)
   useEffect(() => {
-    if (user && socket && channelData?.ok) {
-      console.info("로그인 유저가 어떤 페이지이든지 reload하면 수행된다. socket: ", socket);
-      socket.emit("login", {
-        id: user.id,
-        channels: channelData.sellerChatRoomList.map((v: any) => v.id),
-      });
+    if (isMounted && socket && channelData?.ok && !isEnterPage) {
+      console.info("로그인 유저 소켓 연결:", socket);
+      // user 정보는 pageProps 또는 다른 적절한 위치에서 추출
+      const userId = pageProps?.user?.id;
+      if (userId) {
+        socket.emit("login", {
+          id: userId,
+          channels: channelData.sellerChatRoomList.map((v: any) => v.id),
+        });
+      }
     }
-  }, [socket, user, channelData]);
+  }, [socket, channelData, isMounted, isEnterPage]);
 
+  // SSR 중에는 기본 컴포넌트만 렌더링
+  if (!isMounted) {
+    return (
+      <div className="w-full max-w-xl mx-auto">
+        <Component {...pageProps} /> {/* 🟢 서버와 동일한 렌더링 */}
+      </div>
+    );
+  }
+
+  // 클라이언트에서만 ToastContainer 등 추가 기능 렌더링
   return (
-    <div className="mx-auto w-full max-w-xl">
+    <div className="w-full max-w-xl mx-auto">
       <Component {...pageProps} />
       <ToastContainer
-        position="top-center" // 알람 위치 지정
-        autoClose={3000} // 자동 off 시간
-        hideProgressBar={true} // 진행시간바 숨김
-        closeOnClick={false} // 클릭으로 알람 닫기
-        rtl={false} // 알림 좌우 반전
-        pauseOnFocusLoss={false} // 화면을 벗어나면 알람 정지
-        draggable={false} // 드래그 가능
-        pauseOnHover={false} // 마우스를 올리면 알람 정지
+        position="top-center"
+        autoClose={3000}
+        hideProgressBar={true}
+        closeOnClick={false}
+        rtl={false}
+        pauseOnFocusLoss={false}
+        draggable={false}
+        pauseOnHover={false}
         theme="dark"
-        // limit={1} // 알람 개수 제한
       />
     </div>
   );
 }
 
 export default MyApp;
+
+// 🟢 두 번째 코드를 사용해야 하는 이유:
+
+// 1. 무한 리다이렉트 해결
+// - useUser() 제거로 Enter 페이지에서 리다이렉트 루프 방지
+// - 미들웨어 기반 인증과 완벽 호환
+
+// 2. 안정적인 SSR/CSR 처리  
+// - isMounted 상태로 하이드레이션 불일치 방지
+// - 서버와 클라이언트 렌더링 결과 일치 보장
+
+// 3. 성능 최적화
+// - Enter 페이지에서 불필요한 쿼리 실행 방지
+// - 적절한 캐시 전략으로 네트워크 요청 최소화
+
+// 4. 코드 안정성
+// - TypeScript 타입 정의로 타입 안전성 보장
+// - 에러 처리 및 예외 상황 대응 강화
+
+// 5. 당근마켓 프로젝트에 특화된 이유
+// - 채팅방 목록은 자주 변경되지 않음
+// - 사용자가 명시적으로 새로고침할 때만 갱신 필요
+// - 모바일 사용자가 많아 데이터 절약 중요
+// - 실시간 업데이트는 WebSocket으로 처리

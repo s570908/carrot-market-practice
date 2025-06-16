@@ -16,9 +16,12 @@
     "incremental": true,
     "baseUrl": ".",
     "paths": {
-      "@libs/*": ["libs/*"],
-      "@components/*": ["components/*"],
       "@/*": ["./*"],
+      "@components/*": ["components/*"],
+      "@pages/*": ["pages/*"],
+      "@libs/*": ["libs/*"],
+      "@apiLibs/*": ["apiLibs/*"],
+      "@styles/*": ["styles/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "pages/index.tsx.Ssr", "pages/mapModal", "libs/server/webPushUtils.ts.old"],

@@ -51,14 +51,14 @@ const Reviews = () => {
                   clsProps="rounded-full"
                 />
               ) : (
-                <div className="h-12 w-12 rounded-full bg-slate-500" />
+                <div className="w-12 h-12 rounded-full bg-slate-500" />
               )}
               <div>
                 <h4 className="text-sm font-bold text-gray-800">{review.createdBy.name}</h4>
                 <StarRating score={review.score} showScore={false} />
               </div>
             </div>
-            <div className="mt-4 border-b pb-5 text-sm text-gray-600">
+            <div className="pb-5 mt-4 text-sm text-gray-600 border-b">
               <p>{review.review}</p>
             </div>
           </a>
@@ -74,7 +74,7 @@ const ProfileHeader = () => {
 
   return (
     <>
-      <div className="mt-4 flex items-center space-x-3">
+      <div className="flex items-center mt-4 space-x-3">
         {user?.avatar ? (
           <ImgComponent
             imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${user?.avatar}/public`}
@@ -112,12 +112,12 @@ const Profile: NextPage = () => {
     <Layout seoTitle="나의 댕댕마켓" hasTabBar title="나의 댕댕마켓" notice>
       <div className="px-4">
         <ProfileHeader />
-        <div className="mt-8 flex justify-around border-y py-3">
+        <div className="flex justify-around py-3 mt-8 border-y">
           <Link href="/profile/sales">
             <a className="flex flex-col items-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-orange-400 text-white">
+              <div className="flex items-center justify-center text-white bg-orange-400 rounded-full h-14 w-14">
                 <svg
-                  className="h-6 w-6"
+                  className="w-6 h-6"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -136,9 +136,9 @@ const Profile: NextPage = () => {
           </Link>
           <Link href="/profile/purchases">
             <a className="flex flex-col items-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-orange-400 text-white">
+              <div className="flex items-center justify-center text-white bg-orange-400 rounded-full h-14 w-14">
                 <svg
-                  className="h-6 w-6"
+                  className="w-6 h-6"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -157,9 +157,9 @@ const Profile: NextPage = () => {
           </Link>
           <Link href="/profile/favs">
             <a className="flex flex-col items-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-orange-400 text-white">
+              <div className="flex items-center justify-center text-white bg-orange-400 rounded-full h-14 w-14">
                 <svg
-                  className="h-6 w-6"
+                  className="w-6 h-6"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
