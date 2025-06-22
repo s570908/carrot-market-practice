@@ -3,21 +3,21 @@ import client from '@libs/client/client';
 import { withApiSession } from '@libs/server/withSession';
 import withHandler from '@libs/server/withHandler';
 
-// 엔드포인트 패턴 추출 함수
-// 웹 푸시 구독 엔드포인트에서 고유 식별자를 제외한 기본 패턴을 추출하는 기능을 합니다.
-function getEndpointPattern(endpoint: string): string {
-  try {
-    // FCM 패턴
-    if (endpoint.includes('/fcm/send/')) {
-      return endpoint.split('/fcm/send/')[0] + '/fcm/send/';
-    } 
-    // 일반 URL 패턴
-    const url = new URL(endpoint);
-    return `${url.protocol}//${url.hostname}${url.pathname.split('/').slice(0, -1).join('/')}/`;
-  } catch (e) {
-    return endpoint;
-  }
-}
+// // 엔드포인트 패턴 추출 함수
+// // 웹 푸시 구독 엔드포인트에서 고유 식별자를 제외한 기본 패턴을 추출하는 기능을 합니다.
+// function getEndpointPattern(endpoint: string): string {
+//   try {
+//     // FCM 패턴
+//     if (endpoint.includes('/fcm/send/')) {
+//       return endpoint.split('/fcm/send/')[0] + '/fcm/send/';
+//     } 
+//     // 일반 URL 패턴
+//     const url = new URL(endpoint);
+//     return `${url.protocol}//${url.hostname}${url.pathname.split('/').slice(0, -1).join('/')}/`;
+//   } catch (e) {
+//     return endpoint;
+//   }
+// }
 
 async function handler(
   req: NextApiRequest,
@@ -63,7 +63,7 @@ async function handler(
     }
 
     try {
-      const endpointPattern = getEndpointPattern(endpointValue);
+      //const endpointPattern = getEndpointPattern(endpointValue);
       
       // 기존 구독 검색 (정확한 엔드포인트)
       const existingSubscription = await client.pushSubscription.findFirst({

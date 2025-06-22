@@ -304,18 +304,81 @@ self.addEventListener("push", (event) => {
   }
 });
 
-// 알림 클릭 이벤트
+// 알림 클릭 이벤트 - 간소화된 버전
 self.addEventListener("notificationclick", (event) => {
   // 사용자가 클릭했을 때만 알림 닫기
   event.notification.close();
 
   if (event.action === "view" && event.notification.data) {
     const data = event.notification.data;
-    if (data.url) {
-      event.waitUntil(clients.openWindow(data.url));
-    } else {
-      event.waitUntil(clients.openWindow("/"));
-    }
+    console.log("[Service Worker] 알림 클릭:", data);
+
+    // 클릭한 알림의 URL
+    const urlToOpen = data.url || "/";
+
+    event.waitUntil(
+      clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true
+      }).then(clientList => {
+        console.log("[Service Worker] 열린 클라이언트 수:", clientList.length);
+        
+        // 1. 동일한 URL을 가진 탭 찾기
+        const matchingClients = clientList.filter(client => {
+          const clientUrl = new URL(client.url);
+          const targetUrl = new URL(urlToOpen, self.location.origin);
+          
+          console.log("[Service Worker] URL 비교:", {
+            client: clientUrl.pathname,
+            target: targetUrl.pathname,
+            match: clientUrl.pathname === targetUrl.pathname
+          });
+          
+          return clientUrl.pathname === targetUrl.pathname;
+        });
+        
+        // 동일한 URL을 가진 탭이 있으면 해당 탭으로 포커스
+        if (matchingClients.length > 0) {
+          console.log("[Service Worker] 동일한 URL의 탭 발견:", matchingClients[0].url);
+          return matchingClients[0].focus();
+        }
+        
+        // 2. 동일한 URL의 탭이 없으면 새 탭 열기
+        console.log("[Service Worker] 새 탭 열기:", urlToOpen);
+        return clients.openWindow(urlToOpen);
+      })
+    );
+  } else if (event.action === "close") {
+    console.log("[Service Worker] 알림 닫기 버튼 클릭");
+  } else {
+    // 알림 영역 클릭 (액션 버튼 아님)
+    const data = event.notification.data || {};
+    const urlToOpen = data.url || "/";
+    
+    console.log("[Service Worker] 알림 영역 클릭, 데이터:", data);
+
+    // 알림 영역 클릭 시에도 동일한 로직 적용
+    event.waitUntil(
+      clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true
+      }).then(clientList => {
+        // 동일한 URL을 가진 탭 찾기
+        const matchingClients = clientList.filter(client => {
+          const clientUrl = new URL(client.url);
+          const targetUrl = new URL(urlToOpen, self.location.origin);
+          return clientUrl.pathname === targetUrl.pathname;
+        });
+        
+        // 동일한 URL을 가진 탭이 있으면 해당 탭으로 포커스
+        if (matchingClients.length > 0) {
+          return matchingClients[0].focus();
+        }
+        
+        // 동일한 URL의 탭이 없으면 새 탭 열기
+        return clients.openWindow(urlToOpen);
+      })
+    );
   }
 });
 

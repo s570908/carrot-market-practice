@@ -1,0 +1,185 @@
+// libs/client/pushUtils.ts
+import { subscribePush } from '@/apiLibs/push';
+
+// Base64 문자열을 Uint8Array로 변환하는 유틸리티 함수
+export function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding)
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+/**
+ * 푸시 구독을 초기화하고 서버와 동기화하는 함수
+ * 
+ * 다음 세 가지 상황에서 재구독 처리를 수행합니다:
+ * 1. 서비스 워커가 없는 경우: 브라우저 재시작이나 데이터 삭제로 서비스 워커 등록이 사라졌을 때
+ * 2. 푸시 구독이 없는 경우: 사용자가 알림 권한을 취소했다가 다시 허용한 경우 등
+ * 3. 서버에서 구독이 유효하지 않은 경우: 만료(EXPIRED)나 비활성(INACTIVE) 상태로 표시된 경우
+ */
+export async function initializePushSubscription(): Promise<PushSubscription | null> {
+  // 브라우저 환경 및 기능 지원 여부 확인
+  if (typeof window === "undefined" || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+    console.warn("Push notifications are not supported in this environment");
+    return null;
+  }
+
+  try {
+    // 서비스 워커 등록 또는 기존 등록 확인
+    let registration = await navigator.serviceWorker.getRegistration();
+    
+    // 1. 서비스 워커가 없는 경우: 브라우저 재시작이나 데이터 삭제로 서비스 워커 등록이 사라졌을 때
+    if (!registration) {
+      console.log("Registering new service worker...");
+      registration = await navigator.serviceWorker.register('/service-worker.js');
+      console.log("Service worker registered successfully");
+    }
+    
+    // 서비스 워커가 준비될 때까지 대기
+    await navigator.serviceWorker.ready;
+
+    if (!registration) {
+      throw new Error("Service worker registration failed");
+    }
+
+    // 기존 푸시 구독 확인
+    let subscription = await registration.pushManager.getSubscription();
+
+    // 2. 푸시 구독이 없는 경우: 사용자가 알림 권한을 취소했다가 다시 허용한 경우 등
+    if (!subscription) {
+      // 새로운 푸시 구독 생성
+      const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      if (!publicKey) {
+        throw new Error("VAPID public key is not configured");
+      }
+
+      console.log("Creating new push subscription...");
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+    }
+
+    // 구독 정보를 서버에 전송
+    const subscriptionData = {
+      endpoint: subscription.endpoint,
+      p256dh: btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('p256dh')!))),
+      auth: btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('auth')!))),
+      browserId: navigator.userAgent,
+    };
+
+    await subscribePush(subscriptionData);
+    console.log("Push subscription initialized successfully");
+
+    return subscription;
+  } catch (error) {
+    console.error("Failed to initialize push subscription:", error);
+    return null;
+  }
+}
+
+// 서버에 구독 유효성 확인 요청
+import { verifyPushSubscription } from '@/apiLibs/push';
+
+/**
+ * 서버에 구독 유효성을 확인하는 함수
+ * 서비스워커나 구독이 없으면 false 반환, 서버에 유효한지 확인하여 결과 반환
+ */
+export async function checkSubscriptionWithServer(): Promise<boolean> {
+  try {
+    // 공통 유틸리티 함수 사용하여 중복 로직 제거
+    const { registration, subscription } = await getCurrentRegistrationAndSubscription();
+    if (!registration || !subscription) return false;
+    
+    // apiLibs/push.ts의 함수 사용하여 응답 객체 가져오기
+    const result = await verifyPushSubscription(subscription.endpoint);
+    return result.isValid;
+  } catch (error) {
+    console.error('Error checking subscription with server:', error);
+    return false;
+  }
+}
+
+/**
+ * 구독 상태를 확인하고 필요시 재생성하는 함수
+ * 
+ * 다음 세 가지 상황에서 푸시 구독을 재생성합니다:
+ * 1. 서비스 워커 등록이 없는 경우
+ * 2. 푸시 구독 객체가 없는 경우  
+ * 3. 서버에서 구독이 유효하지 않다고 응답한 경우(이 경우 기존 구독을 해제 후 재생성)
+ */
+export async function checkAndRefreshPushSubscriptionEnhanced(): Promise<void> {
+  try {
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (!registration) {
+      await initializePushSubscription();
+      return;
+    }
+    const subscription = await registration.pushManager.getSubscription();
+    if (!subscription) {
+      await initializePushSubscription();
+      return;
+    }    // 3. 서버에서 구독이 유효하지 않은 경우(EXPIRED/INACTIVE 등)
+    const isValidOnServer = await checkSubscriptionWithServer();
+    if (!isValidOnServer) {
+      console.log("Server reports subscription is invalid, recreating...");
+      await subscription.unsubscribe();  // 기존 구독 해제
+      await initializePushSubscription(); // 새 구독 생성
+    }
+  } catch (error) {
+    console.error('Error in enhanced subscription check:', error);
+  }
+}
+
+/**
+ * 현재 브라우저의 서비스 워커 등록과 푸시 구독을 가져오는 유틸리티 함수
+ * @returns 서비스 워커 등록과 푸시 구독 (없으면 null)
+ */
+export async function getCurrentRegistrationAndSubscription(): Promise<{
+  registration: ServiceWorkerRegistration | null;
+  subscription: PushSubscription | null;
+}> {
+  if (typeof window === "undefined" || !('serviceWorker' in navigator)) {
+    return { registration: null, subscription: null };
+  }
+  
+  try {
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (!registration) {
+      return { registration: null, subscription: null };
+    }
+    
+    const subscription = await registration.pushManager.getSubscription();
+    return { 
+      registration, 
+      subscription: subscription || null 
+    };
+  } catch (error) {
+    console.error('Error getting registration and subscription:', error);
+    return { registration: null, subscription: null };
+  }
+}
+
+// 주기적 모니터링 및 포커스 시 확인
+export function startPushSubscriptionMonitoring(): void {
+  if (typeof window === 'undefined') return;
+  // 앱 시작 시 한 번 확인
+  checkAndRefreshPushSubscriptionEnhanced();
+  // 포커스 시 확인
+  window.addEventListener('focus', () => {
+    checkAndRefreshPushSubscriptionEnhanced();
+  });
+  // 5분마다 주기적으로 확인
+  const intervalId = setInterval(() => {
+    checkAndRefreshPushSubscriptionEnhanced();
+  }, 5 * 60 * 1000);
+  window.addEventListener('beforeunload', () => {
+    clearInterval(intervalId);
+  });
+}

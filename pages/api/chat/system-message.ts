@@ -3,10 +3,13 @@ import client from "@libs/client/client";
 import { MessageType } from "@prisma/client";
 import withHandler, { ResponseType } from "@libs/server/withHandler";
 import { withApiSession } from "@libs/server/withSession";
+import { NextApiResponseServerIo } from '@/types/types';
+
+const workspace = "market";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<ResponseType>
+  res: NextApiResponseServerIo
 ) {
   if (req.method !== "POST") {
     return res.status(405).json({ ok: false, error: "Method not allowed" });
@@ -69,10 +72,38 @@ async function handler(
       }
     });
 
+    // 소켓으로 채팅 메시지 전송 (수정된 부분)
+    if (res?.socket?.server?.io) {
+      try {
+        const channel = `/ws-${workspace}-${chatRoomId}`;
+        
+        // 소켓 이벤트로 전송할 메시지 데이터 구성
+        const socketPayload = {
+          chatRoomId: Number(chatRoomId),
+          message: systemMessage  // 전체 시스템 메시지 객체 전송
+        };
+        
+        // 이벤트 이름을 "message"로 변경
+        res?.socket?.server?.io?.of(`ws-${workspace}`).to(channel).emit("message", socketPayload);
+        
+        // 더 상세한 로그 추가
+        console.log(`소켓 이벤트 전송 완료 [${new Date().toISOString()}]: 
+          - 채널: ${channel}
+          - 이벤트 타입: message
+          - 메시지 ID: ${systemMessage.id}
+          - 메시지 타입: ${MessageType.SYSTEM}
+          - 메시지 내용: ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}
+          - 채팅방 ID: ${chatRoomId}`);
+      } catch (socketError) {
+        console.error("소켓 이벤트 전송 실패:", socketError);
+      }
+    } else {
+      console.warn("소켓 서버가 초기화되지 않았습니다. 소켓 이벤트를 전송할 수 없습니다.");
+    }
+
     return res.status(200).json({ 
       ok: true, 
       systemMessage
-      // 필요한 모든 정보는 이미 meta에 포함되어 있음
     });
   } catch (error) {
     console.error("Error creating system message:", error);
@@ -86,3 +117,4 @@ export default withApiSession(
     handler,
   })
 );
+

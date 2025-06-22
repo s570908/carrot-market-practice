@@ -10,6 +10,7 @@ import { getChatRoomIDs } from "apiLibs/chatRooms";
 import { ChatRoomType } from "apiLibs/atypes";
 import PushNotificationService from "@components/PushNotificationService";
 import { useRouter } from "next/router";
+import AppInitializer from "@/components/AppInitializer";
 
 // QueryClient 생성
 const queryClient = new QueryClient({
@@ -91,6 +92,7 @@ function AppContent({ Component, pageProps }: AppProps & { pageProps: CustomPage
   return (
     <div className="w-full max-w-xl mx-auto">
       <Component {...pageProps} />
+      <AppInitializer />
       <ToastContainer
         position="top-center"
         autoClose={3000}

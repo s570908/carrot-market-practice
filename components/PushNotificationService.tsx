@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { getVapidKey, subscribePush } from '@/apiLibs/push';
 import { getMe } from '@/apiLibs/users';
 import { useRouter } from 'next/router';
+import { urlBase64ToUint8Array } from '@/libs/client/pushUtils';
+
 
 // 서비스 워커 등록 및 푸시 구독 관리 컴포넌트
 const PushNotificationService = () => {
@@ -50,31 +52,6 @@ const PushNotificationService = () => {
   
   const user = userData;
   // 사용자 정보 객체 추출 (로그인된 경우에만 존재)
-
-  // Base64 문자열을 Uint8Array로 변환하는 유틸리티 함수
-  const urlBase64ToUint8Array = (base64String: string) => {
-    // VAPID 공개 키를 브라우저에서 사용할 수 있는 형태로 변환
-    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-    // Base64 패딩 문자 추가 (Base64는 4의 배수 길이여야 함)
-    
-    const base64 = (base64String + padding)
-      .replace(/-/g, '+')    // URL-safe Base64의 '-'를 표준 Base64의 '+'로 변환
-      .replace(/_/g, '/');   // URL-safe Base64의 '_'를 표준 Base64의 '/'로 변환
-      
-    const rawData = window.atob(base64);
-    // Base64 문자열을 바이너리 문자열로 디코딩
-    
-    const outputArray = new Uint8Array(rawData.length);
-    // 결과를 저장할 Uint8Array 생성
-    
-    for (let i = 0; i < rawData.length; ++i) {
-      outputArray[i] = rawData.charCodeAt(i);
-      // 각 문자의 ASCII 코드를 배열에 저장
-    }
-    
-    return outputArray;
-    // VAPID 키로 사용할 수 있는 Uint8Array 반환
-  };
 
   // 서비스 워커 등록 및 활성화 함수 (기존 _app.tsx 코드와 통합)
   const registerServiceWorker = async () => {
@@ -168,6 +145,7 @@ const PushNotificationService = () => {
         // 서비스 워커가 푸시 알림을 처리하기 위해 필요
 
         // 3. 알림 권한 요청 - UI 피드백 개선
+        
         if (Notification.permission === 'default') {
           // 사용자가 아직 알림 권한에 대해 응답하지 않은 상태
           alert(

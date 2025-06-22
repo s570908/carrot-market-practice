@@ -524,6 +524,7 @@ const TimeDisplaySection = ({
           {/* 오전/오후 버튼 */}
           <div className="ml-2 flex h-16 flex-col">
             <button
+              type="button"
               onClick={() => {
                 setIsAmSelected(true);
                 console.log("오전 Clicked!!---tempTime: ", tempTime);
@@ -550,6 +551,7 @@ const TimeDisplaySection = ({
               오전
             </button>
             <button
+              type="button"
               onClick={() => {
                 setIsAmSelected(false);
                 console.log("오후 Clicked!!---tempTime.hour: ", tempTime.hour);

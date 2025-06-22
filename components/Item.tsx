@@ -23,7 +23,7 @@ const defaultImageUrl =
 const Item = ({ title, id, price, hearts, photo, comments, isLike, date, status }: ItemProps) => {
   return (
     <Link href={`/products/${id}`}>
-      <a className="flex cursor-pointer justify-between px-4 pt-5">
+      <a className="flex justify-between px-4 pt-5 cursor-pointer">
         <div className="flex space-x-4">
           <ImgComponent
             width={80}
@@ -60,7 +60,7 @@ const Item = ({ title, id, price, hearts, photo, comments, isLike, date, status 
             {isLike ? (
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
+                className="w-4 h-4"
                 viewBox="0 0 20 20"
                 fill="currentColor"
               >
@@ -72,7 +72,7 @@ const Item = ({ title, id, price, hearts, photo, comments, isLike, date, status 
               </svg>
             ) : (
               <svg
-                className="h-4 w-4"
+                className="w-4 h-4"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -91,7 +91,7 @@ const Item = ({ title, id, price, hearts, photo, comments, isLike, date, status 
           {comments && (
             <div className="flex items-center space-x-0.5 text-sm  text-gray-600">
               <svg
-                className="h-4 w-4"
+                className="w-4 h-4"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"

@@ -383,8 +383,8 @@ const TimeDisplaySection = ({
 
   return (
     <>
-      <div className="mb-8 flex h-16 items-start">
-        <div className="flex h-full w-full items-start justify-between gap-1">
+      <div className="flex items-start h-16 mb-8">
+        <div className="flex items-start justify-between w-full h-full gap-1">
           {/* 시간 입력/표시 */}
           {inputMode === "clock" ? (
             <span
@@ -454,7 +454,7 @@ const TimeDisplaySection = ({
             </div>
           )}
 
-          <span className="flex h-16 items-center text-4xl">:</span>
+          <span className="flex items-center h-16 text-4xl">:</span>
 
           {/* 분 입력/표시 */}
           {inputMode === "clock" ? (
@@ -522,8 +522,9 @@ const TimeDisplaySection = ({
           )}
 
           {/* 오전/오후 버튼 */}
-          <div className="ml-2 flex h-16 flex-col">
+          <div className="flex flex-col h-16 ml-2">
             <button
+              type="button"
               onClick={() => {
                 setIsAmSelected(true);
                 console.log("오전 Clicked!!---tempTime: ", tempTime);
@@ -550,6 +551,7 @@ const TimeDisplaySection = ({
               오전
             </button>
             <button
+              type="button"
               onClick={() => {
                 setIsAmSelected(false);
                 console.log("오후 Clicked!!---tempTime.hour: ", tempTime.hour);

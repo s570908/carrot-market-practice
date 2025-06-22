@@ -166,6 +166,7 @@ const TimePickerModal: React.FC<TimePickerModalProps> = ({
           {/* 하단 컨트롤 */}
           <div className="flex items-center justify-between border-gray-100">
             <button
+              type="button"
               onClick={handleInputModeToggle}
               className="py-2 pl-0 pr-2 text-gray-500 transition-colors hover:text-gray-700"
             >

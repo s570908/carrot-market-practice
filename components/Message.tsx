@@ -4,20 +4,28 @@ import ImgComponent from "@components/ImgComponent";
 import TimeFormat from "@components/TimeFormat";
 import RegDate from "@components/RegDate";
 import gravatar from "gravatar";
-import { useState } from "react"; 
+import { useState } from "react";
 import dayjs from "dayjs";
-import 'dayjs/locale/ko'; // Import Korean locale
+import 'dayjs/locale/ko'; // 한국어 로케일
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 import { useAwaitableModal } from "@libs/client/useAwaitableModal";
 import AppointmentModal from "./AppointmentModal";
 import { MessageType } from "@prisma/client";
+import AppointmentEditModal from "./AppointmentEditModal";
+
+// dayjs 설정 추가 (타임존 지원)
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.locale('ko');
 
 interface MessageAction {
   type: "link" | "button";
   label: string;
   value: string;
   onClick?: () => void;
-  disabled?: boolean; // 새로 추가된 속성
-  tooltip?: string;   // 새로 추가된 속성
+  disabled?: boolean;
+  tooltip?: string;
 }
 
 interface MessageProps {
@@ -36,6 +44,7 @@ interface MessageProps {
   };
   messageType?: MessageType; // 메시지 타입 추가
   actions?: MessageAction[];
+  chatRoomId?: number; // 채팅방 ID 속성
 }
 
 export default function Message({
@@ -46,31 +55,43 @@ export default function Message({
   date,
   isAppointment = false,
   appointmentData,
-  messageType = MessageType.USER, // 기본값 설정
+  messageType = MessageType.USER,
   actions,
+  chatRoomId, // 채팅방 ID prop 사용
 }: MessageProps) {
 
-  // // 메시지가 '약속을 만들었어요'인 경우에만 로그 출력
-  // if (message === '약속을 만들었어요') {
-  //   console.log("Message.tsx--props (약속 메시지):", {
-  //     message,
-  //     reversed,
-  //     name,
-  //     avatar,
-  //     date,
-  //     isAppointment,
-  //     appointmentData,
-  //     messageType,
-  //     actions
-  //   });
-  // }
-  
+  //console.log('Message.tsx--chatRoomId:', chatRoomId)
+
+  // AppointmentEditModal에 채팅방 ID 직접 전달
   const { openModal: openAppointmentModal, renderModal: renderAppointmentModal } = useAwaitableModal(
-    (modal, params) => <AppointmentModal modal={modal} params={params} />
+    (modal, params) => <AppointmentEditModal 
+      modal={modal} 
+      params={params} 
+      chatRoomId={chatRoomId || 0} // 채팅방 ID 전달 (없으면 0 사용)
+    />
   );
+
+  // 시간을 한국 시간대로 변환하고 포맷팅하는 함수
+  const formatKoreanTime = (date: Date | string | undefined) => {
+    if (!date) return { date: "", time: "" };
+    
+    // UTC 시간을 한국 시간대로 변환
+    const koreanDate = dayjs(date).tz("Asia/Seoul");
+    
+    return {
+      date: koreanDate.format("M월 D일 (ddd)"),
+      time: koreanDate.format("A h:mm") // 오전/오후 h:mm 형식
+    };
+  };
 
   const handleShowAppointment = async () => {
     if (!appointmentData) return;
+    
+    // 채팅방 ID 검증
+    if (!chatRoomId) {
+      console.warn("채팅방 ID가 없습니다. 약속 생성이 실패할 수 있습니다.");
+    }
+    
     await openAppointmentModal({
       appointmentTime: appointmentData.appointmentTime,
       place: appointmentData.place,
@@ -180,6 +201,11 @@ export default function Message({
     );
   }
 
+  // 약속 정보가 있는 경우 한국 시간으로 변환하여 표시
+  const appointmentDateTime = appointmentData?.appointmentTime 
+    ? formatKoreanTime(appointmentData.appointmentTime)
+    : { date: "", time: "" };
+
   return (
     <>
       {renderAppointmentModal()}
@@ -230,18 +256,10 @@ export default function Message({
               {isAppointment && appointmentData && (
                 <div className="pt-2 mt-2 border-t border-gray-200">
                   <div className="text-xs">
-                    <span className="font-semibold">날짜:</span> {
-                      dayjs(appointmentData.appointmentTime)
-                        .locale('ko')
-                        .format("M월 D일 (ddd)")
-                    }
+                    <span className="font-semibold">날짜:</span> {appointmentDateTime.date}
                   </div>
                   <div className="text-xs">
-                    <span className="font-semibold">시간:</span> {
-                      dayjs(appointmentData.appointmentTime)
-                        .locale('ko')
-                        .format("A h:mm")
-                    }
+                    <span className="font-semibold">시간:</span> {appointmentDateTime.time}
                   </div>
                   <div className="text-xs">
                     <span className="font-semibold">장소:</span> {appointmentData.place}

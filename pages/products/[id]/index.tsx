@@ -410,7 +410,7 @@ const ItemDetail: NextPage = () => {
       chatRoom.buyer.id === reservationData?.reserve?.user?.id
   );
 
-  console.log("chatRoomCount: ", chatRoomCount);
+  //console.log("chatRoomCount: ", chatRoomCount);
 
   return (
     <Layout

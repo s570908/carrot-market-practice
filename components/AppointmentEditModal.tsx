@@ -1,0 +1,575 @@
+//import useAwaitableModal from "@libs/client/useAwaitableModal";
+import MapModal from "./MapModal";
+import MapViewer from "@components/MapViewer";
+import React, { useState, useEffect, useRef } from "react";
+import DatePicker from "@components/DatePicker";
+import TimePicker from "./TimePicker-kkh";
+import { useAwaitableModal } from "@/libs/client/useAwaitableModal";
+import dayjs from "dayjs";
+import "dayjs/locale/ko"; // 한국어 로케일 추가 - 필수
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+import AlarmTimeSelector from "./AlarmTimeSelector";
+import { validatealarmTime } from '@/libs/utils';
+import useUser from "@/libs/client/useUser";
+import { TmapAddressInfo } from "@/types";
+import type { ModalAPI } from "@/libs/client/useAwaitableModal";
+import { useMutation } from "@tanstack/react-query"; // React Query import 추가
+import { toast } from "react-toastify"; // Toast 알림을 위한 import
+//import { initializePushSubscription } from "@libs/client/pushUtils";
+
+// API 유형과 함수 임포트
+import { 
+  ChatMeetupParams, 
+  ChatMeetupResponse 
+} from "@/apiLibs/atypes";
+import { 
+  writeChatMeetup, 
+  writeSystemMessage, 
+  SYSTEM_MESSAGES,
+  createAlarmSettings 
+} from "@/apiLibs/chats";
+import { initializePushSubscription } from "@/libs/client/pushUtils";
+
+interface AppointmentEditModalProps {
+  modal: ModalAPI;
+  params: {
+    appointmentTime: Date;
+    place: string;
+    latitude: number;
+    longitude: number;
+  };
+  chatRoomId: number; // 추가
+}
+
+// dayjs 설정 - 컴포넌트 외부로 이동
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.locale("ko");
+dayjs.tz.setDefault("Asia/Seoul");
+
+export default function AppointmentEditModal({
+  modal,
+  params,
+  chatRoomId,
+}: AppointmentEditModalProps) {
+  const { user, isLoading: isUserLoading } = useUser();
+  
+  // 사용자 로딩 상태와 유효성 확인
+  const [isUserAvailable, setIsUserAvailable] = useState(false);
+  
+  useEffect(() => {
+    if (user && user.id) {
+      setIsUserAvailable(true);
+    } else if (!isUserLoading) {
+      setIsUserAvailable(false);
+    }
+  }, [user, isUserLoading]);
+
+  // useMutation 훅 설정 - useChatMeetup 대신 사용
+  const { mutate: createMeetup, status, isPending, reset } = useMutation<
+    ChatMeetupResponse, 
+    Error, 
+    ChatMeetupParams
+  >({
+    mutationFn: writeChatMeetup, // 약속 생성 및 약속 메시지 생성
+    onSuccess: async (responseData) => {
+      try {
+        console.log("약속 생성 성공:", responseData);
+        if (responseData.chatMeetup?.appointmentTime) {
+          // 시스템 메시지 추가 - 일반 생성 메시지
+          try {
+            // 이 시스템 메시지로 채팅창에서 다음의 UI를 만든다.
+            // 예: 약속이 생성되었습니다. (5월 27일 오후 7:28)
+            await writeSystemMessage({
+              chatRoomId: chatRoomId,
+              message: SYSTEM_MESSAGES.APPOINTMENT_CREATED(responseData.chatMeetup.appointmentTime),
+              userId: user?.id,
+            });
+          } catch (systemMessageError) {
+            console.error("시스템 메시지 생성 실패:", systemMessageError);
+          }
+          // 알림 설정 및 관련 메시지 처리
+          if (responseData.chatMeetup?.alarmTime && responseData.message?.id) {
+            try {
+              const appointmentTime = new Date(responseData.chatMeetup.appointmentTime);
+              const triggerAt = calculateTriggerTime(appointmentTime, responseData.chatMeetup.alarmTime);
+              const utcTriggerAt = new Date(triggerAt.toISOString());
+              await createAlarmSettings({
+                chatId: chatRoomId,
+                messageId: responseData.message.id,
+                alarmTime: responseData.chatMeetup.alarmTime,
+                triggerAt: utcTriggerAt.toISOString(),
+                disableAlarm: false
+              });
+              // 약속 생성 후 푸시 구독 상태 자동 갱신 시도 (만료된 구독 자동 복구)
+              try {
+                await initializePushSubscription();
+              } catch (pushError) {
+                console.warn("푸시 구독 자동 갱신 실패:", pushError);
+              }
+              console.log("알람 설정 완료 (알림 메시지 안내 없이)");
+            } catch (alarmError) {
+              console.error("알람 설정 중 오류 발생:", alarmError);
+              toast?.error?.("알람 설정에 실패했습니다. 채팅방에서 다시 설정해주세요.");              
+            }
+          }
+        }
+        toast?.success?.("약속이 생성되었습니다!");
+        
+        // 모달만 닫기 (모달 컨텍스트이므로 router.back()은 사용하지 않음)
+        modal.closeWithResult({ success: true });
+        reset(); // 상태 초기화
+      } catch (error) {
+        console.error("약속 생성 후처리 중 전체 오류 발생:", error);
+        toast?.error?.("약속은 생성되었으나 일부 기능에 문제가 발생했습니다.");
+        modal.closeWithResult({ success: true, withError: true });
+        reset(); // 상태 초기화
+      }
+    },
+    onError: (error) => {
+      console.error("약속 생성 중 오류 발생:", error);
+      alert("약속 생성에 실패했습니다.");
+      reset(); // 상태 초기화
+    }
+  });
+
+  // 로딩 및 오류 상태
+  const isLoading = isUserLoading || isPending;
+  const isDisabled = isLoading || !isUserAvailable || !user;
+  
+  //console.log("AppointmentEditModal--params:", params);
+
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [location, setLocation] = useState<string>(params.place);
+  const [alarmTime, setAlarmTime] = useState("30분 전");
+  
+  const [selectedLocationByAddressInfo, setSelectedLocationByAddressInfo] = useState<{
+    latitude: number;
+    longitude: number;
+    addressInfo: TmapAddressInfo;
+    selectedAddress: string | null;
+    locationName: string;
+  } | null>({
+    latitude: params.latitude,
+    longitude: params.longitude,
+    addressInfo: {} as TmapAddressInfo, // 기본값으로 빈 객체
+    selectedAddress: params.place,
+    locationName: params.place,
+  });
+
+  const selectedLocation = selectedLocationByAddressInfo;
+  //console.log("AppointmentEditModal--selectedLocation:", selectedLocation);
+
+  const { openModal: openMapModal, renderModal } = useAwaitableModal((modal, params) => {
+    // console.log("MapModal renderModal called with params:", params);
+    // console.log("modal.isVisible:", modal.isVisible);
+    
+    return (
+      <MapModal
+        isOpen={modal.isVisible}
+        initialLocation={params}
+        onClose={() => modal.closeWithResult(null)}
+        onLocationSelectAddressInfo={(
+          latitude: number,
+          longitude: number,
+          addressInfo: TmapAddressInfo | null,
+          selectedAddress: string | null
+        ) => modal.closeWithResult({ latitude, longitude, addressInfo, selectedAddress })}
+      />
+    );
+  });
+
+  // 트리거 시간 계산 함수 (create.tsx에서 가져옴)
+  const calculateTriggerTime = (appointmentTime: Date, alarmTime: string) => {
+    const triggerTime = new Date(appointmentTime);
+    
+    switch (alarmTime) {
+      case "10분 전": triggerTime.setMinutes(triggerTime.getMinutes() - 10); break;
+      case "30분 전": triggerTime.setMinutes(triggerTime.getMinutes() - 30); break;
+      case "1시간 전": triggerTime.setHours(triggerTime.getHours() - 1); break;
+      case "1일 전": triggerTime.setDate(triggerTime.getDate() - 1); break;
+    }
+    
+    return triggerTime;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // 사용자 정보 확인
+    if (!isUserAvailable || !user || !user.id) {
+      alert("사용자 정보를 찾을 수 없습니다. 다시 로그인해주세요.");
+      return;
+    }
+    
+    // chatRoomId 확인 - 필수 필드 검증
+    if (!chatRoomId) {
+      console.error("채팅방 ID가 없습니다.");
+      alert("채팅방 정보를 찾을 수 없습니다. 다시 시도해주세요.");
+      return;
+    }
+
+    // 현재 값들 가져오기 (변경되지 않았으면 원본 값 사용)
+    console.log("handleSubmit--params.appointmentTime 타입:", typeof params.appointmentTime);
+    console.log("handleSubmit--params.appointmentTime 값:", params.appointmentTime);
+
+    // 현재 값들 가져오기 (변경되지 않았으면 원본 값 사용)
+    console.log("handleSubmit--params.appointmentTime 타입:", typeof params.appointmentTime);
+    console.log("handleSubmit--params.appointmentTime 값:", params.appointmentTime);
+
+    // 날짜 객체 확인 및 변환 보장
+    let appointmentTimeDate = params.appointmentTime;
+    // 만약 문자열이라면 Date 객체로 변환
+    if (typeof appointmentTimeDate === 'string') {
+      appointmentTimeDate = new Date(appointmentTimeDate);
+    }
+    
+    // 유효한 Date 객체 확인
+    // 유효한 Date 객체 확인
+    if (!(appointmentTimeDate instanceof Date) || isNaN(appointmentTimeDate.getTime())) {
+      console.error("Invalid appointmentTime:", appointmentTimeDate, " 현재 날짜로 대체합니다.");
+      // 현재 날짜로 대체
+      // 현재 날짜로 대체
+      appointmentTimeDate = new Date();
+    }
+    
+    // 타입 및 시간대 분석을 위한 디버깅 로그 추가
+    // 1. API 백업 값의 타입과 형식 확인
+    const backupDate = formatDateToString(appointmentTimeDate); // YYYY-MM-DD 형식
+    console.log("API 백업 날짜:", backupDate, "타입:", typeof backupDate);
+    
+    const backupTime = getKoreanTimeString(appointmentTimeDate); // HH:mm 형식
+    console.log("API 백업 시간:", backupTime, "타입:", typeof backupTime);
+    
+    // 2. 사용자 입력 값의 타입과 형식 확인
+    console.log("사용자 입력 날짜:", date, "타입:", typeof date); 
+    console.log("사용자 입력 시간:", time, "타입:", typeof time);
+    
+    // API 요청용 표준 형식 날짜와 시간 (YYYY-MM-DD, HH:MM)
+    const finalDate = date || backupDate;
+    const finalTime = time || backupTime;
+    
+    console.log("최종 날짜:", finalDate, "타입:", typeof finalDate);
+    console.log("최종 시간:", finalTime, "타입:", typeof finalTime);
+    
+    const finalLocation = selectedLocationByAddressInfo || {
+      latitude: params.latitude,
+      longitude: params.longitude,
+      selectedAddress: params.place,
+    };
+
+    // 유효성 검사
+    if (!finalDate) {
+      alert("날짜를 선택해주세요.");
+      return;
+    }
+
+    if (!finalTime) {
+      alert("시간을 선택해주세요.");
+      return;
+    }
+
+    if (!finalLocation) {
+      alert("장소를 선택해주세요.");
+      return;
+    }
+
+    // 날짜와 시간을 결합하여 Date 객체 생성
+    try {
+      // 형식 검증
+      if (!finalDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        console.warn(`날짜 형식이 잘못되었습니다: ${finalDate}`);
+      }
+      
+      if (!finalTime.match(/^\d{2}:\d{2}$/)) {
+        console.warn(`시간 형식이 잘못되었습니다: ${finalTime}`);
+      }
+      
+      // 날짜와 시간 결합
+      const localDateTimeStr = `${finalDate}T${finalTime}`;
+      console.log("날짜+시간 문자열:", localDateTimeStr);
+      console.log("날짜+시간 문자열:", localDateTimeStr);
+      
+      // 명시적으로 한국 시간대로 처리 후 Date 객체로 변환
+      const localDateTimeDayjs = dayjs.tz(localDateTimeStr, "Asia/Seoul");
+      console.log("Dayjs로 변환 (한국시간):", localDateTimeDayjs.format());
+      
+      const localDateTime = localDateTimeDayjs.toDate();
+      console.log("변환된 Date 객체:", localDateTime);
+      console.log("ISO 문자열:", localDateTime.toISOString());
+      console.log("변환된 Date 객체:", localDateTime);
+      console.log("ISO 문자열:", localDateTime.toISOString());
+      
+      // 현재 시간 (브라우저의 로컬 시간)
+      const now = new Date();
+
+      // 최종 알림 시간 결정 로직
+      let finalalarmTime = alarmTime;
+
+      // 약속시간이 과거인 경우 메시지 수정
+      if (localDateTime < now) {
+        const proceed = confirm(
+          "선택하신 약속 시간이 이미 지났습니다.\n그래도 새로운 약속을 생성하시겠습니까?\n\n(과거의 약속에는 알림이 설정되지 않습니다)"
+        );
+        if (!proceed) return;
+        finalalarmTime = "알림 없이 생성";
+      } 
+      // 미래 시간이지만 현재 알림 시간이 유효하지 않은 경우 메시지 수정
+      else if (alarmTime !== "알림 없이 생성") {
+        const { isValid } = validatealarmTime(localDateTime, alarmTime);
+        if (!isValid) {
+          console.log(`현재 설정된 알림 시간 "${alarmTime}"이 유효하지 않아 "알림 없이 생성"으로 변경됩니다.`);
+          console.log(`현재 설정된 알림 시간 "${alarmTime}"이 유효하지 않아 "알림 없이 생성"으로 변경됩니다.`);
+          const proceed = confirm(`현재 약속 시간으로는 "${alarmTime}" 알림을 설정할 수 없습니다.\n알림 없이 새 약속을 생성하시겠습니까?`);
+          if (!proceed) return;
+          finalalarmTime = "알림 없이 생성";
+        }
+      }
+
+      const newAppointmentData = {
+        chatRoomId: Number(chatRoomId), // 명시적으로 숫자로 변환
+        appointmentTime: localDateTime,
+        place: finalLocation.selectedAddress ?? location,
+        locationLatitude: finalLocation.latitude,
+        locationLongitude: finalLocation.longitude,
+        alarmTime: finalalarmTime === "알림 없이 생성" ? null : finalalarmTime,
+      };
+      
+      console.log("API 요청 데이터 전체:", newAppointmentData);
+      console.log("API 요청 전 chatRoomId 확인:", newAppointmentData.chatRoomId, typeof newAppointmentData.chatRoomId);
+      console.log("API 요청 JSON:", JSON.stringify(newAppointmentData, null, 2));
+      
+      if (!newAppointmentData.chatRoomId) {
+        throw new Error("채팅방 ID가 없어 약속을 생성할 수 없습니다.");
+      }
+      
+      // React Query의 useMutation으로 약속 생성 API 호출
+      createMeetup(newAppointmentData);
+      
+    } catch (error) {
+      console.error("약속 생성 중 오류 발생:", error);
+      alert(error instanceof Error ? error.message : "약속 생성에 실패했습니다. 다시 시도해주세요.");
+    }
+  };
+  
+  const handleLocationIconClick = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    try {
+      console.log("handleLocationIconClick openMapModal 호출 - selectedLocation:", selectedLocation);
+      const result = await openMapModal(selectedLocation);
+      console.log("handleLocationIconClick MapModal result:", result);
+      
+      if (result) {
+        const { latitude, longitude, addressInfo, selectedAddress, locationName } = result;
+        setSelectedLocationByAddressInfo({
+          latitude,
+          longitude,
+          addressInfo,
+          selectedAddress,
+          locationName,
+        });
+        // location input도 함께 업데이트
+        setLocation(selectedAddress || locationName || "");
+      }
+    } catch (error) {
+      console.error("Error opening modal:", error);
+    }
+  };
+
+  const handleCancel = () => {
+    reset();
+    modal.closeWithResult(null);
+  };
+
+  // 날짜를 "M월 D일 요일" 형식의 한국어 문자열로 변환하는 함수
+  const formatDateToKoreanDay = (date: Date | null): string => {
+    // 유효한 Date 객체가 아니면 빈 문자열 반환
+    if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+      return "";
+    }
+    
+    // dayjs를 사용해 한국 시간대로 변환 및 포맷팅
+    try {
+      return dayjs(date).tz("Asia/Seoul").format("M월 D일 dddd");
+    } catch (error) {
+      console.error("날짜 포맷팅 오류:", error);
+      return "";
+    }
+  };
+  
+  // 시간을 "오전/오후 HH시 MM분" 형식의 한국어 문자열로 변환하는 함수
+  const formatDateToKoreanTime = (date: Date | null): string => {
+    // 유효한 Date 객체가 아니면 빈 문자열 반환
+    if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+      return "";
+    }
+    
+    // dayjs를 사용해 한국 시간대와 한국어 로케일로 변환 및 포맷팅
+    try {
+      // 한국어 로케일은 이미 설정되어 있으므로(dayjs.locale("ko"))
+      // a 포맷을 사용하면 한글로 '오전'/'오후' 표시됨
+      return dayjs(date).tz("Asia/Seoul").format("a h시 mm분");
+    } catch (error) {
+      console.error("시간 포맷팅 오류:", error);
+      return "";
+    }
+  };
+
+  // params.appointmentTime을 한국시간 HH:MM 형식으로 변환
+  const getKoreanTimeString = (date: Date | null | undefined): string => {
+    // 문자열이라면 Date 객체로 변환
+    let dateObj: Date | null = null;
+    
+    if (typeof date === 'string') {
+      dateObj = new Date(date);
+    } else if (date instanceof Date) {
+      dateObj = date;
+    } else if (params.appointmentTime instanceof Date) {
+      dateObj = params.appointmentTime;
+    } else if (typeof params.appointmentTime === 'string') {
+      dateObj = new Date(params.appointmentTime);
+    } else {
+      dateObj = new Date();
+    }
+    
+    if (!dateObj || isNaN(dateObj.getTime())) {
+      console.warn("유효하지 않은 날짜 객체. 현재 시간을 사용합니다.");
+      dateObj = new Date();
+    }
+    
+    try {
+      // dayjs를 사용해 한국 시간대로 변환하고 HH:MM 형식으로 추출
+      return dayjs(dateObj).tz("Asia/Seoul").format("HH:mm");
+    } catch (error) {
+      console.error("Error converting date to Korean time:", error);
+      return dayjs().tz("Asia/Seoul").format("HH:mm"); // 현재 시간 반환
+    }
+  };
+
+  // 현재 약속 시간을 Date 객체로 변환하는 함수
+  const getCurrentAppointmentTime = (): Date => {
+    // 날짜나 시간이 변경되었다면 새로운 Date 객체 생성
+    if (date || time) {
+      const baseDate = date ? new Date(date) : new Date(params.appointmentTime);
+      if (time) {
+        const [hours, minutes] = time.split(':').map(Number);
+        baseDate.setHours(hours, minutes, 0, 0);
+      }
+      return baseDate;
+    }
+    
+    // 변경사항이 없다면 원본 appointmentTime 사용 (문자열이면 Date로 변환)
+    const appointmentTime = typeof params.appointmentTime === 'string' 
+      ? new Date(params.appointmentTime) 
+      : params.appointmentTime;
+    
+    return appointmentTime;
+  };
+
+  // 날짜를 YYYY-MM-DD 형식의 문자열로 변환하는 함수 (한국 시간대 기준)
+  const formatDateToString = (date: Date | null): string => {
+    if (!date || !(date instanceof Date) || isNaN(date.getTime())) return "";
+    // UTC ISO 문자열 대신 한국 시간대 기준으로 변환
+    return dayjs(date).tz("Asia/Seoul").format("YYYY-MM-DD");
+  };
+
+  return (
+    <>
+    {renderModal()}
+    <div className="fixed inset-0 z-40 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black opacity-50" onClick={() => modal.closeWithResult(null)}></div>
+      <div className="z-10 w-full max-w-md p-6 bg-white rounded-lg shadow-xl">
+        <h2 className="mb-5 text-lg font-medium text-center">새로운 약속 만들기</h2>
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <DatePicker 
+                value={params.appointmentTime ? formatDateToString(new Date(params.appointmentTime)) : ''} 
+                onChange={(newDate) => setDate(newDate)} 
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <TimePicker 
+                value={getKoreanTimeString(params.appointmentTime)}
+                onChange={(timeStr: string) => {
+                  if (timeStr) {
+                    setTime(timeStr);
+                  }
+                }}
+              />
+            </div>
+            <div>
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-orange-500 focus:border-orange-500"
+                  required
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 bg-transparent p-0.5"
+                  onClick={handleLocationIconClick}
+                  tabIndex={-1}
+                  aria-label="장소 검색"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 21c-4.418 0-8-4.03-8-9a8 8 0 1116 0c0 4.97-3.582 9-8 9z" />
+                    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" fill="none"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="w-full mt-4 overflow-hidden rounded-lg shadow-md">
+              <MapViewer
+                lat={selectedLocationByAddressInfo?.latitude || params.latitude}
+                lng={selectedLocationByAddressInfo?.longitude || params.longitude}
+                height="500px"
+                width="100%"
+                zoomLevel={15}
+                name={selectedLocationByAddressInfo?.selectedAddress || params.place}
+                containerClassName="w-full"
+              />
+            </div>
+
+            <AlarmTimeSelector
+              value={alarmTime}
+              onChange={setAlarmTime}
+              appointmentTime={getCurrentAppointmentTime()}
+            />
+          </div>
+
+          <div className="flex gap-3 mt-6">
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="flex-1 py-2 font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
+            >
+              취소
+            </button>
+            <button
+              type="submit"
+              disabled={isDisabled}
+              className="flex-1 py-2 font-medium text-white bg-orange-500 rounded-md hover:bg-orange-600 disabled:opacity-50"
+            >
+              {isUserLoading ? "사용자 정보 로딩 중..." : 
+               !isUserAvailable ? "로그인이 필요합니다" : 
+               status === "pending" ? "생성 중..." : "완료"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    </>
+  );
+}
+
+

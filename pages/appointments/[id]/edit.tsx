@@ -162,7 +162,7 @@ export default function EditAppointment() {
       setValue("title", appointment.title);
       setValue("description", appointment.description || "");
 
-      const dateObj = new Date(appointment.date);
+      const dateObj = new Date(appointment.startTime);
       const startTimeObj = new Date(appointment.startTime);
       const endTimeObj = new Date(appointment.endTime);
 
@@ -176,7 +176,7 @@ export default function EditAppointment() {
           locationName: appointment.locationTmap.locationName || "선택된 위치",
           latitude: appointment.locationTmap.latitude,
           longitude: appointment.locationTmap.longitude,
-          fullAddress: appointment.locationTmap.fullAddress,
+          fullAddress: appointment.locationTmap.selectedAddress,
           zoomLevel: appointment.locationTmap.zoomLevel || 15,
           addressInfo: (appointment.locationTmap as any).addressInfo ?? null,
         };
@@ -296,9 +296,8 @@ export default function EditAppointment() {
           location: {
             latitude: selectedLocationByAddressInfo.latitude,
             longitude: selectedLocationByAddressInfo.longitude,
-            //locationName: selectedLocationByAddressInfo.addressInfo?.buildingName || "선택된 위치",
-            //fullAddress: selectedLocationByAddressInfo.addressInfo?.fullAddress,
-            //zoomLevel: 15,
+            locationName: selectedLocationByAddressInfo.addressInfo?.buildingName || "선택된 위치",
+            selectedAddress: selectedLocationByAddressInfo.addressInfo?.fullAddress || "",
             addressInfo: selectedLocationByAddressInfo.addressInfo ?? null,
           },
         }

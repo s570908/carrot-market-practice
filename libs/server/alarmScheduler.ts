@@ -154,7 +154,7 @@ export async function scheduleAlarmById(alarmId: number, baseUrl: string) {
       chatMeetup: alarm.chatMeetup,
     };
 
-    console.log(`scheduleAlarm 직전: Scheduling alarm with meetup: ${JSON.stringify(alarmWithMeetup)}`);
+    console.log(`scheduleAlarm 직전: Scheduling alarm with meetup: ${JSON.stringify(alarmWithMeetup, null, 2)}`);
     scheduleAlarm(alarmWithMeetup, baseUrl);
     return true;
   }

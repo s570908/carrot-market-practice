@@ -5,7 +5,17 @@ module.exports = {
     "./components/**/*.{js,jsx,ts,tsx}", //어디서 사용할건지를 설정
   ],
   theme: {
-    extend: {},
+    extend: {
+      animation: {
+        shimmer: 'shimmer 2s infinite linear',
+      },
+      keyframes: {
+        shimmer: {
+          '0%': { transform: 'translateX(0%)' },
+          '100%': { transform: 'translateX(-50%)' },
+        },
+      },
+    },
   },
   darkMode: "class", // class, media
   plugins: [require("@tailwindcss/forms")], //npm i @tailwindcss/forms

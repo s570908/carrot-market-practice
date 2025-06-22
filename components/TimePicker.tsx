@@ -60,6 +60,7 @@ const TimePicker: React.FC<TimePickerProps> = ({ onChange, value }) => {
             {selectedTime || "시간 선택"}
           </span>
           <button
+            type="button"
             onClick={() => setIsOpen(!isOpen)}
             className="ml-2 text-gray-400 hover:text-gray-600"
           >

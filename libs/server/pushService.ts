@@ -1,6 +1,7 @@
 import webpush from 'web-push';
 import client from '@libs/client/client';
 import { PushSubscription, PushPayload } from '@/apiLibs/atypes'; // 중앙화된 타입 임포트
+import { PushSubscriptionStatus } from '@prisma/client';
 
 // VAPID 키 설정 
 // 실제 배포 시에는 .env 파일에서 환경 변수로 관리해야 합니다
@@ -50,6 +51,25 @@ export async function sendPushNotification(
     return { success: true };
   } catch (error) {
     console.error('Push notification error:', error);
+    // 410 Gone 처리: 구독 만료/삭제 시 DB에서 비활성화
+    if (error && typeof error === 'object' && 'statusCode' in error && error.statusCode === 410 && 'endpoint' in error) {
+      // endpoint로 구독 찾기
+      try {
+        const endpoint = typeof error.endpoint === 'string' ? error.endpoint : undefined;
+        if (endpoint) {
+          const dbSub = await client.pushSubscription.findFirst({ where: { endpoint } });
+          if (dbSub) {
+            await client.pushSubscription.update({
+              where: { id: dbSub.id },
+              data: { status: PushSubscriptionStatus.EXPIRED, updatedAt: new Date() }
+            });
+            console.log(`Subscription ${dbSub.id} marked as EXPIRED due to 410 Gone.`);
+          }
+        }
+      } catch (dbError) {
+        console.error('DB update error for expired subscription:', dbError);
+      }
+    }
     return { 
       success: false, 
       error: error instanceof Error ? error.message : 'Unknown error' 
@@ -60,11 +80,13 @@ export async function sendPushNotification(
 /**
  * 개별 사용자에게 푸시 알림 전송 함수
  */
-export async function sendPushNotificationToUser(userId: number, payload: PushPayload) {
-  try {
-    // 사용자 구독 정보 조회
+export async function sendPushNotificationToUser(userId: number, payload: PushPayload) {  try {
+    // 활성 상태인 사용자 구독 정보만 조회
     const subscriptions = await client.pushSubscription.findMany({
-      where: { userId }
+      where: { 
+        userId,
+        status: PushSubscriptionStatus.ACTIVE // enum 값 사용
+      }
     });
     
     if (!subscriptions.length) {
@@ -95,12 +117,32 @@ export async function sendPushNotificationToUser(userId: number, payload: PushPa
           }
         } catch (error) {
           console.error(`Push error for subscription ${subscription.id}:`, error);
-          
-          // statusCode 410 처리 - 이 경우는 구독이 더 이상 유효하지 않음을 의미합니다
-          if (isWebPushError(error) && error.statusCode === 410) {
-            await client.pushSubscription.delete({
-              where: { id: subscription.id }
+            // 구독 만료/취소 상태 처리
+          if (isWebPushError(error)) {
+            if (error.statusCode === 410) {
+            // 410 Gone: 구독이 만료되었거나 취소됨
+            console.log(`Subscription ${subscription.id} expired/cancelled, marking as EXPIRED`);
+            await client.pushSubscription.update({
+              where: { id: subscription.id },
+              data: { 
+                status: PushSubscriptionStatus.EXPIRED, // enum 사용
+                updatedAt: new Date()
+              }
             });
+            } else if (error.statusCode === 404) {
+              // 404 Not Found: 구독이 존재하지 않음
+            console.log(`Subscription ${subscription.id} not found, marking as INVALID`);
+            await client.pushSubscription.update({
+              where: { id: subscription.id },
+              data: { 
+                status: PushSubscriptionStatus.INVALID, // enum 사용
+                updatedAt: new Date()
+              }
+            });
+            } else if (error.statusCode === 413) {
+              // 413 Payload Too Large: 페이로드가 너무 큼
+              console.log(`Payload too large for subscription ${subscription.id}`);
+            }
           }
           
           return { success: false, error };

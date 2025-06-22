@@ -1451,6 +1451,7 @@ useEffect(() => {
                           ] 
                         : undefined  
                     }
+                    chatRoomId={id}
                   />
                 </div>
               );

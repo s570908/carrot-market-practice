@@ -440,6 +440,14 @@ model Friendship {
   @@index([friendId])
 }
 
+// PushSubscription 상태를 나타내는 enum 정의
+enum PushSubscriptionStatus {
+  ACTIVE    // 활성 구독
+  EXPIRED   // 만료된 구독 (410 Gone)
+  INVALID   // 잘못된 구독 (404 Not Found)
+  INACTIVE  // 사용자가 비활성화한 구독
+}
+
 // 푸시 구독 정보
 model PushSubscription {
   id        Int      @id @default(autoincrement())
@@ -451,6 +459,7 @@ model PushSubscription {
   auth      String   @db.Text
   browserId String? // 브라우저 ID (선택적 필드)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    PushSubscriptionStatus  @default(ACTIVE) // enum 사용
 
   @@index([userId])
   @@index([endpoint(length: 191)]) // Text 필드에 length 매개변수 추가

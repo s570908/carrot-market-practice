@@ -193,3 +193,66 @@ export function validateDateForCalendar(date: string | Date): Date {
 
   return parsedDate;
 }
+
+// 알림 시간 타입 정의
+export type AlarmTimeType = "10분 전" | "30분 전" | "1시간 전" | "1일 전" | "알림 없이 생성";
+
+// 트리거 시간 계산 함수
+export const calculateTriggerTime = (appointmentTime: Date, alarmTime: AlarmTimeType): Date => {
+  const triggerTime = new Date(appointmentTime);
+
+  switch (alarmTime) {
+    case "10분 전":
+      triggerTime.setMinutes(triggerTime.getMinutes() - 10);
+      break;
+    case "30분 전":
+      triggerTime.setMinutes(triggerTime.getMinutes() - 30);
+      break;
+    case "1시간 전":
+      triggerTime.setHours(triggerTime.getHours() - 1);
+      break;
+    case "1일 전":
+      triggerTime.setDate(triggerTime.getDate() - 1);
+      break;
+    case "알림 없이 생성":
+      return new Date();
+    default:
+      console.warn(`Unknown alarm time: ${alarmTime}`);
+      break;
+  }
+
+  return triggerTime;
+};
+
+  export const validatealarmTime = (appointmentTime: Date, alarmTime: string) => {
+    // 알림 없이 생성 옵션이면 항상 유효
+    if (alarmTime === "알림 없이 생성") {
+      return { isValid: true, timeDiffInMinutes: 0, alertTriggerTime: new Date() };
+    }
+
+    const now = new Date();
+    // 약속 시간과 현재 시간의 차이를 먼저 계산
+    const appointmentDiffInMinutes = Math.floor((appointmentTime.getTime() - now.getTime()) / (1000 * 60));
+
+    // 알림 시간(분)을 계산
+    let alertMinutesBefore = 0;
+    switch (alarmTime) {
+      case "10분 전": alertMinutesBefore = 10; break;
+      case "30분 전": alertMinutesBefore = 30; break;
+      case "1시간 전": alertMinutesBefore = 60; break;
+      case "1일 전": alertMinutesBefore = 1440; break; // 24시간 * 60분
+    }
+
+    // 알림이 가능한지 확인: 약속시간까지 남은 시간이 알림 시간보다 크거나 같아야 함
+    const isValid = appointmentDiffInMinutes >= alertMinutesBefore;
+
+    // 알림 발송 시간 계산
+    const alertTriggerTime = new Date(appointmentTime.getTime() - (alertMinutesBefore * 60 * 1000));
+    const timeDiffInMinutes = Math.floor((alertTriggerTime.getTime() - now.getTime()) / (1000 * 60));
+
+    return {
+      isValid,
+      timeDiffInMinutes,
+      alertTriggerTime
+    };
+  };

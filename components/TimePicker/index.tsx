@@ -58,7 +58,7 @@ const TimePicker: React.FC<TimePickerProps> = ({ value, onChange }) => {
   }, []);
 
   return (
-    <div className="flex w-full items-center justify-between">
+    <div className="flex items-center justify-between w-full">
       {renderModal()}
       <span className="font-medium text-gray-700">시간</span>
       <div className="flex items-center gap-1">
@@ -72,7 +72,7 @@ const TimePicker: React.FC<TimePickerProps> = ({ value, onChange }) => {
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5"
+            className="w-5 h-5"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
