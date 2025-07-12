@@ -51,6 +51,7 @@ import { ChatFormResponse, ChatWithUser } from "apiLibs/atypes";
 import { useAwaitableModal } from "@libs/client/useAwaitableModal";
 import { ProductWithImages } from "@/types";
 import ActionSheet from "@components/ActionSheet";
+import AppointmentEditModal from "@/components/AppointmentEditModal";
 
 type Option = {
   value: string;
@@ -162,17 +163,17 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
             //onClick={() => modal.closeWithError("backdrop_click")}
           />
           <div className="z-50">
-            <div className="w-96 rounded-lg bg-white p-4 text-base font-normal">
+            <div className="p-4 text-base font-normal bg-white rounded-lg w-96">
               <h4 className="mb-4">예약 중입니다. 예약자: {params.name} </h4>
               <h4 className="mb-4">예약취소 후 판매중으로 변경하시겠습니까?</h4>
               <button
-                className="rounded-lg bg-blue-500 px-4 py-2 text-white"
+                className="px-4 py-2 text-white bg-blue-500 rounded-lg"
                 onClick={() => modal.closeWithResult("selling")}
               >
                 변경
               </button>
               <button
-                className="ml-2 rounded-lg bg-gray-200 px-4 py-2 text-black"
+                className="px-4 py-2 ml-2 text-black bg-gray-200 rounded-lg"
                 onClick={() => modal.closeWithResult("keep")}
               >
                 예약유지
@@ -1155,7 +1156,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         throw new Error("약속 정보를 찾을 수 없습니다");
       }
 
-      // 약속 시간이 이미 지났는지 확인
+      // 약속 시간이 지났는지 확인
       const appointmentTime = new Date(
         appointmentMessage.chatMeetup.appointmentTime
       );
@@ -1252,7 +1253,19 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   });
   ProductStatusDisplay.displayName = "ProductStatusDisplay";
 
-  // 1. 최신 약속 정보를 가져오는 함수
+  // 약속 상세 모달 설정
+  const {
+    openModal: openAppointmentModal,
+    renderModal: renderAppointmentModal,
+  } = useAwaitableModal((modal, params) => (
+    <AppointmentEditModal
+      modal={modal}
+      params={params}
+      chatRoomId={id || 0} // 채팅방 ID 전달
+    />
+  ));
+
+  // 최신 약속 정보를 가져오는 함수
   const getLatestAppointment = useCallback(() => {
     if (!data?.sellerChat) return null;
 
@@ -1269,32 +1282,100 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     return latest;
   }, [data?.sellerChat]);
 
-  // 2. 한국 시간 포맷팅 함수
+  // 한국 시간 포맷팅 함수
   const formatAppointmentTime = (dateTime: string | Date) => {
     const koreanDate = dayjs(dateTime).tz("Asia/Seoul");
     return koreanDate.format("M월 D일 HH:mm"); // 예: "5월 27일 14:30"
   };
 
   // 더 상세한 시간 포맷팅 (선택사항)
-  const formatDetailedAppointmentTime = (dateTime: string | Date) => {
+  // now를 인자로 받아 최신 시간 기준으로 계산
+  const formatDetailedAppointmentTime = (
+    dateTime: string | Date,
+    now: dayjs.Dayjs
+  ) => {
     const koreanDate = dayjs(dateTime).tz("Asia/Seoul");
-    const now = dayjs().tz("Asia/Seoul");
-
-    // 오늘인지 확인
     if (koreanDate.isSame(now, "day")) {
       return `오늘 ${koreanDate.format("HH:mm")}`;
     }
-
-    // 내일인지 확인
     if (koreanDate.isSame(now.add(1, "day"), "day")) {
       return `내일 ${koreanDate.format("HH:mm")}`;
     }
-
-    // 그 외의 경우
     return koreanDate.format("M월 D일 HH:mm");
   };
 
-  // 3. 약속 버튼 렌더링 함수
+  // 약속잡기 버튼의 날짜가 바뀌는 시점(자정)에만 now를 갱신하는 state
+  const [nowForAppointment, setNowForAppointment] = useState(() =>
+    dayjs().tz("Asia/Seoul")
+  );
+
+  // 테스트용 플래그와 분 설정을 상단에 추가하세요.
+  const TEST_MIDNIGHT_SIMULATION = false; // 테스트 시 true, 실제 운영 시 false
+  const TEST_MIDNIGHT_MINUTES = 1; // 1분 뒤를 "자정"으로 간주
+
+  useEffect(() => {
+    let diff: number;
+    const now = dayjs().tz("Asia/Seoul");
+    const nextMidnight = now.add(1, "day").startOf("day");
+    if (TEST_MIDNIGHT_SIMULATION) {
+      // 테스트: 5분 뒤를 "자정"으로 간주
+      diff = dayjs()
+        .add(TEST_MIDNIGHT_MINUTES, "minute")
+        .diff(dayjs(), "millisecond");
+    } else {
+      // 실제: 오늘 밤 12시(다음날 0시)까지 남은 ms
+      diff = nextMidnight.diff(now, "millisecond");
+    }
+
+    const timeout = setTimeout(() => {
+      setNowForAppointment(
+        TEST_MIDNIGHT_SIMULATION ? nextMidnight : dayjs().tz("Asia/Seoul")
+      );
+    }, diff);
+
+    return () => clearTimeout(timeout);
+  }, [nowForAppointment, TEST_MIDNIGHT_SIMULATION]);
+
+  // 약속 상세 모달 열기 함수 (Message.tsx의 handleShowAppointment와 동일)
+  const handleShowAppointmentDetail = async () => {
+    const latestAppointment = getLatestAppointment();
+
+    if (!latestAppointment?.chatMeetup) {
+      console.warn("약속 데이터가 없습니다.");
+      return;
+    }
+
+    // 채팅방 ID 검증
+    if (!id) {
+      console.warn("채팅방 ID가 없습니다. 약속 모달이 실패할 수 있습니다.");
+    }
+
+    try {
+      await openAppointmentModal({
+        appointmentTime: latestAppointment.chatMeetup.appointmentTime,
+        place: latestAppointment.chatMeetup.place,
+        latitude: latestAppointment.chatMeetup.locationLatitude || 0,
+        longitude: latestAppointment.chatMeetup.locationLongitude || 0,
+      });
+    } catch (error) {
+      console.error("약속 상세 모달 열기 실패:", error);
+    }
+  };
+
+  // 약속 버튼 클릭 핸들러 (조건에 따라 다른 동작)
+  const handleAppointmentButtonClick = async () => {
+    const latestAppointment = getLatestAppointment();
+
+    if (!latestAppointment?.chatMeetup) {
+      // 약속이 없으면 새 약속 생성 페이지로
+      handleAppointmentClick(); // 기존 함수 (약속 생성 페이지로 이동)
+    } else {
+      // 약속이 있으면 상세 모달 열기
+      await handleShowAppointmentDetail();
+    }
+  };
+
+  // 약속 버튼 렌더링 함수
   const renderAppointmentButton = () => {
     const latestAppointment = getLatestAppointment();
 
@@ -1302,7 +1383,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       // 약속이 없을 때 - 기본 약속잡기 버튼
       return (
         <div
-          className="text-md cursor-pointer rounded-md border border-black p-1"
+          className="p-1 border border-black rounded-md cursor-pointer text-md"
           onClick={handleAppointmentClick}
         >
           약속잡기
@@ -1312,21 +1393,35 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
     // 약속이 있을 때 - 약속 시간 표시
     const appointmentTime = latestAppointment.chatMeetup.appointmentTime;
-    // const formattedTime = formatAppointmentTime(appointmentTime);
-    const formattedTime = formatDetailedAppointmentTime(appointmentTime);
+    // 현재 시간을 state에서 가져와서 포맷팅 함수에 전달
+    const formattedTime = formatDetailedAppointmentTime(
+      appointmentTime,
+      nowForAppointment
+    );
+    const place = latestAppointment.chatMeetup.place;
+
+    // 약속이 지났는지 확인
+    const isPast = new Date(appointmentTime) < new Date();
 
     return (
       <div
-        className="text-md cursor-pointer rounded-md border border-blue-500 bg-blue-50 p-1 text-blue-700"
-        onClick={handleAppointmentClick} // 또는 약속 상세 보기 함수
+        className={`text-md cursor-pointer rounded-md border p-1 transition-colors ${
+          isPast
+            ? "border-gray-400 bg-gray-100 text-gray-600 hover:bg-gray-200"
+            : "border-blue-500 bg-blue-50 text-blue-700 hover:bg-blue-100"
+        }`}
+        onClick={handleAppointmentButtonClick}
+        title={`약속 상세보기\n${formattedTime}\n장소: ${place}`} // 툴팁
       >
         {formattedTime}
+        {/* {isPast && <span className="ml-1 text-xs">(완료)</span>} */}
       </div>
     );
   };
 
   return (
     <>
+      {renderAppointmentModal()} {/* 약속 상세 모달 렌더링 추가 */}
       {renderReservedModal()}
       <ActionSheet
         isOpen={alarmSheetOpen}
@@ -1365,9 +1460,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         backUrl={"back"}
       >
         <div className="relative h-full px-4 pb-12">
-          <div className="w-full max-w-xl border-b border-gray-200 bg-red-200 p-4">
+          <div className="w-full max-w-xl p-4 bg-red-200 border-b border-gray-200">
             <div
-              className="flex cursor-pointer items-center"
+              className="flex items-center cursor-pointer"
               onClick={() => {
                 router.push(`/products/${productId}`);
               }}
@@ -1414,17 +1509,18 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                 </div>
               </div>
             </div>
-            <div className="mt-2 flex flex-row justify-between">
+            <div className="flex flex-row justify-between mt-2">
               {/* <div
                 className="p-1 border border-black rounded-md cursor-pointer text-md"
                 onClick={handleAppointmentClick}
               >
                 약속잡기
               </div> */}
+              {/* 약속 버튼 - 동적으로 변경되고 클릭 시 모달 또는 페이지 이동 */}
               {renderAppointmentButton()}
               {isSellingAndConsumer && (
                 <div
-                  className="text-md cursor-pointer rounded-md border border-black p-1"
+                  className="p-1 border border-black rounded-md cursor-pointer text-md"
                   onClick={() => {
                     console.log("당근페이가 클릭되었습니다.");
                   }}
@@ -1434,7 +1530,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               )}
               {isSellingAndProvider && (
                 <div
-                  className="text-md cursor-pointer rounded-md border border-black p-1"
+                  className="p-1 border border-black rounded-md cursor-pointer text-md"
                   onClick={() => {
                     console.log("송금요청이 클릭되었습니다.");
                   }}
@@ -1444,7 +1540,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               )}
               {isSellingAndConsumer && (
                 <div
-                  className="text-md cursor-pointer rounded-md border border-black p-1"
+                  className="p-1 border border-black rounded-md cursor-pointer text-md"
                   onClick={() => {
                     console.log("물품추가가 클릭되었습니다.");
                   }}
@@ -1468,7 +1564,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                 {`${isProvider ? "판매" : "구매"} 후기 보내기`}
               </button>
               <div
-                className="text-md cursor-pointer rounded-md border border-black p-1"
+                className="p-1 border border-black rounded-md cursor-pointer text-md"
                 onClick={() => {
                   console.log("장소공유가 클릭 되었습니다.");
                 }}
@@ -1476,7 +1572,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                 장소공유
               </div>
               <div
-                className="text-md cursor-pointer rounded-md border border-black p-1"
+                className="p-1 border border-black rounded-md cursor-pointer text-md"
                 onClick={() => {
                   console.log("기타가 클릭 되었습니다.");
                 }}
@@ -1609,18 +1705,18 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                       messageRefs.current.delete(`${message.id}`);
                     }
                   }}
-                  className="border-b border-gray-200 p-4"
+                  className="p-4 border-b border-gray-200"
                 >
                   {/* 날짜 툴팁 */}
                   {showTooltip && tooltipDate && (
-                    <div className="fixed left-1/2 top-2 z-20 -translate-x-1/2 transform rounded-full bg-gray-600 bg-opacity-20 px-4 py-2 text-sm text-white">
+                    <div className="fixed z-20 px-4 py-2 text-sm text-white transform -translate-x-1/2 bg-gray-600 rounded-full left-1/2 top-2 bg-opacity-20">
                       {tooltipDate}
                     </div>
                   )}
                   {/* 날짜 변경 시 날짜 표시 */}
                   {showDate && (
-                    <div className="my-2 text-center text-sm text-white">
-                      <span className="rounded-full bg-gray-400 px-4">
+                    <div className="my-2 text-sm text-center text-white">
+                      <span className="px-4 bg-gray-400 rounded-full">
                         {dayjs(message.createdAt)
                           .locale("ko")
                           .format("YYYY년 MM월 DD일 dddd")}
@@ -1680,9 +1776,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
           <div>
             <form
               onSubmit={handleSubmit(onValid)}
-              className="mt-10 w-full border-t px-1 py-1"
+              className="w-full px-1 py-1 mt-10 border-t"
             >
-              <div className="relative w-full rounded-md bg-white px-2 py-2 outline-none">
+              <div className="relative w-full px-2 py-2 bg-white rounded-md outline-none">
                 <input
                   {...register("chatMsg", { required: true, maxLength: 80 })}
                   maxLength={80}
