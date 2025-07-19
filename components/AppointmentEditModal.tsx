@@ -22,6 +22,7 @@ import { toast } from "react-toastify"; // Toast 알림을 위한 import
 import { ChatMeetupParams, ChatMeetupResponse } from "@/apiLibs/atypes";
 import {
   writeChatMeetup,
+  updateChatMeetup,
   writeSystemMessage,
   SYSTEM_MESSAGES,
   createAlarmSettings,
@@ -35,6 +36,10 @@ interface AppointmentEditModalProps {
     place: string;
     latitude: number;
     longitude: number;
+    isPast?: boolean;
+    isSold?: boolean;
+    appointmentId?: number; // 기존 약속 수정 시 필요
+    isEditMode?: boolean; // 수정 모드 여부
   };
   chatRoomId: number; // 추가
 }
@@ -52,8 +57,45 @@ export default function AppointmentEditModal({
 }: AppointmentEditModalProps) {
   const { user, isLoading: isUserLoading } = useUser();
 
+  // 수정 모드 여부 확인
+  const isEditMode = params.isEditMode || !!params.appointmentId;
+
   // 사용자 로딩 상태와 유효성 확인
   const [isUserAvailable, setIsUserAvailable] = useState(false);
+
+  // 초기 약속 시간을 Date 객체로 변환
+  const getInitialAppointmentTime = () => {
+    const time = params.appointmentTime;
+    if (typeof time === "string") {
+      return new Date(time);
+    }
+    return time instanceof Date ? time : new Date();
+  };
+
+  // 초기값 저장 (수정 모드일 때만 변경사항 추적)
+  const [initialData] = useState(() => {
+    const appointmentTime = getInitialAppointmentTime();
+    return {
+      appointmentTime,
+      place: params.place,
+      latitude: params.latitude,
+      longitude: params.longitude,
+    };
+  });
+
+  // 현재 값들
+  const [currentData, setCurrentData] = useState(() => {
+    const appointmentTime = getInitialAppointmentTime();
+    return {
+      appointmentTime,
+      place: params.place,
+      latitude: params.latitude,
+      longitude: params.longitude,
+    };
+  });
+
+  // 변경사항 감지
+  const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
     if (user && user.id) {
@@ -63,12 +105,34 @@ export default function AppointmentEditModal({
     }
   }, [user, isUserLoading]);
 
+  // 변경사항 체크 (수정 모드일 때만)
+  useEffect(() => {
+    if (!isEditMode) {
+      setHasChanges(true); // 새 약속 생성 모드에서는 항상 활성화
+      return;
+    }
+
+    const isTimeChanged =
+      Math.abs(
+        currentData.appointmentTime.getTime() -
+          initialData.appointmentTime.getTime()
+      ) > 60000; // 1분 이상 차이
+
+    const isChanged =
+      isTimeChanged ||
+      currentData.place !== initialData.place ||
+      Math.abs(currentData.latitude - initialData.latitude) > 0.0001 ||
+      Math.abs(currentData.longitude - initialData.longitude) > 0.0001;
+
+    setHasChanges(isChanged);
+  }, [currentData, initialData, isEditMode]);
+
   // useMutation 훅 설정 - useChatMeetup 대신 사용
   const {
     mutate: createMeetup,
-    status,
-    isPending,
-    reset,
+    status: createStatus,
+    isPending: isCreatePending,
+    reset: resetCreate,
   } = useMutation<ChatMeetupResponse, Error, ChatMeetupParams>({
     mutationFn: writeChatMeetup, // 약속 생성 및 약속 메시지 생성
     onSuccess: async (responseData) => {
@@ -126,23 +190,96 @@ export default function AppointmentEditModal({
 
         // 모달만 닫기 (모달 컨텍스트이므로 router.back()은 사용하지 않음)
         modal.closeWithResult({ success: true });
-        reset(); // 상태 초기화
+        resetCreate(); // 상태 초기화
       } catch (error) {
         console.error("약속 생성 후처리 중 전체 오류 발생:", error);
         toast?.error?.("약속은 생성되었으나 일부 기능에 문제가 발생했습니다.");
         modal.closeWithResult({ success: true, withError: true });
-        reset(); // 상태 초기화
+        resetCreate(); // 상태 초기화
       }
     },
     onError: (error) => {
       console.error("약속 생성 중 오류 발생:", error);
       alert("약속 생성에 실패했습니다.");
-      reset(); // 상태 초기화
+      resetCreate(); // 상태 초기화
+    },
+  });
+
+  // 약속 수정 mutation
+  const {
+    mutate: updateMeetup,
+    status: updateStatus,
+    isPending: isUpdatePending,
+    reset: resetUpdate,
+  } = useMutation({
+    mutationFn: async (updateData: any) => {
+      // 약속 수정 API 호출 (구현 필요)
+      return await updateChatMeetup({
+        appointmentId: params.appointmentId!,
+        ...updateData,
+      });
+    },
+    onSuccess: async (responseData, variables) => {
+      try {
+        console.log("약속 수정 성공:", responseData);
+
+        // 변경사항 분석
+        const changes = [];
+        const timeChanged =
+          Math.abs(
+            variables.appointmentTime.getTime() -
+              initialData.appointmentTime.getTime()
+          ) > 60000;
+
+        if (timeChanged) {
+          changes.push(
+            `시간: ${dayjs(variables.appointmentTime).format("M월 D일 HH:mm")}`
+          );
+        }
+
+        if (variables.place !== initialData.place) {
+          changes.push(`장소: ${variables.place}`);
+        }
+
+        // 시스템 메시지 - 약속 변경
+        await writeSystemMessage({
+          chatRoomId: chatRoomId,
+          message: `약속이 변경되었습니다.\n${changes.join("\n")}`,
+          userId: user?.id,
+        });
+
+        // 사용자 메시지 - "약속을 변경하였습니다"
+        // 이 부분은 채팅방에서 처리하거나 별도 API 호출 필요
+
+        toast?.success?.("약속이 변경되었습니다!");
+        modal.closeWithResult({
+          success: true,
+          type: "update",
+          changes: {
+            timeChanged,
+            placeChanged: variables.place !== initialData.place,
+            locationChanged:
+              Math.abs(variables.latitude - initialData.latitude) > 0.0001 ||
+              Math.abs(variables.longitude - initialData.longitude) > 0.0001,
+          },
+        });
+        resetUpdate();
+      } catch (error) {
+        console.error("약속 수정 후처리 중 오류:", error);
+        toast?.error?.("약속은 수정되었으나 일부 기능에 문제가 발생했습니다.");
+        modal.closeWithResult({ success: true, withError: true });
+        resetUpdate();
+      }
+    },
+    onError: (error) => {
+      console.error("약속 수정 중 오류:", error);
+      alert("약속 수정에 실패했습니다.");
+      resetUpdate();
     },
   });
 
   // 로딩 및 오류 상태
-  const isLoading = isUserLoading || isPending;
+  const isLoading = isUserLoading || isCreatePending;
   const isDisabled = isLoading || !isUserAvailable || !user;
 
   //console.log("AppointmentEditModal--params:", params);
@@ -452,7 +589,7 @@ export default function AppointmentEditModal({
   };
 
   const handleCancel = () => {
-    reset();
+    resetCreate();
     modal.closeWithResult(null);
   };
 
@@ -547,6 +684,42 @@ export default function AppointmentEditModal({
     if (!date || !(date instanceof Date) || isNaN(date.getTime())) return "";
     // UTC ISO 문자열 대신 한국 시간대 기준으로 변환
     return dayjs(date).tz("Asia/Seoul").format("YYYY-MM-DD");
+  };
+
+  // 장소 변경 핸들러
+  const handlePlaceChange = (
+    newPlace: string,
+    newLat: number,
+    newLng: number
+  ) => {
+    setCurrentData((prev) => ({
+      ...prev,
+      place: newPlace,
+      latitude: newLat,
+      longitude: newLng,
+    }));
+  };
+
+  // 완료 버튼 클릭
+  const handleComplete = () => {
+    if (!hasChanges) {
+      modal.closeWithResult("no_changes");
+      return;
+    }
+
+    // 변경된 데이터와 함께 결과 반환
+    modal.closeWithResult({
+      type: "update",
+      data: currentData,
+      changes: {
+        timeChanged:
+          currentData.appointmentTime !== initialData.appointmentTime,
+        placeChanged: currentData.place !== initialData.place,
+        locationChanged:
+          currentData.latitude !== initialData.latitude ||
+          currentData.longitude !== initialData.longitude,
+      },
+    });
   };
 
   return (

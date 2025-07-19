@@ -49,45 +49,64 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     }
     // login user sells
     // 사려는 자에게 물건을 파는 경우 sale과 purchase를 만든다.
-    const saleProduct = await client.sale.create({
-      data: {
-        user: {
-          connect: {
-            id: user?.id,
-          },
-        },
-        product: {
-          connect: {
-            id: +id,
-          },
-        },
-      },
-    });
 
-    // buyer purchases
-    const purchaseProduct = await client.purchase.create({
-      data: {
-        user: {
-          connect: {
-            id: +buyerId,
+    try {
+      // 모든 데이터베이스 작업을 하나의 트랜잭션으로 처리
+      const [saleProduct, purchaseProduct, updatedProduct] = await client.$transaction(async (tx) => {
+        // 상품 상태 업데이트
+        const product = await tx.product.update({
+          where: { id: +id },
+          data: { status: Status.Sold },
+        });
+
+        // sale 생성 또는 업데이트 (upsert 사용)
+        const sale = await tx.sale.upsert({
+          where: {
+            productId: +id,
           },
-        },
-        product: {
-          connect: {
-            id: +id,
+          create: {
+            user: { connect: { id: user?.id } },
+            product: { connect: { id: +id } },
           },
-        },
-      },
-    });
-    const updatedProduct = await client.product.update({
-      where: {
-        id: +id,
-      },
-      data: {
-        status: Status.Sold, // this product has been sold.
-      },
-    });
-    res.json({ ok: true, updatedProduct, purchaseProduct, saleProduct });
+          update: {
+            user: { connect: { id: user?.id } },
+            // 아래 코드가 실행되면
+            ...(console.error(`[BUG] sale.upsert update 발생: productId=${id}, userId=${user?.id}, time=${new Date().toISOString()}`), {})
+          },
+        });
+
+        // purchase 생성 또는 업데이트
+        const purchase = await tx.purchase.upsert({
+          where: {
+            productId: +id,
+          },
+          create: {
+            user: { connect: { id: +buyerId } },
+            product: { connect: { id: +id } },
+          },
+          update: {
+            // update가 발생하면 버그 상황이므로 로그 남김
+            user: { connect: { id: +buyerId } },
+            ...(console.error(`[BUG] purchase.upsert update 발생: productId=${id}, buyerId=${buyerId}, time=${new Date().toISOString()}`), {})
+          },
+        });
+
+        return [sale, purchase, product];
+      });
+
+      return res.status(200).json({ 
+        ok: true, 
+        updatedProduct, 
+        purchaseProduct, 
+        saleProduct 
+      });
+    } catch (error) {
+      console.error("Transaction failed:", error);
+      return res.status(500).json({ 
+        ok: false, 
+        error: "거래 처리 중 오류가 발생했습니다." 
+      });
+    }
   }
   // if (req.method === "POST") {
   //   const {

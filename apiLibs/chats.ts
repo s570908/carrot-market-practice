@@ -44,6 +44,37 @@ export const writeSystemMessage = async ({ chatRoomId, message, userId, meta = {
   return response.data;
 };
 
+// 약속 수정 API 함수
+export async function updateChatMeetup(params: {
+  appointmentId: number;
+  appointmentTime?: Date;
+  place?: string;
+  locationLatitude?: number;
+  locationLongitude?: number;
+  alarmTime?: string | null;
+}) {
+  const response = await aclient.put<ChatMeetupResponse>(`/api/chat-meetups/${params.appointmentId}`, {
+    appointmentTime: params.appointmentTime,
+    place: params.place,
+    locationLatitude: params.locationLatitude,
+    locationLongitude: params.locationLongitude,
+    alarmTime: params.alarmTime,
+  });
+  return response.data;
+}
+
+// 약속 조회 API 함수
+export async function getChatMeetup(appointmentId: number) {
+  const response = await aclient.get<ChatMeetupResponse>(`/api/chat-meetups/${appointmentId}`);
+  return response.data;
+}
+
+// 약속 삭제 API 함수
+export async function deleteChatMeetup(appointmentId: number) {
+  const response = await aclient.delete(`/api/chat-meetups/${appointmentId}`);
+  return response.data;
+}
+
 /**
  * 시스템 메시지 템플릿 모음 (클라이언트에서 안전하게 사용 가능)
  */
