@@ -6,20 +6,20 @@ import 'dayjs/locale/ko'; // 한국어 로케일 추가
 
 // axios를 사용해 데이터를 가져오는 함수
 export async function getChat(id: number) {
-  const response = await aclient.get<ChatResponse>(`/api/chat/${id}`);
+  const response = await aclient.get<ChatResponse>(`/api/chatroom/${id}`);
   return response.data;
 }
 
 export async function writeChatMessage(params: { chatForm: ChatFormResponse; chatId: number }) {
   const { chatForm, chatId } = params;
-  const response = await aclient.post<ChatMessageResponse>(`/api/chat/${chatId}`, chatForm);
+  const response = await aclient.post<ChatMessageResponse>(`/api/chatroom/${chatId}`, chatForm);
   return response.data;
 }
 
 export async function getUnreadMessagesForUser() {
   try {
     // 세션에서 이미 인증된 사용자 정보를 서버가 사용하도록 수정
-    const response = await aclient.get(`/api/chat/unreadMessagesForUser`);
+    const response = await aclient.get(`/api/chatroom/unreadMessagesForUser`);
     return response.data;
   } catch (error) {
     console.error("Error fetching unread messages:", error);
@@ -27,15 +27,15 @@ export async function getUnreadMessagesForUser() {
   }
 }
 
-// Updated ChatMeetup creation API function
+// ChatMeetup creation API function
 export async function writeChatMeetup(params: ChatMeetupParams) {
   // 약속 생성 + 약속 메시지 생성 API 호출
-  const response = await aclient.post<ChatMeetupResponse>('/api/chat-meetups', params);
+  const response = await aclient.post<ChatMeetupResponse>(`/api/chatroom/${params.chatRoomId}/meetups`, params);
   return response.data;
 }
 
 export const writeSystemMessage = async ({ chatRoomId, message, userId, meta = {} }: SystemMessageParams) => {
-  const response = await aclient.post<SystemMessageResponse>('/api/chat/system-message', {
+  const response = await aclient.post<SystemMessageResponse>('/api/chatroom/system-message', {
     chatRoomId,
     message,
     userId,
@@ -46,14 +46,15 @@ export const writeSystemMessage = async ({ chatRoomId, message, userId, meta = {
 
 // 약속 수정 API 함수
 export async function updateChatMeetup(params: {
-  appointmentId: number;
+  chatRoomId: number;
+  chatMeetupId: number;
   appointmentTime?: Date;
   place?: string;
   locationLatitude?: number;
   locationLongitude?: number;
   alarmTime?: string | null;
 }) {
-  const response = await aclient.put<ChatMeetupResponse>(`/api/chat-meetups/${params.appointmentId}`, {
+  const response = await aclient.post<ChatMeetupResponse>(`/api/chatroom/${params.chatRoomId}/meetsups/${params.chatMeetupId}`, {
     appointmentTime: params.appointmentTime,
     place: params.place,
     locationLatitude: params.locationLatitude,
@@ -65,7 +66,7 @@ export async function updateChatMeetup(params: {
 
 // 약속 조회 API 함수
 export async function getChatMeetup(appointmentId: number) {
-  const response = await aclient.get<ChatMeetupResponse>(`/api/chat-meetups/${appointmentId}`);
+  const response = await aclient.get<ChatMeetupResponse>(`/api/chatroom/${appointmentId}`);
   return response.data;
 }
 
@@ -74,6 +75,30 @@ export async function deleteChatMeetup(appointmentId: number) {
   const response = await aclient.delete(`/api/chat-meetups/${appointmentId}`);
   return response.data;
 }
+
+// 약속 + 변경 메시지 생성 API 함수
+// export async function updateChatMeetupWithMessage(params: {
+//   appointmentId: number;
+//   chatRoomId: number;
+//   appointmentTime?: Date;
+//   place?: string;
+//   locationLatitude?: number;
+//   locationLongitude?: number;
+//   alarmTime?: string | null;
+//   userId?: number;
+// }) {
+//   // 약속 수정 + 변경 메시지 생성 API 호출
+//   const response = await aclient.put<ChatMeetupResponse>(`/api/chat-meetups/${params.appointmentId}/with-message`, {
+//     chatRoomId: params.chatRoomId,
+//     appointmentTime: params.appointmentTime,
+//     place: params.place,
+//     locationLatitude: params.locationLatitude,
+//     locationLongitude: params.locationLongitude,
+//     alarmTime: params.alarmTime,
+//     userId: params.userId,
+//   });
+//   return response.data;
+// }
 
 /**
  * 시스템 메시지 템플릿 모음 (클라이언트에서 안전하게 사용 가능)
@@ -94,6 +119,24 @@ export const SYSTEM_MESSAGES = {
       return `약속이 생성되었습니다.`;
     }
   },
+  // 약속 변경 시스템 메시지
+  APPOINTMENT_UPDATED: (time: Date, changes?: string[]) => {
+    try {
+      const dateTime = dayjs(time);
+      const baseMessage = `약속이 변경되었습니다. (${dateTime.locale('ko').format('M월 D일 A h:mm')})`;
+      
+      if (changes && changes.length > 0) {
+        return `${baseMessage}\n\n변경사항:\n${changes.join('\n')}`;
+      }
+      
+      return baseMessage;
+    } catch (err) {
+      console.error("Error parsing date:", err);
+      return `약속이 변경되었습니다.`;
+    }
+  },
+  // 약속 취소 시스템 메시지
+  APPOINTMENT_CANCELLED: () => `약속이 취소되었습니다.`,
   APPOINTMENT_ALERT: (alarmTime: string, chatMeetupId: number, appointmentMessageId?: number) => ({
     message: `약속시간 ${alarmTime}에 알림이 울릴 거예요`,
     meta: {
@@ -110,7 +153,7 @@ export const SYSTEM_MESSAGES = {
 // 기존 알람 설정을 조회하는 함수
 export const getAlarmSettings = async (chatId: number, messageId: number) => {
   try {
-    const response = await aclient.get(`/api/chat/${chatId}/alarm-settings/${messageId}`);
+    const response = await aclient.get(`/api/chatroom/${chatId}/alarm-settings/${messageId}`);
     return response.data;
   } catch (error) {
     // 404 에러는 설정이 없다는 의미이므로 정상 처리
@@ -132,7 +175,7 @@ export const createAlarmSettings = async (params: {
   console.log("createAlarmSettings params:", params);
   
   // POST 방식으로 새로운 알람 생성
-  const response = await aclient.post(`/api/chat/${params.chatId}/alarm-settings`, {
+  const response = await aclient.post(`/api/chatroom/${params.chatId}/alarm-settings`, {
     messageId: params.messageId,
     alarmTime: params.alarmTime,
     triggerAt: params.triggerAt,
@@ -152,7 +195,7 @@ export const writeAlarmSettings = async (params: {
   console.log("writeAlarmSettings params:", params);
   
   // PUT 방식으로 upsert (있으면 업데이트, 없으면 생성)
-  const response = await aclient.put(`/api/chat/${params.chatId}/alarm-settings`, {
+  const response = await aclient.put(`/api/chatroom/${params.chatId}/alarm-settings`, {
     messageId: params.messageId,
     alarmTime: params.alarmTime,
     triggerAt: params.triggerAt,
@@ -172,7 +215,7 @@ export const updateAlarmSettings = async (params: {
   console.log("updateAlarmSettings params:", params);
   
   // PATCH 방식으로 부분 업데이트
-  const response = await aclient.patch(`/api/chat/${params.chatId}/alarm-settings/${params.messageId}`, {
+  const response = await aclient.patch(`/api/chatroom/${params.chatId}/alarm-settings/${params.messageId}`, {
     alarmTime: params.alarmTime,
     triggerAt: params.triggerAt,
     disableAlarm: params.disableAlarm,
@@ -182,6 +225,6 @@ export const updateAlarmSettings = async (params: {
 
 // 알람 설정을 삭제하는 함수
 export const deleteAlarmSettings = async (chatId: number, messageId: number) => {
-  const response = await aclient.delete(`/api/chat/${chatId}/alarm-settings/${messageId}`);
+  const response = await aclient.delete(`/api/chatroom/${chatId}/alarm-settings/${messageId}`);
   return response.data;
 };

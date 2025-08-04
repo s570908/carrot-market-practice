@@ -1,7 +1,7 @@
 //import useAwaitableModal from "@libs/client/useAwaitableModal";
 import MapModal from "./MapModal";
 import MapViewer from "@components/MapViewer";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import DatePicker from "@components/DatePicker";
 import TimePicker from "./TimePicker-kkh";
 import { useAwaitableModal } from "@/libs/client/useAwaitableModal";
@@ -22,12 +22,15 @@ import { toast } from "react-toastify"; // Toast 알림을 위한 import
 import { ChatMeetupParams, ChatMeetupResponse } from "@/apiLibs/atypes";
 import {
   writeChatMeetup,
+  // updateChatMeetupWithMessage,
   updateChatMeetup,
   writeSystemMessage,
   SYSTEM_MESSAGES,
   createAlarmSettings,
+  getChatMeetup,
 } from "@/apiLibs/chats";
 import { initializePushSubscription } from "@/libs/client/pushUtils";
+import useSocket from "@/libs/client/useSocket";
 
 interface AppointmentEditModalProps {
   modal: ModalAPI;
@@ -42,6 +45,7 @@ interface AppointmentEditModalProps {
     isEditMode?: boolean; // 수정 모드 여부
   };
   chatRoomId: number; // 추가
+  chatUsername: string;
 }
 
 // dayjs 설정 - 컴포넌트 외부로 이동
@@ -54,11 +58,14 @@ export default function AppointmentEditModal({
   modal,
   params,
   chatRoomId,
+  chatUsername,
 }: AppointmentEditModalProps) {
   const { user, isLoading: isUserLoading } = useUser();
+  const [socket] = useSocket("market");
 
   // 수정 모드 여부 확인
   const isEditMode = params.isEditMode || !!params.appointmentId;
+  const isAppointmentUpdate = !isEditMode && hasExistingAppointment;
 
   // 사용자 로딩 상태와 유효성 확인
   const [isUserAvailable, setIsUserAvailable] = useState(false);
@@ -94,8 +101,178 @@ export default function AppointmentEditModal({
     };
   });
 
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [location, setLocation] = useState<string>(params.place);
+  const [alarmTime, setAlarmTime] = useState("30분 전");
   // 변경사항 감지
   const [hasChanges, setHasChanges] = useState(false);
+
+  const [selectedLocationByAddressInfo, setSelectedLocationByAddressInfo] =
+    useState<{
+      latitude: number;
+      longitude: number;
+      addressInfo: TmapAddressInfo;
+      selectedAddress: string | null;
+      locationName: string;
+    } | null>({
+      latitude: params.latitude,
+      longitude: params.longitude,
+      addressInfo: {} as TmapAddressInfo, // 기본값으로 빈 객체
+      selectedAddress: params.place,
+      locationName: params.place,
+    });
+
+  // 기존 약속 존재 여부를 확인하는 상태 추가
+  const [hasExistingAppointment, setHasExistingAppointment] = useState(false);
+  const [existingAppointmentCount, setExistingAppointmentCount] = useState(0);
+
+  // params.appointmentTime을 한국시간 HH:MM 형식으로 변환
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const getKoreanTimeString = (date: Date | null | undefined): string => {
+    // 문자열이라면 Date 객체로 변환
+    let dateObj: Date | null = null;
+
+    if (typeof date === "string") {
+      dateObj = new Date(date);
+    } else if (date instanceof Date) {
+      dateObj = date;
+    } else if (params.appointmentTime instanceof Date) {
+      dateObj = params.appointmentTime;
+    } else if (typeof params.appointmentTime === "string") {
+      dateObj = new Date(params.appointmentTime);
+    } else {
+      dateObj = new Date();
+    }
+
+    if (!dateObj || isNaN(dateObj.getTime())) {
+      console.warn("유효하지 않은 날짜 객체. 현재 시간을 사용합니다.");
+      dateObj = new Date();
+    }
+
+    try {
+      // dayjs를 사용해 한국 시간대로 변환하고 HH:MM 형식으로 추출
+      return dayjs(dateObj).tz("Asia/Seoul").format("HH:mm");
+    } catch (error) {
+      console.error("Error converting date to Korean time:", error);
+      return dayjs().tz("Asia/Seoul").format("HH:mm"); // 현재 시간 반환
+    }
+  };
+
+  // 날짜를 YYYY-MM-DD 형식의 문자열로 변환하는 함수 (한국 시간대 기준)
+  const formatDateToString = (date: Date | null): string => {
+    if (!date || !(date instanceof Date) || isNaN(date.getTime())) return "";
+    // UTC ISO 문자열 대신 한국 시간대 기준으로 변환
+    return dayjs(date).tz("Asia/Seoul").format("YYYY-MM-DD");
+  };
+
+  // 컴포넌트 마운트 시 기존 약속 개수 확인
+  useEffect(() => {
+    const checkExistingAppointments = async () => {
+      try {
+        // 채팅 데이터에서 기존 약속 개수 확인
+        const chatData = await getChatMeetup(chatRoomId);
+
+        if (chatData?.sellerChat) {
+          // chatMeetup이 있는 메시지들의 개수 확인
+          const appointmentMessages = chatData.sellerChat.filter(
+            (message: any) => message.chatMeetup && message.chatMeetup.id
+          );
+
+          const appointmentCount = appointmentMessages.length;
+          setExistingAppointmentCount(appointmentCount);
+          setHasExistingAppointment(appointmentCount > 0);
+
+          console.log("기존 약속 개수 확인:", {
+            count: appointmentCount,
+            hasExisting: appointmentCount > 0,
+            appointments: appointmentMessages.map((msg) => ({
+              id: msg.chatMeetup.id,
+              time: msg.chatMeetup.appointmentTime,
+              place: msg.chatMeetup.place,
+            })),
+          });
+        }
+      } catch (error) {
+        console.error("기존 약속 확인 중 오류:", error);
+        // 오류 시 안전하게 기존 약속이 없다고 가정
+        setHasExistingAppointment(false);
+        setExistingAppointmentCount(0);
+      }
+    };
+
+    if (chatRoomId) {
+      checkExistingAppointments();
+    }
+  }, [chatRoomId]);
+
+  // 변경사항 체크 (수정 모드일 때만)
+  useEffect(() => {
+    if (!isEditMode) {
+      setHasChanges(true); // 새 약속 생성 모드에서는 항상 활성화
+      return;
+    }
+
+    // 날짜 변경 감지
+    const dateChanged =
+      date && date !== formatDateToString(initialData.appointmentTime);
+
+    // 시간 변경 감지
+    const timeChanged =
+      time && time !== getKoreanTimeString(initialData.appointmentTime);
+
+    // 장소 변경 감지
+    const placeChanged = location !== params.place;
+
+    // 위치 좌표 변경 감지
+    const locationChanged =
+      selectedLocationByAddressInfo &&
+      (Math.abs(selectedLocationByAddressInfo.latitude - initialData.latitude) >
+        0.0001 ||
+        Math.abs(
+          selectedLocationByAddressInfo.longitude - initialData.longitude
+        ) > 0.0001);
+
+    // 알림 시간 변경 감지 (초기값과 비교)
+    const alarmChanged = alarmTime !== "30분 전"; // 기본값이 "30분 전"이라고 가정
+
+    const isChanged =
+      dateChanged ||
+      timeChanged ||
+      placeChanged ||
+      locationChanged ||
+      alarmChanged;
+
+    // 디버깅용 로그 (개발 중에만 사용)
+    console.log("변경사항 감지:", {
+      dateChanged: {
+        current: date,
+        initial: formatDateToString(initialData.appointmentTime),
+      },
+      timeChanged: {
+        current: time,
+        initial: getKoreanTimeString(initialData.appointmentTime),
+      },
+      placeChanged: { current: location, initial: params.place },
+      locationChanged: locationChanged,
+      alarmChanged: { current: alarmTime, initial: "30분 전" },
+      finalResult: isChanged,
+    });
+
+    setHasChanges(isChanged);
+  }, [
+    date,
+    time,
+    location,
+    selectedLocationByAddressInfo,
+    alarmTime,
+    isEditMode,
+    initialData.appointmentTime,
+    initialData.latitude,
+    initialData.longitude,
+    params.place,
+    getKoreanTimeString,
+  ]);
 
   useEffect(() => {
     if (user && user.id) {
@@ -105,27 +282,22 @@ export default function AppointmentEditModal({
     }
   }, [user, isUserLoading]);
 
-  // 변경사항 체크 (수정 모드일 때만)
-  useEffect(() => {
-    if (!isEditMode) {
-      setHasChanges(true); // 새 약속 생성 모드에서는 항상 활성화
-      return;
-    }
+  // 2. 버튼 텍스트 결정 함수
+  const getButtonText = () => {
+    if (isUserLoading) return "사용자 정보 로딩 중...";
+    if (!isUserAvailable) return "로그인이 필요합니다";
+    if (createStatus === "pending" || updateStatus === "pending")
+      return "처리 중...";
 
-    const isTimeChanged =
-      Math.abs(
-        currentData.appointmentTime.getTime() -
-          initialData.appointmentTime.getTime()
-      ) > 60000; // 1분 이상 차이
+    // 새 약속 생성 모드
+    if (!isEditMode) return "수정 완료 edit";
 
-    const isChanged =
-      isTimeChanged ||
-      currentData.place !== initialData.place ||
-      Math.abs(currentData.latitude - initialData.latitude) > 0.0001 ||
-      Math.abs(currentData.longitude - initialData.longitude) > 0.0001;
+    // 수정 모드에서 변경사항이 있는 경우
+    if (hasChanges) return "수정 완료 change";
 
-    setHasChanges(isChanged);
-  }, [currentData, initialData, isEditMode]);
+    // 수정 모드에서 변경사항이 없는 경우
+    return "완료";
+  };
 
   // useMutation 훅 설정 - useChatMeetup 대신 사용
   const {
@@ -283,26 +455,6 @@ export default function AppointmentEditModal({
   const isDisabled = isLoading || !isUserAvailable || !user;
 
   //console.log("AppointmentEditModal--params:", params);
-
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
-  const [location, setLocation] = useState<string>(params.place);
-  const [alarmTime, setAlarmTime] = useState("30분 전");
-
-  const [selectedLocationByAddressInfo, setSelectedLocationByAddressInfo] =
-    useState<{
-      latitude: number;
-      longitude: number;
-      addressInfo: TmapAddressInfo;
-      selectedAddress: string | null;
-      locationName: string;
-    } | null>({
-      latitude: params.latitude,
-      longitude: params.longitude,
-      addressInfo: {} as TmapAddressInfo, // 기본값으로 빈 객체
-      selectedAddress: params.place,
-      locationName: params.place,
-    });
 
   const selectedLocation = selectedLocationByAddressInfo;
   //console.log("AppointmentEditModal--selectedLocation:", selectedLocation);
@@ -627,37 +779,6 @@ export default function AppointmentEditModal({
     }
   };
 
-  // params.appointmentTime을 한국시간 HH:MM 형식으로 변환
-  const getKoreanTimeString = (date: Date | null | undefined): string => {
-    // 문자열이라면 Date 객체로 변환
-    let dateObj: Date | null = null;
-
-    if (typeof date === "string") {
-      dateObj = new Date(date);
-    } else if (date instanceof Date) {
-      dateObj = date;
-    } else if (params.appointmentTime instanceof Date) {
-      dateObj = params.appointmentTime;
-    } else if (typeof params.appointmentTime === "string") {
-      dateObj = new Date(params.appointmentTime);
-    } else {
-      dateObj = new Date();
-    }
-
-    if (!dateObj || isNaN(dateObj.getTime())) {
-      console.warn("유효하지 않은 날짜 객체. 현재 시간을 사용합니다.");
-      dateObj = new Date();
-    }
-
-    try {
-      // dayjs를 사용해 한국 시간대로 변환하고 HH:MM 형식으로 추출
-      return dayjs(dateObj).tz("Asia/Seoul").format("HH:mm");
-    } catch (error) {
-      console.error("Error converting date to Korean time:", error);
-      return dayjs().tz("Asia/Seoul").format("HH:mm"); // 현재 시간 반환
-    }
-  };
-
   // 현재 약속 시간을 Date 객체로 변환하는 함수
   const getCurrentAppointmentTime = (): Date => {
     // 날짜나 시간이 변경되었다면 새로운 Date 객체 생성
@@ -677,13 +798,6 @@ export default function AppointmentEditModal({
         : params.appointmentTime;
 
     return appointmentTime;
-  };
-
-  // 날짜를 YYYY-MM-DD 형식의 문자열로 변환하는 함수 (한국 시간대 기준)
-  const formatDateToString = (date: Date | null): string => {
-    if (!date || !(date instanceof Date) || isNaN(date.getTime())) return "";
-    // UTC ISO 문자열 대신 한국 시간대 기준으로 변환
-    return dayjs(date).tz("Asia/Seoul").format("YYYY-MM-DD");
   };
 
   // 장소 변경 핸들러
@@ -732,7 +846,7 @@ export default function AppointmentEditModal({
         ></div>
         <div className="z-10 w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
           <h2 className="mb-5 text-center text-lg font-medium">
-            새로운 약속 만들기
+            {`${chatUsername}`}와의 약속
           </h2>
           <form onSubmit={handleSubmit}>
             <div className="space-y-4">
@@ -837,13 +951,7 @@ export default function AppointmentEditModal({
                 disabled={isDisabled}
                 className="flex-1 rounded-md bg-orange-500 py-2 font-medium text-white hover:bg-orange-600 disabled:opacity-50"
               >
-                {isUserLoading
-                  ? "사용자 정보 로딩 중..."
-                  : !isUserAvailable
-                  ? "로그인이 필요합니다"
-                  : status === "pending"
-                  ? "생성 중..."
-                  : "완료"}
+                {getButtonText()}
               </button>
             </div>
           </form>

@@ -733,7 +733,7 @@ export interface ChatMeetupParams {
   place: string;
   locationLatitude: number;
   locationLongitude: number;
- alarmTime: string | null;  // null 허용하도록 수정
+  alarmTime: string | null;  // null 허용하도록 수정
 }
 
 // ChatMeetup 응답 인터페이스

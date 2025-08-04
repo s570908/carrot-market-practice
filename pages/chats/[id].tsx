@@ -1262,6 +1262,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       modal={modal}
       params={params}
       chatRoomId={id || 0} // 채팅방 ID 전달
+      chatUsername={"아무개"}
     />
   ));
 
@@ -1381,11 +1382,15 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
     if (isPast) {
       // 지난 약속인 경우 - 클릭해도 아무 동작 안함 (이미 onClick에서 undefined 처리)
+      console.log(
+        "지난 약속인 경우 - 클릭해도 아무 동작 안함 (이미 onClick에서 undefined 처리)"
+      );
       return;
     }
 
     if (sold) {
       // 거래완료인 경우 - 클릭해도 아무 동작 안함
+      console.log("거래완료 상태에서는 약속 상세 모달을 열 수 없습니다.");
       return;
     }
 
@@ -1704,6 +1709,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               const appointmentData =
                 isAppointment && message.chatMeetup
                   ? {
+                      id: message.chatMeetup.id, // chatMeetup의 id 포함
                       appointmentTime: message.chatMeetup.appointmentTime,
                       place: message.chatMeetup.place,
                       latitude:
@@ -1711,9 +1717,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                       longitude:
                         message.chatMeetup.locationLongitude ?? undefined,
                       isPast:
-                        isAppointment &&
                         new Date(message.chatMeetup.appointmentTime) <
-                          new Date(),
+                        new Date(),
                     }
                   : undefined;
 
