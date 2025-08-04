@@ -592,8 +592,8 @@ export default function AppointmentEditModal({
       const paramsDateStr = dayjs(appointmentTime)
         .tz("Asia/Seoul")
         .format("YYYY-MM-DD");
-              console.log("date: ", date);
-                    console.log("paramsDateStr: ", paramsDateStr);
+      console.log("date: ", date);
+      console.log("paramsDateStr: ", paramsDateStr);
       isDateChanged = date !== paramsDateStr;
     }
     if (time) {
@@ -602,8 +602,8 @@ export default function AppointmentEditModal({
       const paramsTimeStr = dayjs(appointmentTime)
         .tz("Asia/Seoul")
         .format("HH:mm");
-              console.log("time: ", time)
-                    console.log("paramsTimeStr:", paramsTimeStr)
+      console.log("time: ", time);
+      console.log("paramsTimeStr:", paramsTimeStr);
       isTimeChanged = time !== paramsTimeStr;
     }
 
@@ -623,12 +623,12 @@ export default function AppointmentEditModal({
   return (
     <>
       {renderModal()}
-      <div className="fixed inset-0 z-40 flex items-center justify-center">
+      <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
         <div
           className="absolute inset-0 bg-black opacity-50"
           onClick={() => modal.closeWithResult(null)}
         ></div>
-        <div className="z-10 w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+        <div className="z-10 max-h-[95vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
           <h2 className="mb-5 text-center text-lg font-medium">
             새로운 약속 만들기
           </h2>
@@ -704,7 +704,7 @@ export default function AppointmentEditModal({
                   lng={
                     selectedLocationByAddressInfo?.longitude || params.longitude
                   }
-                  height="500px"
+                  height="300px"
                   width="100%"
                   zoomLevel={15}
                   name={
