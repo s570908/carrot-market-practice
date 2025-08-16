@@ -53,7 +53,7 @@ export default function AppointmentEditModal({
   modal,
   params,
   chatRoomId,
-  chatUsername = "",
+  chatUsername,
 }: AppointmentEditModalProps) {
   const { user, isLoading: isUserLoading } = useUser();
 
@@ -804,7 +804,7 @@ export default function AppointmentEditModal({
         ></div>
         <div className="z-10 max-h-[95vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
           <h2 className="mb-5 text-center text-lg font-medium">
-            {chatUsername ? `${chatUsername}와의 약속` : "상대방과의 약속"}
+            {chatUsername ? `${chatUsername} 약속` : "상대방과의 약속"}
           </h2>
           <form onSubmit={handleSubmit}>
             <div className="space-y-4">

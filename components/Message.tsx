@@ -36,16 +36,16 @@ interface MessageProps {
   date?: Date | string;
   isAppointment?: boolean;
   appointmentData?: {
-    appointmentTime: Date; // Single UTC datetime string
-    place: string;
-    latitude?: number;
-    longitude?: number;
-    isPast?: boolean;
+    appointmentTime: Date; // UTC 형식의 약속 시간
+    place: string; // 약속 장소
+    latitude?: number; // 약속 장소의 위도
+    longitude?: number; // 약속 장소의 경도
+    isPast?: boolean; // 약속이 과거인지 여부
   };
-  messageType?: MessageType; // 메시지 타입 추가
-  actions?: MessageAction[];
-  chatRoomId?: number; // 채팅방 ID 속성
-  otherName?: string;
+  messageType?: MessageType; // 메시지 타입 (예: SYSTEM, USER)
+  actions?: MessageAction[]; // 메시지에 연결된 액션 (버튼, 링크 등)
+  chatRoomId?: number; // 채팅방 ID
+  otherName?: string; // 상대방 이름 (옵션)
 }
 
 export default function Message({
@@ -58,8 +58,8 @@ export default function Message({
   appointmentData,
   messageType = MessageType.USER,
   actions,
-  chatRoomId, // 채팅방 ID prop 사용
-  otherName = "",
+  chatRoomId,
+  otherName, // 기본값 제거
 }: MessageProps) {
   //console.log('Message.tsx--chatRoomId:', chatRoomId)
 
