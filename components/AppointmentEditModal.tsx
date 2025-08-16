@@ -25,8 +25,11 @@ import {
   writeSystemMessage,
   SYSTEM_MESSAGES,
   createAlarmSettings,
+  writeAlarmSettings,
+  updateChatMeetup,
 } from "@/apiLibs/chats";
 import { initializePushSubscription } from "@/libs/client/pushUtils";
+import axios from "axios";
 
 interface AppointmentEditModalProps {
   modal: ModalAPI;
@@ -63,7 +66,7 @@ export default function AppointmentEditModal({
     }
   }, [user, isUserLoading]);
 
-  // useMutation 훅 설정 - useChatMeetup 대신 사용
+  // 약속 생성용 useMutation 훅
   const {
     mutate: createMeetup,
     status,
@@ -92,6 +95,37 @@ export default function AppointmentEditModal({
           // 알림 설정 및 관련 메시지 처리
           if (responseData.chatMeetup?.alarmTime && responseData.message?.id) {
             try {
+              // 1. 동일 chatRoomId에 속한 가장 최근의 SCHEDULED AlarmSetting 조회
+              let latestAlarm: any = null;
+              try {
+                const res = await axios.get(
+                  `/api/chat/${chatRoomId}/alarm-settings/latest`
+                );
+                if (res.data?.alarm) {
+                  latestAlarm = res.data.alarm;
+                }
+              } catch (fetchError) {
+                console.warn("기존 알림 조회 중 오류:", fetchError);
+              }
+
+              // 2. 기존 SCHEDULED 알림이 있고 새로 생성될 알림과 다르면 취소
+              if (
+                latestAlarm &&
+                latestAlarm.status === "SCHEDULED" &&
+                latestAlarm.messageId !== responseData.message.id
+              ) {
+                try {
+                  await axios.post(
+                    `/api/chat/${chatRoomId}/alarm-settings/${latestAlarm.messageId}/cancel`,
+                    {}
+                  );
+                  console.log(`기존 알림 취소됨: ${latestAlarm.id}`);
+                } catch (cancelError) {
+                  console.warn("기존 알림 취소 중 오류:", cancelError);
+                }
+              }
+
+              // 3. 새 알림 생성
               const appointmentTime = new Date(
                 responseData.chatMeetup.appointmentTime
               );
@@ -138,6 +172,108 @@ export default function AppointmentEditModal({
       console.error("약속 생성 중 오류 발생:", error);
       alert("약속 생성에 실패했습니다.");
       reset(); // 상태 초기화
+    },
+  });
+
+  // 약속 수정용 useMutation 훅
+  const {
+    mutate: updateMeetup,
+    status: updateStatus,
+    isPending: isUpdatePending,
+    reset: resetUpdate,
+  } = useMutation<ChatMeetupResponse, Error, ChatMeetupParams>({
+    mutationFn: updateChatMeetup,
+    onSuccess: async (responseData) => {
+      try {
+        console.log("약속 수정 성공:", responseData);
+        if (responseData.chatMeetup?.appointmentTime) {
+          try {
+            await writeSystemMessage({
+              chatRoomId: chatRoomId,
+              message: SYSTEM_MESSAGES.APPOINTMENT_UPDATED(
+                responseData.chatMeetup.appointmentTime
+              ),
+              userId: user?.id,
+            });
+          } catch (systemMessageError) {
+            console.error("시스템 메시지 생성 실패:", systemMessageError);
+          }
+          if (responseData.chatMeetup?.alarmTime && responseData.message?.id) {
+            try {
+              // 1. 동일 chatRoomId에 속한 가장 최근의 SCHEDULED AlarmSetting 조회
+              let latestAlarm: any = null;
+              try {
+                const res = await axios.get(
+                  `/api/chat/${chatRoomId}/alarm-settings/latest`
+                );
+                if (res.data?.alarm) {
+                  latestAlarm = res.data.alarm;
+                }
+              } catch (fetchError) {
+                console.warn("기존 알림 조회 중 오류:", fetchError);
+              }
+
+              // 2. 기존 SCHEDULED 알림이 있고 새로 생성될 알림과 다르면 취소
+              if (
+                latestAlarm &&
+                latestAlarm.status === "SCHEDULED" &&
+                latestAlarm.messageId !== responseData.message.id
+              ) {
+                try {
+                  await axios.post(
+                    `/api/chat/${chatRoomId}/alarm-settings/${latestAlarm.messageId}/cancel`,
+                    {}
+                  );
+                  console.log(`기존 알림 취소됨: ${latestAlarm.id}`);
+                } catch (cancelError) {
+                  console.warn("기존 알림 취소 중 오류:", cancelError);
+                }
+              }
+
+              // 3. 새 알림 생성
+              const appointmentTime = new Date(
+                responseData.chatMeetup.appointmentTime
+              );
+              const triggerAt = calculateTriggerTime(
+                appointmentTime,
+                responseData.chatMeetup.alarmTime
+              );
+              const utcTriggerAt = new Date(triggerAt.toISOString());
+              await createAlarmSettings({
+                chatId: chatRoomId,
+                messageId: responseData.message.id,
+                alarmTime: responseData.chatMeetup.alarmTime,
+                triggerAt: utcTriggerAt.toISOString(),
+                disableAlarm: false,
+              });
+              try {
+                await initializePushSubscription();
+              } catch (pushError) {
+                console.warn("푸시 구독 자동 갱신 실패:", pushError);
+              }
+              console.log("알람 설정 완료 (알림 메시지 안내 없이)");
+            } catch (alarmError) {
+              console.error("알람 설정 중 오류 발생:", alarmError);
+              toast?.error?.(
+                "알람 설정에 실패했습니다. 채팅방에서 다시 설정해주세요."
+              );
+            }
+          }
+        }
+        toast?.success?.("약속이 수정되었습니다!");
+        modal.closeWithResult({ success: true });
+        resetUpdate();
+      } catch (error) {
+        console.error("약속 수정 후처리 중 전체 오류 발생:", error);
+        toast?.error?.("약속은 수정되었으나 일부 기능에 문제가 발생했습니다.");
+        modal.closeWithResult({ success: true, withError: true });
+        resetUpdate();
+      }
+    },
+    onError: (error) => {
+      console.error("약속 수정 중 오류 발생:", error);
+      alert("약속 수정에 실패했습니다.");
+      resetUpdate();
     },
   });
 
@@ -349,6 +485,9 @@ export default function AppointmentEditModal({
 
       // 현재 시간 (브라우저의 로컬 시간)
       const now = new Date();
+      // triggerAt 계산
+      const triggerAt = calculateTriggerTime(localDateTime, alarmTime);
+      const utcTriggerAt = new Date(triggerAt.toISOString());
 
       // 최종 알림 시간 결정 로직
       let finalalarmTime = alarmTime;
@@ -358,23 +497,18 @@ export default function AppointmentEditModal({
         const proceed = confirm(
           "선택하신 약속 시간이 이미 지났습니다.\n그래도 새로운 약속을 생성하시겠습니까?\n\n(과거의 약속에는 알림이 설정되지 않습니다)"
         );
-        if (!proceed) return;
+        if (!proceed) return; // 사용자가 "취소"를 누르면 여기서 함수가 종료됨
         finalalarmTime = "알림 없이 생성";
       }
       // 미래 시간이지만 현재 알림 시간이 유효하지 않은 경우 메시지 수정
       else if (alarmTime !== "알림 없이 생성") {
         const { isValid } = validatealarmTime(localDateTime, alarmTime);
         if (!isValid) {
-          console.log(
-            `현재 설정된 알림 시간 "${alarmTime}"이 유효하지 않아 "알림 없이 생성"으로 변경됩니다.`
-          );
-          console.log(
-            `현재 설정된 알림 시간 "${alarmTime}"이 유효하지 않아 "알림 없이 생성"으로 변경됩니다.`
-          );
+          // triggerAt이 과거인 경우 등
           const proceed = confirm(
             `현재 약속 시간으로는 "${alarmTime}" 알림을 설정할 수 없습니다.\n알림 없이 새 약속을 생성하시겠습니까?`
           );
-          if (!proceed) return;
+          if (!proceed) return; // 사용자가 "취소"를 누르면 여기서 함수가 종료됨
           finalalarmTime = "알림 없이 생성";
         }
       }
@@ -388,12 +522,19 @@ export default function AppointmentEditModal({
         alarmTime: finalalarmTime === "알림 없이 생성" ? null : finalalarmTime,
       };
 
+      const isChanged: boolean = isAppointmentChanged(
+        params,
+        newAppointmentData
+      );
+
       // 변경 여부 판단 (params: 기존 데이터, newAppointmentData: 새 데이터)
-      setChanged(isAppointmentChanged(params, newAppointmentData));
+      setChanged(isChanged);
       console.log("약속 변경됨?", changed);
 
       // React Query의 useMutation으로 약속 생성 API 호출
-      createMeetup(newAppointmentData);
+      if (isChanged) {
+        updateMeetup(newAppointmentData);
+      }
     } catch (error) {
       console.error("약속 생성 중 오류 발생:", error);
       alert(
@@ -538,6 +679,37 @@ export default function AppointmentEditModal({
     // UTC ISO 문자열 대신 한국 시간대 기준으로 변환
     return dayjs(date).tz("Asia/Seoul").format("YYYY-MM-DD");
   };
+
+  /*
+약속 수정용 useMutation 훅의 알고리즘 상세 설명
+
+1. useMutation 훅 정의
+   - updateMeetup: 약속 수정 요청을 트리거하는 함수
+   - status, isUpdatePending, resetUpdate: 상태 관리 변수
+
+2. mutationFn
+   - 인자로 { chatRoomId, params }를 받아 updateChatMeetup(chatRoomId, params) 호출
+   - updateChatMeetup은 /api/chat-meetups/[id]에 POST 요청을 보내 약속을 수정
+
+3. onSuccess(responseData)
+   - 약속 수정이 성공하면 실행
+   - 1) 약속 데이터가 있으면 시스템 메시지(약속이 생성되었습니다)를 생성
+   - 2) 알림 시간이 있고 메시지 id가 있으면:
+      - a) 알림 트리거 시간 계산
+      - b) createAlarmSettings로 알림 설정(서버에 POST)
+      - c) 푸시 구독 상태 자동 갱신 시도
+   - 3) 성공 토스트 메시지 출력
+   - 4) 모달 닫기 및 상태 초기화
+
+4. onError
+   - 약속 수정 중 에러 발생 시 에러 메시지 출력 및 상태 초기화
+
+정리:
+- updateMeetup({ chatRoomId, params })를 호출하면
+  1. 서버에 약속 수정 요청
+  2. 성공 시 시스템 메시지, 알림 설정, 푸시 구독 갱신 등 후처리
+  3. 실패 시 에러 처리 및 상태 초기화
+  */
 
   // 기존 약속과 새 약속의 변경 여부를 판단하는 함수
   function isAppointmentChanged(original: any, updated: any) {
@@ -752,3 +924,16 @@ export default function AppointmentEditModal({
     </>
   );
 }
+
+/*
+알림 트리거 시간 계산이 필요한 이유
+
+- 알림(AlarmSetting)은 "약속 시간"이 아니라, "약속 시간 몇 분/몇 시간/며칠 전"에 울려야 합니다.
+- 예를 들어, 약속이 2024-06-10 15:00이고, 알림이 "30분 전"이면 실제 알림이 울려야 할 시간은 2024-06-10 14:30입니다.
+- 따라서, 사용자가 선택한 alarmTime("10분 전", "30분 전" 등)과 appointmentTime(약속 시간)으로
+  실제로 알림이 울릴 정확한 시각(triggerAt)을 계산해야 합니다.
+- 이 triggerAt 값이 DB에 저장되고, node-schedule 등에서 알림 예약의 기준이 됩니다.
+
+정리:
+- 알림 트리거 시간 계산은 "언제 알림을 울릴지"를 정확히 결정하기 위해 반드시 필요합니다.
+*/

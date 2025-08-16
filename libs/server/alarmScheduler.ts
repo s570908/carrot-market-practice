@@ -1,6 +1,6 @@
-import schedule from 'node-schedule';
+import schedule from "node-schedule";
 import client from "@/libs/client/client";
-import dayjs from 'dayjs';
+import dayjs from "dayjs";
 import { AlarmStatus, ChatMeetup } from "@prisma/client";
 import { callAlarmTrigger } from "@/libs/server/callAlarmTrigger";
 
@@ -8,8 +8,8 @@ import { callAlarmTrigger } from "@/libs/server/callAlarmTrigger";
 const activeJobs = new Map();
 
 export async function loadAlarms(baseUrl: string) {
-  console.log('Loading and scheduling alarms...');
-  
+  console.log("Loading and scheduling alarms...");
+
   try {
     // AlarmSetting에서 미래 알람 불러오기 (alarmTime: { not: null }은 Prisma 4+에서만 지원)
     // 만약 Prisma 버전이 낮아서 오류가 난다면 아래와 같이 두 단계로 분리
@@ -22,12 +22,14 @@ export async function loadAlarms(baseUrl: string) {
     });
     // Prisma의 include 옵션을 사용하면 반환 객체에 chatMeetup 등 관계 필드가 추가됨
     // 하지만 alarmSetting의alarmTime은 루트에 있으므로, filter는 alarm.alarmTime !== null로 사용
-    const alarms = alarmsRaw.filter(alarm => (alarm as any).alarmTime !== null);
+    const alarms = alarmsRaw.filter(
+      (alarm) => (alarm as any).alarmTime !== null
+    );
 
     console.log(`Found ${alarms.length} upcoming alarms to schedule`);
-    
+
     // 각 알람 예약 설정
-    alarms.forEach(alarm => {
+    alarms.forEach((alarm) => {
       if ((alarm as any).alarmTime) {
         // 명시적으로 AlarmWithMeetup 타입으로 매핑
         const alarmWithMeetup: AlarmWithMeetup = {
@@ -40,10 +42,10 @@ export async function loadAlarms(baseUrl: string) {
         scheduleAlarm(alarmWithMeetup, baseUrl);
       }
     });
-    
+
     return alarms.length;
   } catch (error) {
-    console.error('Error loading alarms:', error);
+    console.error("Error loading alarms:", error);
     return 0;
   }
 }
@@ -74,19 +76,25 @@ scheduleAlarm 함수의 기능 요약
 
 export function scheduleAlarm(alarm: AlarmWithMeetup, baseUrl: string) {
   if (!alarm.alarmTime) return; //alarmTime 없으면 스케줄링하지 않음
-  
+
   // 기존 작업이 있다면 취소
   if (activeJobs.has(alarm.id)) {
     activeJobs.get(alarm.id).cancel();
   }
 
-  console.log(`job = schedule.scheduleJob 수행전. Scheduling alarm ID ${alarm.id} for ${alarm.triggerAt.toISOString()}`);
-  
+  console.log(
+    `job = schedule.scheduleJob 수행전. Scheduling alarm ID ${
+      alarm.id
+    } for ${alarm.triggerAt.toISOString()}`
+  );
+
   // 정확한 시간에 작업 예약
-  const job = schedule.scheduleJob(alarm.triggerAt, async function() {
+  const job = schedule.scheduleJob(alarm.triggerAt, async function () {
     try {
-      console.log(`Triggering alarm ID: ${alarm.id} at ${new Date().toISOString()}`);
-      
+      console.log(
+        `Triggering alarm ID: ${alarm.id} at ${new Date().toISOString()}`
+      );
+
       // 중복 상태 업데이트 제거 - callAlarmTrigger에서 처리하도록 함
       // const updatedAlarm = await client.alarmSetting.update({
       //   where: { id: alarm.id },
@@ -98,18 +106,18 @@ export function scheduleAlarm(alarm: AlarmWithMeetup, baseUrl: string) {
       await callAlarmTrigger({ baseUrl, alarmId: alarm.id });
 
       console.log(`Alarm triggered successfully`);
-      
+
       // 작업 완료 후 Map에서 제거
       activeJobs.delete(alarm.id);
     } catch (error) {
       console.error(`Error triggering alarm ID ${alarm.id}:`, error);
     }
   });
-  
+
   // 활성 작업 Map에 추가
   activeJobs.set(alarm.id, job);
-  
-  const formattedTime = dayjs(alarm.triggerAt).format('YYYY-MM-DD HH:mm:ss');
+
+  const formattedTime = dayjs(alarm.triggerAt).format("YYYY-MM-DD HH:mm:ss");
   console.log(`Scheduled alarm ID ${alarm.id} for ${formattedTime}`);
 }
 
@@ -133,9 +141,13 @@ export async function scheduleAlarmById(alarmId: number, baseUrl: string) {
     where: { id: alarmId },
     include: { chatMeetup: true },
   });
-  
-  console.log(`Scheduling alarm by ID: ${alarmId} for ${alarm?.triggerAt?.toISOString() || 'NO_TRIGGER_TIME'}`);
-  
+
+  console.log(
+    `Scheduling alarm by ID: ${alarmId} for ${
+      alarm?.triggerAt?.toISOString() || "NO_TRIGGER_TIME"
+    }`
+  );
+
   if (
     alarm &&
     (alarm as any).alarmTime &&
@@ -143,7 +155,9 @@ export async function scheduleAlarmById(alarmId: number, baseUrl: string) {
     alarm.triggerAt > new Date()
   ) {
     if (!alarm.chatMeetup) {
-      console.warn(`Alarm ID ${alarm.id} does not have a related chatMeetup. Skipping scheduling.`);
+      console.warn(
+        `Alarm ID ${alarm.id} does not have a related chatMeetup. Skipping scheduling.`
+      );
       return false;
     }
     const alarmWithMeetup: AlarmWithMeetup = {
@@ -154,7 +168,13 @@ export async function scheduleAlarmById(alarmId: number, baseUrl: string) {
       chatMeetup: alarm.chatMeetup,
     };
 
-    console.log(`scheduleAlarm 직전: Scheduling alarm with meetup: ${JSON.stringify(alarmWithMeetup, null, 2)}`);
+    console.log(
+      `scheduleAlarm 직전: Scheduling alarm with meetup: ${JSON.stringify(
+        alarmWithMeetup,
+        null,
+        2
+      )}`
+    );
     scheduleAlarm(alarmWithMeetup, baseUrl);
     return true;
   }
@@ -167,12 +187,14 @@ export async function cancelExistingAlarm(alarmId: number) {
     // DB 상태 확인 후 메모리에서 제거
     const alarm = await client.alarmSetting.findUnique({
       where: { id: alarmId },
-      select: { id: true, status: true }
+      select: { id: true, status: true },
     });
 
     // 이미 취소되었거나 전송된 알람은 스킵
     if (!alarm || alarm.status !== AlarmStatus.SCHEDULED) {
-      console.log(`Alarm ID ${alarmId} is not in SCHEDULED status, skipping cancellation`);
+      console.log(
+        `Alarm ID ${alarmId} is not in SCHEDULED status, skipping cancellation`
+      );
       return true;
     }
 
@@ -182,13 +204,13 @@ export async function cancelExistingAlarm(alarmId: number) {
       activeJobs.delete(alarmId);
       console.log(`Cancelled scheduled job for alarm ID: ${alarmId}`);
     }
-    
+
     // DB에서 알람 상태 업데이트
     await client.alarmSetting.update({
       where: { id: alarmId },
-      data: { status: AlarmStatus.CANCELED }
+      data: { status: AlarmStatus.CANCELED },
     });
-    
+
     return true;
   } catch (error) {
     console.error(`Error cancelling alarm ID ${alarmId}:`, error);
@@ -198,20 +220,20 @@ export async function cancelExistingAlarm(alarmId: number) {
 
 // 서버 시작 시 기존 스케줄 복구 로직
 export async function initializeAlarmScheduler(baseUrl: string) {
-  console.log('Initializing alarm scheduler...');
-  
+  console.log("Initializing alarm scheduler...");
+
   try {
     // 서버 재시작 시 기존의 SCHEDULED 상태 알람들을 다시 스케줄링
     const scheduledAlarms = await client.alarmSetting.findMany({
       where: {
         status: AlarmStatus.SCHEDULED,
-        triggerAt: { gt: new Date() } // 미래의 알람만
+        triggerAt: { gt: new Date() }, // 미래의 알람만
       },
-      include: { chatMeetup: true }
+      include: { chatMeetup: true },
     });
 
     console.log(`Found ${scheduledAlarms.length} alarms to reschedule`);
-    
+
     for (const alarm of scheduledAlarms) {
       if ((alarm as any).alarmTime) {
         const alarmWithMeetup: AlarmWithMeetup = {
@@ -224,10 +246,10 @@ export async function initializeAlarmScheduler(baseUrl: string) {
         scheduleAlarm(alarmWithMeetup, baseUrl);
       }
     }
-    
+
     return scheduledAlarms.length;
   } catch (error) {
-    console.error('Error initializing alarm scheduler:', error);
+    console.error("Error initializing alarm scheduler:", error);
     return 0;
   }
 }
@@ -248,30 +270,6 @@ export async function initializeAlarmScheduler(baseUrl: string) {
 
 해결 방안:
 시스템 메시지 생성 부분에서 올바른 메타데이터를 설정해야 함
-*/
-
-// 이 문제는 약속 생성 시 APPOINTMENT_ALERT 메시지의 메타데이터 구조 문제입니다.
-// pages/appointment/create.tsx에서 다음과 같이 수정이 필요합니다:
-
-/*
-현재 문제가 되는 코드 (추정):
-const appointmentAlertInfo = SYSTEM_MESSAGES.APPOINTMENT_ALERT(
-  responseData.chatMeetup.alarmTime, 
-  responseData.chatMeetup.id  // 이 부분이 잘못된 것 같음
-);
-
-올바른 코드:
-const appointmentAlertInfo = SYSTEM_MESSAGES.APPOINTMENT_ALERT(
-  responseData.chatMeetup.alarmTime, 
-  responseData.chatMeetup.id,
-  responseData.message.id  // messageId도 포함해야 함
-);
-
-또는 SYSTEM_MESSAGES.APPOINTMENT_ALERT 함수 자체를 수정해야 할 수 있음:
-- type: 'APPOINTMENT_ALERT'
-- chatMeetupId: actual_chatmeetup_id
-- messageId: message_id
-- alarmTime: alarm_time
 */
 
 /*
@@ -302,4 +300,14 @@ const appointmentAlertInfo = SYSTEM_MESSAGES.APPOINTMENT_ALERT(
 - 수동 취소 시에도 cancel() 호출 후 Map에서 제거
 */
 
-
+// alarmId로 예약된 job을 취소하는 함수
+export function cancelScheduledJob(alarmId: number) {
+  if (activeJobs.has(alarmId)) {
+    activeJobs.get(alarmId).cancel();
+    activeJobs.delete(alarmId);
+    console.log(`Cancelled scheduled job for alarm ID: ${alarmId}`);
+    return true;
+  }
+  console.log(`No scheduled job found for alarm ID: ${alarmId}`);
+  return false;
+}
