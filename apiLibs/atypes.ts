@@ -733,7 +733,7 @@ export interface ChatMeetupParams {
   place: string;
   locationLatitude: number;
   locationLongitude: number;
- alarmTime: string | null;  // null 허용하도록 수정
+  alarmTime: string | null; // null 허용하도록 수정
 }
 
 // ChatMeetup 응답 인터페이스
@@ -781,12 +781,12 @@ export interface SystemMessageParams {
   message: string;
   userId?: number;
   meta?: {
-    type?: string;  // APPOINTMENT_ALERT의 type 필드
-    chatMeetupId?: number;  // APPOINTMENT_ALERT의 chatMeetupId 필드
-    appointmentMessageId?: number;  // APPOINTMENT_ALERT의 appointmentMessageId 필드
-    alarmTime?: string;  // APPOINTMENT_ALERT의 alarmTime 필드
-    relatedAppointmentMessageId?: number;  // 기존 필드 유지 (다른 용도로 사용될 수 있음)
-    [key: string]: any;  // 확장성을 위한 인덱스 시그니처 유지
+    type?: string; // APPOINTMENT_ALERT의 type 필드
+    chatMeetupId?: number; // APPOINTMENT_ALERT의 chatMeetupId 필드
+    appointmentMessageId?: number; // APPOINTMENT_ALERT의 appointmentMessageId 필드
+    alarmTime?: string; // APPOINTMENT_ALERT의 alarmTime 필드
+    relatedAppointmentMessageId?: number; // 기존 필드 유지 (다른 용도로 사용될 수 있음)
+    [key: string]: any; // 확장성을 위한 인덱스 시그니처 유지
   };
 }
 
