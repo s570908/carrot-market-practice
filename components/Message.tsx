@@ -13,6 +13,8 @@ import { useAwaitableModal } from "@libs/client/useAwaitableModal";
 import AppointmentModal from "./AppointmentModal";
 import { MessageType } from "@prisma/client";
 import AppointmentEditModal from "./AppointmentEditModal";
+import { toast } from "react-toastify"; // Toast 알림 추가
+import axios from "axios";
 
 // dayjs 설정 추가 (타임존 지원)
 dayjs.extend(utc);
@@ -41,6 +43,7 @@ interface MessageProps {
     latitude?: number; // 약속 장소의 위도
     longitude?: number; // 약속 장소의 경도
     isPast?: boolean; // 약속이 과거인지 여부
+    alarmTime?: Date | string | null; // 약속 알림 시간 (옵션)
   };
   messageType?: MessageType; // 메시지 타입 (예: SYSTEM, USER)
   actions?: MessageAction[]; // 메시지에 연결된 액션 (버튼, 링크 등)
@@ -95,14 +98,80 @@ export default function Message({
     // 채팅방 ID 검증
     if (!chatRoomId) {
       console.warn("채팅방 ID가 없습니다. 약속 생성이 실패할 수 있습니다.");
+      return;
     }
 
-    await openAppointmentModal({
-      appointmentTime: appointmentData.appointmentTime,
-      place: appointmentData.place,
-      latitude: appointmentData.latitude || 0,
-      longitude: appointmentData.longitude || 0,
-    });
+    try {
+      // 서버에서 가장 최근 약속 메시지 확인 (axios 사용)
+      const res = await axios.get(`/api/chat/${chatRoomId}/latest-meetup`);
+      const data = res.data;
+
+      if (!data.ok) {
+        console.error("최신 약속 정보를 가져오는 데 실패했습니다.");
+        return;
+      }
+
+      console.log(
+        "===========data.appointmentTime, appointmentData?.appointmentTime: ",
+        data.appointmentTime,
+        appointmentData?.appointmentTime
+      );
+
+      // 현재 메시지가 가장 최근 약속인지 확인
+      if (data.appointmentTime !== appointmentData?.appointmentTime) {
+        toast(
+          ({ closeToast }) => (
+            <div className="rounded-lg shadow-lg p-4bg-gray-800">
+              <div className="mb-3 text-white">
+                이 약속은 다른 약속으로 변경되어 수정이 불가능합니다.
+                <br />
+                최신 약속을 보시겠습니까?
+              </div>
+              <div className="flex justify-center gap-2">
+                <button
+                  className="px-3 py-1 text-gray-700 transition-colors bg-gray-100 rounded hover:bg-gray-200"
+                  onClick={() => {
+                    closeToast();
+                    // 취소: 아무것도 하지 않음 (return)
+                  }}
+                >
+                  취소
+                </button>
+                <button
+                  className="px-3 py-1 text-white transition-colors bg-orange-500 rounded hover:bg-orange-600"
+                  onClick={async () => {
+                    closeToast();
+                    // 확인: 최신 약속 보기 모달 열기
+                    await openAppointmentModal({
+                      appointmentTime: data.appointmentTime,
+                      place: data.place ?? data.locationName ?? appointmentData.place,
+                      latitude: data.locationLatitude ?? data.latitude ?? appointmentData.latitude ?? 0,
+                      longitude: data.locationLongitude ?? data.longitude ?? appointmentData.longitude ?? 0,
+                      alarmTime: data.alarmTime ?? appointmentData.alarmTime ?? null,
+                    });
+                  }}
+                >
+                  확인
+                </button>
+              </div>
+            </div>
+          ),
+          { autoClose: 3000 }
+        );
+        return;
+      }
+
+      // 약속 보기 모달 열기
+      await openAppointmentModal({
+        appointmentTime: appointmentData.appointmentTime,
+        place: appointmentData.place,
+        latitude: appointmentData.latitude || 0,
+        longitude: appointmentData.longitude || 0,
+        alarmTime: appointmentData.alarmTime || null,
+      });
+    } catch (error) {
+      console.error("약속 확인 중 오류 발생:", error);
+    }
   };
 
   // 시스템 메시지 처리 로직 추가

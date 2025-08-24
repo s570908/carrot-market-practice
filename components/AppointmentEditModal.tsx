@@ -38,6 +38,7 @@ interface AppointmentEditModalProps {
     place: string;
     latitude: number;
     longitude: number;
+    alarmTime?: string | null; // alarmTime 추가 (옵션)
   };
   chatRoomId: number; // 추가
   chatUsername?: string;
@@ -288,7 +289,7 @@ export default function AppointmentEditModal({
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [location, setLocation] = useState<string>(params.place);
-  const [alarmTime, setAlarmTime] = useState("30분 전");
+  const [alarmTime, setAlarmTime] = useState(params.alarmTime);
   const [changed, setChanged] = useState(false);
 
   const [selectedLocationByAddressInfo, setSelectedLocationByAddressInfo] =
@@ -488,7 +489,10 @@ export default function AppointmentEditModal({
       // 현재 시간 (브라우저의 로컬 시간)
       const now = new Date();
       // triggerAt 계산
-      const triggerAt = calculateTriggerTime(localDateTime, alarmTime);
+      const triggerAt = calculateTriggerTime(
+        localDateTime,
+        alarmTime ?? "알림 없이 생성"
+      );
       const utcTriggerAt = new Date(triggerAt.toISOString());
 
       // 최종 알림 시간 결정 로직
@@ -504,7 +508,7 @@ export default function AppointmentEditModal({
       }
       // 미래 시간이지만 현재 알림 시간이 유효하지 않은 경우 메시지 수정
       else if (alarmTime !== "알림 없이 생성") {
-        const { isValid } = validatealarmTime(localDateTime, alarmTime);
+        const { isValid } = validatealarmTime(localDateTime, alarmTime ?? "");
         if (!isValid) {
           // triggerAt이 과거인 경우 등
           const proceed = confirm(
@@ -521,7 +525,8 @@ export default function AppointmentEditModal({
         place: finalLocation.selectedAddress ?? location,
         locationLatitude: finalLocation.latitude,
         locationLongitude: finalLocation.longitude,
-        alarmTime: finalalarmTime === "알림 없이 생성" ? null : finalalarmTime,
+        alarmTime:
+          finalalarmTime === "알림 없이 생성" ? null : finalalarmTime ?? null, // undefined 방지
       };
 
       const isChanged: boolean = isAppointmentChanged(
@@ -787,12 +792,20 @@ export default function AppointmentEditModal({
     // alarmTime은 params에 없으므로 초기값("30분 전")과 비교
 
     console.log("alarmTime: ", alarmTime);
-    const isAlarmTimeChanged = alarmTime !== "30분 전";
+    const isAlarmTimeChanged = alarmTime !== params.alarmTime;
 
     setChanged(
       isDateChanged || isTimeChanged || isLocationChanged || isAlarmTimeChanged
     );
-  }, [date, time, location, alarmTime, params.appointmentTime, params.place]);
+  }, [
+    date,
+    time,
+    location,
+    alarmTime,
+    params.appointmentTime,
+    params.place,
+    params.alarmTime,
+  ]);
 
   return (
     <>
@@ -804,7 +817,7 @@ export default function AppointmentEditModal({
         ></div>
         <div className="z-10 max-h-[95vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
           <h2 className="mb-5 text-center text-lg font-medium">
-            {chatUsername ? `${chatUsername} 약속` : "상대방과의 약속"}
+            {chatUsername ? `${chatUsername} 님과의 약속` : "상대방과의 약속"}
           </h2>
           <form onSubmit={handleSubmit}>
             <div className="space-y-4">
@@ -890,7 +903,7 @@ export default function AppointmentEditModal({
               </div>
 
               <AlarmTimeSelector
-                value={alarmTime}
+                value={alarmTime ?? ""}
                 onChange={setAlarmTime}
                 appointmentTime={getCurrentAppointmentTime()}
               />
@@ -939,3 +952,24 @@ export default function AppointmentEditModal({
 정리:
 - 알림 트리거 시간 계산은 "언제 알림을 울릴지"를 정확히 결정하기 위해 반드시 필요합니다.
 */
+
+// 문제 원인 설명:
+// AlarmTimeSelector에서 alarmTime을 변경하고 모달을 닫으면, 변경된 alarmTime이 서버에 저장되고
+// message 컴포넌트에서 약속보기 버튼을 눌러 AppointmentEditModal을 다시 열 때
+// 최신 alarmTime이 반영되도록 하려면
+// message 리스트(혹은 약속 데이터)를 fetch/리패칭하는 로직이 필요합니다.
+//
+// 따라서, 약속/알림을 수정한 뒤 모달이 닫힐 때
+// 부모 컴포넌트(메시지 리스트 등)에서 데이터를 다시 불러오는 함수(예: fetchMessages, refetch, mutate 등)를 호출해야 합니다.
+//
+// 이 코드는 AppointmentEditModal의 onSuccess(즉, 약속 생성/수정 성공 후)에서
+// 모달을 닫기 전에 부모에게 "데이터를 다시 불러와라"는 신호를 주는 콜백을 실행하도록 수정하면 됩니다.
+//
+// 즉, AppointmentEditModal의 onSuccess(= useMutation의 onSuccess)에서
+// props로 전달받은 refetchMessages, onUpdate, onChange 등 콜백을 호출하도록 수정하면 됩니다.
+// 2. React Query, SWR 등으로 message 데이터를 invalidate/refetch 하거나
+// 3. 상태 관리(예: Redux, Context 등)로 message 데이터를 갱신해야 합니다.
+//
+// 결론:
+// message 컴포넌트가 사용하는 약속 데이터가 최신 상태로 갱신되지 않아서
+// alarmTime 변경이 UI에 반영되지 않는 것입니다.

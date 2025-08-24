@@ -1465,6 +1465,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                         message.chatMeetup.locationLatitude ?? undefined,
                       longitude:
                         message.chatMeetup.locationLongitude ?? undefined,
+                      alarmTime: message.chatMeetup.alarmTime, // alarmTime 추가
                       isPast:
                         isAppointment &&
                         new Date(message.chatMeetup.appointmentTime) <
