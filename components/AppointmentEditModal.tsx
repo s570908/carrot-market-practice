@@ -38,9 +38,11 @@ interface AppointmentEditModalProps {
     place: string;
     latitude: number;
     longitude: number;
-    alarmTime?: string | null; // alarmTime 추가 (옵션)
+    alarmTime?: string | null;
+    messageId?: number; // 메시지 id
+    chatMeetupId?: number; // chatMeetup id
   };
-  chatRoomId: number; // 추가
+  chatRoomId: number;
   chatUsername?: string;
 }
 
@@ -534,9 +536,96 @@ export default function AppointmentEditModal({
         newAppointmentData
       );
 
-      // 변경 여부 판단 (params: 기존 데이터, newAppointmentData: 새 데이터)
+      // "알림만 변경"인지 체크
+      const isAlarmOnlyChanged =
+        !(
+          date ||
+          time ||
+          location !== params.place ||
+          selectedLocationByAddressInfo?.latitude !== params.latitude ||
+          selectedLocationByAddressInfo?.longitude !== params.longitude
+        ) && alarmTime !== params.alarmTime;
+
       setChanged(isChanged);
-      console.log("약속 변경됨?", changed);
+
+      // 알림만 변경된 경우: 시스템 메시지(APPOINTMENT_ALERT)만 생성 + 알림 설정 로직 추가
+      if (isAlarmOnlyChanged) {
+        try {
+          // 시스템 메시지 생성 (알림 변경 안내)
+          const alertObj = SYSTEM_MESSAGES.APPOINTMENT_ALERT(
+            alarmTime ?? "",
+            params.chatMeetupId ?? 0,
+            params.messageId
+          );
+          await writeSystemMessage({
+            chatRoomId: chatRoomId,
+            message: alertObj.message,
+            meta: alertObj.meta,
+            userId: user?.id,
+          });
+
+          // 알림 설정 로직 추가
+          // 기존 알림 조회
+          let latestAlarm: any = null;
+          try {
+            const res = await axios.get(
+              `/api/chat/${chatRoomId}/alarm-settings/latest`
+            );
+            if (res.data?.alarm) {
+              latestAlarm = res.data.alarm;
+            }
+          } catch (fetchError) {
+            console.warn("기존 알림 조회 중 오류:", fetchError);
+          }
+
+          // 기존 SCHEDULED 알림이 있고 새로 생성될 알림과 다르면 취소
+          if (
+            latestAlarm &&
+            latestAlarm.status === "SCHEDULED" &&
+            latestAlarm.messageId !== params.messageId
+          ) {
+            try {
+              await axios.post(
+                `/api/chat/${chatRoomId}/alarm-settings/${latestAlarm.messageId}/cancel`,
+                {}
+              );
+              console.log(`기존 알림 취소됨: ${latestAlarm.id}`);
+            } catch (cancelError) {
+              console.warn("기존 알림 취소 중 오류:", cancelError);
+            }
+          }
+
+          // 새 알림 생성
+          const appointmentTime = new Date(params.appointmentTime);
+          const triggerAt = calculateTriggerTime(
+            appointmentTime,
+            alarmTime ?? ""
+          );
+          const utcTriggerAt = new Date(triggerAt.toISOString());
+          await createAlarmSettings({
+            chatId: chatRoomId,
+            messageId: params.messageId ?? 0,
+            alarmTime: alarmTime ?? "",
+            triggerAt: utcTriggerAt.toISOString(),
+            disableAlarm: false,
+          });
+
+          try {
+            await initializePushSubscription();
+          } catch (pushError) {
+            console.warn("푸시 구독 자동 갱신 실패:", pushError);
+          }
+
+          toast?.success?.("알림이 변경되었습니다!");
+          modal.closeWithResult({ success: true });
+          reset();
+        } catch (error) {
+          toast?.error?.("알림 변경 시스템 메시지/알림 설정 실패");
+          modal.closeWithResult({ success: true, withError: true });
+          reset();
+        }
+        return;
+      }
 
       // React Query의 useMutation으로 약속 생성 API 호출
       if (isChanged) {
@@ -737,7 +826,7 @@ export default function AppointmentEditModal({
     const longitudeChanged =
       Math.abs(
         Number(original.longitude ?? original.locationLongitude) -
-          Number(updated.locationLongitude)
+          Number(updated.longitude)
       ) > 0.0001;
     // 알림 비교
     const alarmChanged =

@@ -51,6 +51,7 @@ import { ChatFormResponse, ChatWithUser } from "apiLibs/atypes";
 import { useAwaitableModal } from "@libs/client/useAwaitableModal";
 import { ProductWithImages } from "@/types";
 import ActionSheet from "@components/ActionSheet";
+import AppointmentEditModal from "@components/AppointmentEditModal";
 
 type Option = {
   value: string;
@@ -182,6 +183,19 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         </div>
       );
     });
+
+  // AppointmentEditModal 모달 오픈용
+  const {
+    openModal: openAppointmentEditModal,
+    renderModal: renderAppointmentEditModal,
+  } = useAwaitableModal((modal, params) => (
+    <AppointmentEditModal
+      modal={modal}
+      params={params}
+      chatRoomId={id}
+      chatUsername={otherName}
+    />
+  ));
 
   const MemoizedMessage = React.memo(Message);
 
@@ -1252,9 +1266,85 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   });
   ProductStatusDisplay.displayName = "ProductStatusDisplay";
 
+  // 최신 약속 정보 가져오기
+  const latestAppointment = (() => {
+    if (!data?.sellerChat) return null;
+    const appointmentMessages = data.sellerChat.filter(
+      (message: any) => message.chatMeetup && message.chatMeetup.appointmentTime
+    );
+    if (appointmentMessages.length === 0) return null;
+    return appointmentMessages[appointmentMessages.length - 1];
+  })();
+
+  // 약속 시간 포맷 함수
+  const formatDetailedAppointmentTime = (dateTime: string | Date) => {
+    const koreanDate = dayjs(dateTime).tz("Asia/Seoul");
+    const now = dayjs().tz("Asia/Seoul");
+    if (koreanDate.isSame(now, "day")) {
+      return `오늘 ${koreanDate.format("HH:mm")}`;
+    }
+    if (koreanDate.isSame(now.add(1, "day"), "day")) {
+      return `내일 ${koreanDate.format("HH:mm")}`;
+    }
+    return koreanDate.format("M월 D일 HH:mm");
+  };
+
+  // 약속 버튼 렌더링
+  const renderAppointmentButton = () => {
+    if (!latestAppointment?.chatMeetup) {
+      // 약속이 없으면 기존처럼 생성 페이지로 이동
+      return (
+        <div
+          className="p-1 border border-black rounded-md cursor-pointer text-md"
+          onClick={handleAppointmentClick}
+        >
+          약속잡기
+        </div>
+      );
+    }
+
+    const chatMeetup = latestAppointment.chatMeetup;
+    const formattedTime = formatDetailedAppointmentTime(
+      chatMeetup.appointmentTime
+    );
+    const messageId = latestAppointment.id; // 메시지의 id
+    const chatMeetupId = chatMeetup.id; // chatMeetup의 id
+
+    // 약속이 있으면 시간 표시, 클릭시 수정 모달 오픈
+    // 약속 시간이 지났는지 체크
+    const isPast = dayjs(chatMeetup.appointmentTime).isBefore(
+      dayjs().tz("Asia/Seoul")
+    );
+
+    return (
+      <button
+        className={`text-md rounded-md border border-blue-500 bg-blue-50 p-1 text-blue-700 ${
+          isPast ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+        }`}
+        onClick={async () => {
+          if (isPast) return;
+          await openAppointmentEditModal({
+            appointmentTime: chatMeetup.appointmentTime,
+            place: chatMeetup.place,
+            latitude: chatMeetup.locationLatitude ?? 0,
+            longitude: chatMeetup.locationLongitude ?? 0,
+            alarmTime: chatMeetup.alarmTime ?? null,
+            messageId, // 메시지 id 추가
+            chatMeetupId, // chatMeetup id 추가
+          });
+        }}
+        disabled={isPast}
+        title={isPast ? "이미 지난 약속입니다" : ""}
+      >
+        {formattedTime}
+      </button>
+    );
+  };
+
   return (
     <>
       {renderReservedModal()}
+      {renderAppointmentEditModal()}
       <ActionSheet
         isOpen={alarmSheetOpen}
         onClose={() => setAlarmSheetOpen(false)}
@@ -1342,12 +1432,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               </div>
             </div>
             <div className="flex flex-row justify-between mt-2">
-              <div
-                className="p-1 border border-black rounded-md cursor-pointer text-md"
-                onClick={handleAppointmentClick}
-              >
-                약속잡기
-              </div>
+              {renderAppointmentButton()}
               {isSellingAndConsumer && (
                 <div
                   className="p-1 border border-black rounded-md cursor-pointer text-md"
@@ -1465,11 +1550,12 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                         message.chatMeetup.locationLatitude ?? undefined,
                       longitude:
                         message.chatMeetup.locationLongitude ?? undefined,
-                      alarmTime: message.chatMeetup.alarmTime, // alarmTime 추가
+                      alarmTime: message.chatMeetup.alarmTime,
                       isPast:
                         isAppointment &&
                         new Date(message.chatMeetup.appointmentTime) <
                           new Date(),
+                      chatMeetupId: message.chatMeetup.id, // chatMeetupId 추가
                     }
                   : undefined;
 

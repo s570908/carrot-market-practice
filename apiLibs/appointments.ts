@@ -12,12 +12,17 @@ import { AppointmentCreateRequest, CreateForm } from "@/types";
 
 // 기존 API 함수들
 export async function getAppointment(id: number) {
-  const response = await aclient.get<AppointmentDetailApiResponse>(`/api/appointments/${id}`);
+  const response = await aclient.get<AppointmentDetailApiResponse>(
+    `/api/appointments/${id}`
+  );
   return response.data;
 }
 
 export async function writeAppointment(appointment: AppointmentCreateRequest) {
-  const response = await aclient.post<AppointmentResponse>(`/api/appointments`, appointment);
+  const response = await aclient.post<AppointmentResponse>(
+    `/api/appointments`,
+    appointment
+  );
   return response.data;
 }
 
@@ -27,7 +32,10 @@ export async function writeAppointment(appointment: AppointmentCreateRequest) {
  * @param appointmentData 수정할 약속 데이터
  * @returns 수정된 약속 정보 응답 데이터
  */
-export async function updateAppointment(id: number, appointmentData: AppointmentUpdateRequest) {
+export async function updateAppointment(
+  id: number,
+  appointmentData: AppointmentUpdateRequest
+) {
   const response = await aclient.put<AppointmentResponse>(
     `/api/appointments/${id}`,
     appointmentData
@@ -43,9 +51,12 @@ export async function updateAppointment(id: number, appointmentData: Appointment
  */
 export async function updateAppointmentStatus(id: number, status: string) {
   console.log("updateAppointmentStatus", id, status);
-  const response = await aclient.put<{ ok: boolean }>(`/api/appointments/${id}/status`, {
-    status,
-  });
+  const response = await aclient.put<{ ok: boolean }>(
+    `/api/appointments/${id}/status`,
+    {
+      status,
+    }
+  );
   return response.data;
 }
 
@@ -56,9 +67,12 @@ export async function updateAppointmentStatus(id: number, status: string) {
  * @returns 약속 취소 응답 데이터
  */
 export async function cancelAppointment(id: number, status: string) {
-  const response = await aclient.put<{ ok: boolean }>(`/api/appointments/${id}`, {
-    status,
-  });
+  const response = await aclient.put<{ ok: boolean }>(
+    `/api/appointments/${id}`,
+    {
+      status,
+    }
+  );
   return response.data;
 }
 
@@ -94,7 +108,9 @@ export async function getFriends() {
 
 // Method 2: 기본값을 함수 내부에서 처리
 
-export async function getAppointments<T extends "organized" | "participating" | "all">(type?: T) {
+export async function getAppointments<
+  T extends "organized" | "participating" | "all"
+>(type?: T) {
   const finalType = type ?? "all"; // 기본값을 함수 내부에서 처리
   const response = await aclient.get<AppointmentListResponse<T>>(
     `/api/appointments?type=${finalType}`
@@ -121,4 +137,14 @@ export async function getAppointmentsByDate(date: string) {
     console.error("Error fetching appointments by date:", error);
     throw error;
   }
+}
+
+/**
+ * 채팅방의 최신 약속 정보를 조회합니다.
+ * @param chatRoomId 채팅방 ID
+ * @returns 최신 약속 정보
+ */
+export async function getLatestChatMeetup(chatRoomId: number) {
+  const response = await aclient.get(`/api/chat/${chatRoomId}/latest-meetup`);
+  return response.data;
 }

@@ -120,8 +120,8 @@ export const SYSTEM_MESSAGES = {
     message: `약속시간 ${alarmTime}에 알림이 울릴 거예요`,
     meta: {
       type: "APPOINTMENT_ALERT",
-      chatMeetupId: chatMeetupId, // 이것이 핵심: chatMeetupId를 올바르게 설정
-      appointmentMessageId: appointmentMessageId, // 약속 메시지의 ID
+      chatMeetupId: chatMeetupId,
+      appointmentMessageId: appointmentMessageId,
       alarmTime: alarmTime,
     },
   }),

@@ -44,7 +44,7 @@ model User {
   // 친구 관계 (나를 친구로 추가한 사람들) - 이름 변경
   friendInvited             Friendship[]             @relation("FriendInvited")
   pushSubscriptions         PushSubscription[]
-  alarmSettings             AlarmSetting[] @relation("UserToAlarmSetting")
+  alarmSettings             AlarmSetting[]           @relation("UserToAlarmSetting")
   scheduledNotifications    ScheduledNotification[]
 }
 
@@ -182,7 +182,7 @@ model SellerChat {
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
   user                 User?             @relation(fields: [userId], references: [id], onDelete: Cascade) // Make user optional for system messages
-  userId               Int?              // Make userId optional
+  userId               Int? // Make userId optional
   messageType          MessageType       @default(USER) // Add message type field
   chatMsg              String            @db.MediumText
   chatRoom             ChatRoom          @relation(name: "sellerChat", fields: [chatRoomId], references: [id], onDelete: Cascade)
@@ -192,9 +192,9 @@ model SellerChat {
   //// 현재의 응용에서는 producer(문자를 보낸 사람)과 consumer가 각 1명에 국한된다.
   //isNew                Boolean? //// 추후 지울 필요가 있는지 체크할 것
   lastReadMessage      LastReadMessage[] // 여러 명이 이 메시지까지 읽었음을 표시한다.
-  chatMeetup           ChatMeetup?  
-  alarmSettings        AlarmSetting[] @relation("SellerChatToAlarmSetting")
-  meta                 Json?           // 메타데이터를 저장할 Json 필드 추가
+  chatMeetup           ChatMeetup?
+  alarmSettings        AlarmSetting[]    @relation("SellerChatToAlarmSetting")
+  meta                 Json? // 메타데이터를 저장할 Json 필드 추가
 }
 
 model ChatRoom {
@@ -442,24 +442,24 @@ model Friendship {
 
 // PushSubscription 상태를 나타내는 enum 정의
 enum PushSubscriptionStatus {
-  ACTIVE    // 활성 구독
-  EXPIRED   // 만료된 구독 (410 Gone)
-  INVALID   // 잘못된 구독 (404 Not Found)
-  INACTIVE  // 사용자가 비활성화한 구독
+  ACTIVE // 활성 구독
+  EXPIRED // 만료된 구독 (410 Gone)
+  INVALID // 잘못된 구독 (404 Not Found)
+  INACTIVE // 사용자가 비활성화한 구독
 }
 
 // 푸시 구독 정보
 model PushSubscription {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        Int                    @id @default(autoincrement())
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
   userId    Int
-  endpoint  String   @db.Text
-  p256dh    String   @db.Text
-  auth      String   @db.Text
+  endpoint  String                 @db.Text
+  p256dh    String                 @db.Text
+  auth      String                 @db.Text
   browserId String? // 브라우저 ID (선택적 필드)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  status    PushSubscriptionStatus  @default(ACTIVE) // enum 사용
+  user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    PushSubscriptionStatus @default(ACTIVE) // enum 사용
 
   @@index([userId])
   @@index([endpoint(length: 191)]) // Text 필드에 length 매개변수 추가
@@ -485,20 +485,20 @@ model ScheduledNotification {
 
 // 채팅 약속 모델 수정
 model ChatMeetup {
-  id                   Int           @id @default(autoincrement())
-  appointmentTime      DateTime      // Single field for date+time in UTC
-  place                String  
-  locationLatitude     Float?        // Latitude coordinate
-  locationLongitude    Float?        // Longitude coordinate
-  alarmTime            String?       // optional로 변경
-  
-  message              SellerChat    @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  messageId            Int           @unique  // 하나의 챗밋업은 하나의 메시지만 가짐
-  
-  alarmSettings        AlarmSetting[]
-  
-  createdAt            DateTime      @default(now())
-  updatedAt            DateTime      @default(now()) @updatedAt
+  id                Int      @id @default(autoincrement())
+  appointmentTime   DateTime // Single field for date+time in UTC
+  place             String
+  locationLatitude  Float? // Latitude coordinate
+  locationLongitude Float? // Longitude coordinate
+  alarmTime         String? // optional로 변경
+
+  message   SellerChat @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId Int        @unique // 하나의 챗밋업은 하나의 메시지만 가짐
+
+  alarmSettings AlarmSetting[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 // 알림 상태를 enum으로 선언하는 것이 좋습니다.
@@ -515,21 +515,21 @@ enum AlarmStatus {
 }
 
 model AlarmSetting {
-  id           Int        @id @default(autoincrement())
+  id           Int         @id @default(autoincrement())
   userId       Int
-  messageId    Int        // 알림 메시지 ID (SYSTEM 메시지)
-  alarmTime    String     // "10분 전", "30분 전" 등
-  triggerAt    DateTime   // 실제 알림이 울려야 할 시간
+  messageId    Int // 알림 메시지 ID (SYSTEM 메시지)
+  alarmTime    String // "10분 전", "30분 전" 등
+  triggerAt    DateTime // 실제 알림이 울려야 할 시간
   // ChatMeetup와의 관계를 명확히 설정 (N:1, 여러 AlarmSetting이 하나의 ChatMeetup을 참조)
   chatRoomId   Int
-  chatMeetupId Int        // 약속 ID 추가
+  chatMeetupId Int // 약속 ID 추가
   status       AlarmStatus @default(SCHEDULED)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @default(now()) @updatedAt
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @default(now()) @updatedAt
 
-  user         User       @relation("UserToAlarmSetting", fields: [userId], references: [id], onDelete: Cascade)
-  sellerChat   SellerChat @relation("SellerChatToAlarmSetting", fields: [messageId], references: [id], onDelete: Cascade)
-  chatMeetup   ChatMeetup @relation(fields: [chatMeetupId], references: [id], onDelete: Cascade)
+  user       User       @relation("UserToAlarmSetting", fields: [userId], references: [id], onDelete: Cascade)
+  sellerChat SellerChat @relation("SellerChatToAlarmSetting", fields: [messageId], references: [id], onDelete: Cascade)
+  chatMeetup ChatMeetup @relation(fields: [chatMeetupId], references: [id], onDelete: Cascade)
 
   @@unique([messageId, userId]) // 이 제약 조건 유지
   @@index([chatRoomId])
