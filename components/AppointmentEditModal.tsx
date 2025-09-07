@@ -30,6 +30,10 @@ import {
 } from "@/apiLibs/chats";
 import { initializePushSubscription } from "@/libs/client/pushUtils";
 import axios from "axios";
+import {
+  getLatestChatMeetup,
+  updateChatMeetupAlarmTime,
+} from "@/apiLibs/appointments";
 
 interface AppointmentEditModalProps {
   modal: ModalAPI;
@@ -103,11 +107,9 @@ export default function AppointmentEditModal({
               // 1. 동일 chatRoomId에 속한 가장 최근의 SCHEDULED AlarmSetting 조회
               let latestAlarm: any = null;
               try {
-                const res = await axios.get(
-                  `/api/chat/${chatRoomId}/alarm-settings/latest`
-                );
-                if (res.data?.alarm) {
-                  latestAlarm = res.data.alarm;
+                const latestMeetupData = await getLatestChatMeetup(chatRoomId);
+                if (latestMeetupData?.alarm) {
+                  latestAlarm = latestMeetupData.alarm;
                 }
               } catch (fetchError) {
                 console.warn("기존 알림 조회 중 오류:", fetchError);
@@ -208,11 +210,9 @@ export default function AppointmentEditModal({
               // 1. 동일 chatRoomId에 속한 가장 최근의 SCHEDULED AlarmSetting 조회
               let latestAlarm: any = null;
               try {
-                const res = await axios.get(
-                  `/api/chat/${chatRoomId}/alarm-settings/latest`
-                );
-                if (res.data?.alarm) {
-                  latestAlarm = res.data.alarm;
+                const latestMeetupData = await getLatestChatMeetup(chatRoomId);
+                if (latestMeetupData?.alarm) {
+                  latestAlarm = latestMeetupData.alarm;
                 }
               } catch (fetchError) {
                 console.warn("기존 알림 조회 중 오류:", fetchError);
@@ -551,6 +551,20 @@ export default function AppointmentEditModal({
       // 알림만 변경된 경우: 시스템 메시지(APPOINTMENT_ALERT)만 생성 + 알림 설정 로직 추가
       if (isAlarmOnlyChanged) {
         try {
+          // chatMeetupId가 있는 경우 alarmTime만 업데이트
+          console.log(
+            "isOnlyAlarmChanged, params, alarmTime: ",
+            isAlarmOnlyChanged,
+            params,
+            alarmTime
+          );
+          if (params.chatMeetupId) {
+            await updateChatMeetupAlarmTime(
+              params.chatMeetupId,
+              alarmTime ?? null
+            );
+          }
+
           // 시스템 메시지 생성 (알림 변경 안내)
           const alertObj = SYSTEM_MESSAGES.APPOINTMENT_ALERT(
             alarmTime ?? "",
@@ -568,23 +582,51 @@ export default function AppointmentEditModal({
           // 기존 알림 조회
           let latestAlarm: any = null;
           try {
-            const res = await axios.get(
-              `/api/chat/${chatRoomId}/alarm-settings/latest`
-            );
-            if (res.data?.alarm) {
-              latestAlarm = res.data.alarm;
+            const latestMeetupData = await getLatestChatMeetup(chatRoomId);
+            // 최신 약속(chatMeetup)에서 alarm이 null로 나오는 경우,
+            // chatMeetup에 연결된 AlarmSetting이 실제로 없는 것일 수 있습니다.
+            // 이 경우, alarm이 null이면 기존 알림이 없는 것으로 간주하고, 취소 로직을 건너뜁니다.
+            console.log("lastestMeetupData: ", latestMeetupData);
+            if (latestMeetupData?.alarm) {
+              latestAlarm = latestMeetupData.alarm;
+            } else {
+              // alarm이 null이면 기존 알림이 없는 상태이므로, 취소 로직을 실행하지 않음
+              latestAlarm = null;
             }
           } catch (fetchError) {
             console.warn("기존 알림 조회 중 오류:", fetchError);
+            latestAlarm = null;
           }
+
+          console.log(
+            "latestAlarm, params.messageId:",
+            latestAlarm,
+            params.messageId
+          );
 
           // 기존 SCHEDULED 알림이 있고 새로 생성될 알림과 다르면 취소
           if (
             latestAlarm &&
             latestAlarm.status === "SCHEDULED" &&
+            latestAlarm.messageId &&
             latestAlarm.messageId !== params.messageId
           ) {
             try {
+              // messageId가 0으로 나오는 문제는
+              // 1) latestAlarm 객체에 messageId가 실제로 없는 경우
+              // 2) 서버에서 alarmSetting 생성 시 messageId가 올바르게 저장되지 않은 경우
+              // 3) params.messageId가 undefined/null일 때 ?? 0으로 대체되어 0이 전달되는 경우
+              // 입니다.
+              //
+              // 반드시 latestAlarm.messageId와 params.messageId가 실제 값(0이 아닌 값)인지 확인하세요.
+              // 아래와 같이 로그를 추가해 디버깅할 수 있습니다.
+              console.log(
+                "알림 취소 요청: latestAlarm.messageId =",
+                latestAlarm.messageId,
+                "params.messageId =",
+                params.messageId
+              );
+
               await axios.post(
                 `/api/chat/${chatRoomId}/alarm-settings/${latestAlarm.messageId}/cancel`,
                 {}
@@ -604,8 +646,8 @@ export default function AppointmentEditModal({
           const utcTriggerAt = new Date(triggerAt.toISOString());
           await createAlarmSettings({
             chatId: chatRoomId,
-            messageId: params.messageId ?? 0,
-            alarmTime: alarmTime ?? "",
+            messageId: latestAlarm.messageId,
+            alarmTime: latestAlarm.alarmTime,
             triggerAt: utcTriggerAt.toISOString(),
             disableAlarm: false,
           });
@@ -1057,6 +1099,11 @@ export default function AppointmentEditModal({
 // 즉, AppointmentEditModal의 onSuccess(= useMutation의 onSuccess)에서
 // props로 전달받은 refetchMessages, onUpdate, onChange 등 콜백을 호출하도록 수정하면 됩니다.
 // 2. React Query, SWR 등으로 message 데이터를 invalidate/refetch 하거나
+// 3. 상태 관리(예: Redux, Context 등)로 message 데이터를 갱신해야 합니다.
+//
+// 결론:
+// message 컴포넌트가 사용하는 약속 데이터가 최신 상태로 갱신되지 않아서
+// alarmTime 변경이 UI에 반영되지 않는 것입니다.
 // 3. 상태 관리(예: Redux, Context 등)로 message 데이터를 갱신해야 합니다.
 //
 // 결론:

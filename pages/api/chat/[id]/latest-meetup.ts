@@ -44,8 +44,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       return res.status(200).json({
         ok: true,
-        latestMeetupId: latestMeetup.id,
-        appointmentTime: latestMeetup.appointmentTime,
+        // latestMeetupId: latestMeetup.id,
+        // appointmentTime: latestMeetup.appointmentTime,
+        lastestMeetup: latestMeetup,
       });
     } catch (error) {
       console.error("Error fetching latest meetup:", error);

@@ -163,17 +163,17 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
             //onClick={() => modal.closeWithError("backdrop_click")}
           />
           <div className="z-50">
-            <div className="p-4 text-base font-normal bg-white rounded-lg w-96">
+            <div className="w-96 rounded-lg bg-white p-4 text-base font-normal">
               <h4 className="mb-4">예약 중입니다. 예약자: {params.name} </h4>
               <h4 className="mb-4">예약취소 후 판매중으로 변경하시겠습니까?</h4>
               <button
-                className="px-4 py-2 text-white bg-blue-500 rounded-lg"
+                className="rounded-lg bg-blue-500 px-4 py-2 text-white"
                 onClick={() => modal.closeWithResult("selling")}
               >
                 변경
               </button>
               <button
-                className="px-4 py-2 ml-2 text-black bg-gray-200 rounded-lg"
+                className="ml-2 rounded-lg bg-gray-200 px-4 py-2 text-black"
                 onClick={() => modal.closeWithResult("keep")}
               >
                 예약유지
@@ -1273,7 +1273,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       (message: any) => message.chatMeetup && message.chatMeetup.appointmentTime
     );
     if (appointmentMessages.length === 0) return null;
-    return appointmentMessages[appointmentMessages.length - 1];
+    const latestMsg = appointmentMessages[appointmentMessages.length - 1];
+    // latestMsg.id가 최신 약속 메시지의 id (messageId)
+    return latestMsg;
   })();
 
   // 약속 시간 포맷 함수
@@ -1295,7 +1297,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       // 약속이 없으면 기존처럼 생성 페이지로 이동
       return (
         <div
-          className="p-1 border border-black rounded-md cursor-pointer text-md"
+          className="text-md cursor-pointer rounded-md border border-black p-1"
           onClick={handleAppointmentClick}
         >
           약속잡기
@@ -1307,7 +1309,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     const formattedTime = formatDetailedAppointmentTime(
       chatMeetup.appointmentTime
     );
-    const messageId = latestAppointment.id; // 메시지의 id
+    const messageId = latestAppointment.id; // 최신 약속 메시지의 id
     const chatMeetupId = chatMeetup.id; // chatMeetup의 id
 
     // 약속이 있으면 시간 표시, 클릭시 수정 모달 오픈
@@ -1323,14 +1325,16 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         }`}
         onClick={async () => {
           if (isPast) return;
+          // messageId는 latestAppointment.id로 전달
+          console.log("chatMeetupId:", chatMeetupId);
           await openAppointmentEditModal({
             appointmentTime: chatMeetup.appointmentTime,
             place: chatMeetup.place,
             latitude: chatMeetup.locationLatitude ?? 0,
             longitude: chatMeetup.locationLongitude ?? 0,
             alarmTime: chatMeetup.alarmTime ?? null,
-            messageId, // 메시지 id 추가
-            chatMeetupId, // chatMeetup id 추가
+            messageId: chatMeetup.messageId, // 최신 약속 메시지의 id 전달
+            chatMeetupId: chatMeetupId, // chatMeetup의 id 전달
           });
         }}
         disabled={isPast}
@@ -1382,9 +1386,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         backUrl={"back"}
       >
         <div className="relative h-full px-4 pb-12">
-          <div className="w-full max-w-xl p-4 bg-red-200 border-b border-gray-200">
+          <div className="w-full max-w-xl border-b border-gray-200 bg-red-200 p-4">
             <div
-              className="flex items-center cursor-pointer"
+              className="flex cursor-pointer items-center"
               onClick={() => {
                 router.push(`/products/${productId}`);
               }}
@@ -1431,11 +1435,11 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                 </div>
               </div>
             </div>
-            <div className="flex flex-row justify-between mt-2">
+            <div className="mt-2 flex flex-row justify-between">
               {renderAppointmentButton()}
               {isSellingAndConsumer && (
                 <div
-                  className="p-1 border border-black rounded-md cursor-pointer text-md"
+                  className="text-md cursor-pointer rounded-md border border-black p-1"
                   onClick={() => {
                     console.log("당근페이가 클릭되었습니다.");
                   }}
@@ -1445,7 +1449,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               )}
               {isSellingAndProvider && (
                 <div
-                  className="p-1 border border-black rounded-md cursor-pointer text-md"
+                  className="text-md cursor-pointer rounded-md border border-black p-1"
                   onClick={() => {
                     console.log("송금요청이 클릭되었습니다.");
                   }}
@@ -1455,7 +1459,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               )}
               {isSellingAndConsumer && (
                 <div
-                  className="p-1 border border-black rounded-md cursor-pointer text-md"
+                  className="text-md cursor-pointer rounded-md border border-black p-1"
                   onClick={() => {
                     console.log("물품추가가 클릭되었습니다.");
                   }}
@@ -1479,7 +1483,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                 {`${isProvider ? "판매" : "구매"} 후기 보내기`}
               </button>
               <div
-                className="p-1 border border-black rounded-md cursor-pointer text-md"
+                className="text-md cursor-pointer rounded-md border border-black p-1"
                 onClick={() => {
                   console.log("장소공유가 클릭 되었습니다.");
                 }}
@@ -1487,7 +1491,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                 장소공유
               </div>
               <div
-                className="p-1 border border-black rounded-md cursor-pointer text-md"
+                className="text-md cursor-pointer rounded-md border border-black p-1"
                 onClick={() => {
                   console.log("기타가 클릭 되었습니다.");
                 }}
@@ -1622,18 +1626,18 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                       messageRefs.current.delete(`${message.id}`);
                     }
                   }}
-                  className="p-4 border-b border-gray-200"
+                  className="border-b border-gray-200 p-4"
                 >
                   {/* 날짜 툴팁 */}
                   {showTooltip && tooltipDate && (
-                    <div className="fixed z-20 px-4 py-2 text-sm text-white transform -translate-x-1/2 bg-gray-600 rounded-full left-1/2 top-2 bg-opacity-20">
+                    <div className="fixed left-1/2 top-2 z-20 -translate-x-1/2 transform rounded-full bg-gray-600 bg-opacity-20 px-4 py-2 text-sm text-white">
                       {tooltipDate}
                     </div>
                   )}
                   {/* 날짜 변경 시 날짜 표시 */}
                   {showDate && (
-                    <div className="my-2 text-sm text-center text-white">
-                      <span className="px-4 bg-gray-400 rounded-full">
+                    <div className="my-2 text-center text-sm text-white">
+                      <span className="rounded-full bg-gray-400 px-4">
                         {dayjs(message.createdAt)
                           .locale("ko")
                           .format("YYYY년 MM월 DD일 dddd")}
@@ -1694,9 +1698,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
           <div>
             <form
               onSubmit={handleSubmit(onValid)}
-              className="w-full px-1 py-1 mt-10 border-t"
+              className="mt-10 w-full border-t px-1 py-1"
             >
-              <div className="relative w-full px-2 py-2 bg-white rounded-md outline-none">
+              <div className="relative w-full rounded-md bg-white px-2 py-2 outline-none">
                 <input
                   {...register("chatMsg", { required: true, maxLength: 80 })}
                   maxLength={80}

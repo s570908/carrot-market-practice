@@ -148,3 +148,22 @@ export async function getLatestChatMeetup(chatRoomId: number) {
   const response = await aclient.get(`/api/chat/${chatRoomId}/latest-meetup`);
   return response.data;
 }
+
+/**
+ * chatMeetup(채팅 약속)의 alarmTime만 업데이트하는 함수
+ * @param chatMeetupId chatMeetup의 id
+ * @param alarmTime 새로운 알림 시간 (예: "10분 전", "30분 전" 등)
+ * @returns 업데이트된 chatMeetup 정보
+ */
+export async function updateChatMeetupAlarmTime(
+  chatMeetupId: number,
+  alarmTime: string | null
+) {
+  const response = await aclient.patch(
+    `/api/chat-meetups/${chatMeetupId}/alarm-time`,
+    {
+      alarmTime,
+    }
+  );
+  return response.data;
+}

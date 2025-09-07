@@ -147,6 +147,12 @@ export const getAlarmSettings = async (chatId: number, messageId: number) => {
 };
 
 // 새로운 알람 설정 생성
+// createAlarmSettings 함수에서 400 (Bad Request) 에러가 발생하는 주요 원인:
+// 1. messageId, alarmTime 등 필수 파라미터가 undefined, null, 잘못된 값(0 등)으로 전달됨
+// 2. 서버에서 요구하는 필드가 누락되었거나 타입이 맞지 않음
+// 3. chatId, messageId가 실제 존재하지 않는 값일 때
+
+// createAlarmSettings 호출 전, 파라미터 유효성 체크를 추가하세요.
 export const createAlarmSettings = async (params: {
   chatId: number;
   messageId: number;
@@ -154,6 +160,18 @@ export const createAlarmSettings = async (params: {
   triggerAt?: string;
   disableAlarm: boolean;
 }) => {
+  // 필수 파라미터 체크
+  if (
+    !params.chatId ||
+    !params.messageId ||
+    typeof params.alarmTime !== "string" ||
+    params.alarmTime.trim() === ""
+  ) {
+    throw new Error(
+      `createAlarmSettings: 필수 파라미터 누락 또는 잘못된 값. chatId=${params.chatId}, messageId=${params.messageId}, alarmTime=${params.alarmTime}`
+    );
+  }
+
   console.log("createAlarmSettings params:", params);
 
   // POST 방식으로 새로운 알람 생성
