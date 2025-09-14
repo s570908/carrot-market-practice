@@ -25,7 +25,6 @@ import {
   writeSystemMessage,
   SYSTEM_MESSAGES,
   createAlarmSettings,
-  writeAlarmSettings,
   updateChatMeetup,
 } from "@/apiLibs/chats";
 import { initializePushSubscription } from "@/libs/client/pushUtils";
@@ -34,6 +33,7 @@ import {
   getLatestChatMeetup,
   updateChatMeetupAlarmTime,
 } from "@/apiLibs/appointments";
+import { last } from "lodash";
 
 interface AppointmentEditModalProps {
   modal: ModalAPI;
@@ -483,10 +483,10 @@ export default function AppointmentEditModal({
       console.log("Dayjs로 변환 (한국시간):", localDateTimeDayjs.format());
 
       const localDateTime = localDateTimeDayjs.toDate();
-      console.log("변환된 Date 객체:", localDateTime);
-      console.log("ISO 문자열:", localDateTime.toISOString());
-      console.log("변환된 Date 객체:", localDateTime);
-      console.log("ISO 문자열:", localDateTime.toISOString());
+      // console.log("변환된 Date 객체:", localDateTime);
+      // console.log("ISO 문자열:", localDateTime.toISOString());
+      // console.log("변환된 Date 객체:", localDateTime);
+      // console.log("ISO 문자열:", localDateTime.toISOString());
 
       // 현재 시간 (브라우저의 로컬 시간)
       const now = new Date();
@@ -552,18 +552,21 @@ export default function AppointmentEditModal({
       if (isAlarmOnlyChanged) {
         try {
           // chatMeetupId가 있는 경우 alarmTime만 업데이트
-          console.log(
-            "isOnlyAlarmChanged, params, alarmTime: ",
-            isAlarmOnlyChanged,
-            params,
-            alarmTime
-          );
+          // console.log(
+          //   "isOnlyAlarmChanged, params, alarmTime: ",
+          //   isAlarmOnlyChanged,
+          //   params,
+          //   alarmTime
+          // );
+          let updated = null;
           if (params.chatMeetupId) {
-            await updateChatMeetupAlarmTime(
+            updated = await updateChatMeetupAlarmTime(
               params.chatMeetupId,
               alarmTime ?? null
             );
           }
+
+          console.log("updated: ", updated);
 
           // 시스템 메시지 생성 (알림 변경 안내)
           const alertObj = SYSTEM_MESSAGES.APPOINTMENT_ALERT(
@@ -578,76 +581,50 @@ export default function AppointmentEditModal({
             userId: user?.id,
           });
 
-          // 알림 설정 로직 추가
           // 기존 알림 조회
-          let latestAlarm: any = null;
-          try {
-            const latestMeetupData = await getLatestChatMeetup(chatRoomId);
-            // 최신 약속(chatMeetup)에서 alarm이 null로 나오는 경우,
-            // chatMeetup에 연결된 AlarmSetting이 실제로 없는 것일 수 있습니다.
-            // 이 경우, alarm이 null이면 기존 알림이 없는 것으로 간주하고, 취소 로직을 건너뜁니다.
-            console.log("lastestMeetupData: ", latestMeetupData);
-            if (latestMeetupData?.alarm) {
-              latestAlarm = latestMeetupData.alarm;
-            } else {
-              // alarm이 null이면 기존 알림이 없는 상태이므로, 취소 로직을 실행하지 않음
-              latestAlarm = null;
-            }
-          } catch (fetchError) {
-            console.warn("기존 알림 조회 중 오류:", fetchError);
-            latestAlarm = null;
-          }
+          // let latestAlarm: any = null;
+          // try {
+          //   const latestMeetupData = await getLatestChatMeetup(chatRoomId);
+          //   const meetup = latestMeetupData?.lastestMeetup;
+          //   if (meetup?.messageId) {
+          //     const alarmRes = await axios.get(
+          //       `/api/alarm-settings/${meetup.messageId}`
+          //     );
+          //     let latestAlarm = alarmRes.data.alarm || null;
+          //     console.log("alarmRes: ", alarmRes);
+          //     // alarmRes.data.alarmSettings는 배열이므로, SCHEDULED 상태의 알림 1개만 추출
+          //     if (latestAlarm && latestAlarm.status === "SCHEDULED") {
+          //       await axios.post(
+          //         `/api/chat/${chatRoomId}/alarm-settings/${latestAlarm.messageId}/cancel`,
+          //         {}
+          //       );
+          //     }
+          //   } else {
+          //     latestAlarm = null;
+          //   }
+          // } catch (fetchError) {
+          //   console.warn("기존 알림 조회 중 오류:", fetchError);
+          //   latestAlarm = null;
+          // }
 
-          console.log(
-            "latestAlarm, params.messageId:",
-            latestAlarm,
-            params.messageId
-          );
-
-          // 기존 SCHEDULED 알림이 있고 새로 생성될 알림과 다르면 취소
-          if (
-            latestAlarm &&
-            latestAlarm.status === "SCHEDULED" &&
-            latestAlarm.messageId &&
-            latestAlarm.messageId !== params.messageId
-          ) {
-            try {
-              // messageId가 0으로 나오는 문제는
-              // 1) latestAlarm 객체에 messageId가 실제로 없는 경우
-              // 2) 서버에서 alarmSetting 생성 시 messageId가 올바르게 저장되지 않은 경우
-              // 3) params.messageId가 undefined/null일 때 ?? 0으로 대체되어 0이 전달되는 경우
-              // 입니다.
-              //
-              // 반드시 latestAlarm.messageId와 params.messageId가 실제 값(0이 아닌 값)인지 확인하세요.
-              // 아래와 같이 로그를 추가해 디버깅할 수 있습니다.
-              console.log(
-                "알림 취소 요청: latestAlarm.messageId =",
-                latestAlarm.messageId,
-                "params.messageId =",
-                params.messageId
-              );
-
-              await axios.post(
-                `/api/chat/${chatRoomId}/alarm-settings/${latestAlarm.messageId}/cancel`,
-                {}
-              );
-              console.log(`기존 알림 취소됨: ${latestAlarm.id}`);
-            } catch (cancelError) {
-              console.warn("기존 알림 취소 중 오류:", cancelError);
-            }
-          }
-
-          // 새 알림 생성
+          // 새 AlarmSetting 생성 (status: SCHEDULED)
           const appointmentTime = new Date(params.appointmentTime);
           const triggerAt = calculateTriggerTime(
             appointmentTime,
             alarmTime ?? ""
           );
           const utcTriggerAt = new Date(triggerAt.toISOString());
+          console.log("before createAlarmSetting: ", {
+            chatId: chatRoomId,
+            messageId: updated.chatMeetup.messageId ?? 0,
+            alarmTime: alarmTime ?? "",
+            triggerAt: utcTriggerAt.toISOString(),
+            disableAlarm: false,
+          });
           await createAlarmSettings({
             chatId: chatRoomId,
-            messageId: latestAlarm.messageId,
-            alarmTime: latestAlarm.alarmTime,
+            messageId: updated.chatMeetup.messageId ?? 0,
+            alarmTime: alarmTime ?? "",
             triggerAt: utcTriggerAt.toISOString(),
             disableAlarm: false,
           });
@@ -1070,6 +1047,45 @@ export default function AppointmentEditModal({
     </>
   );
 }
+
+/*
+알림 트리거 시간 계산이 필요한 이유
+
+- 알림(AlarmSetting)은 "약속 시간"이 아니라, "약속 시간 몇 분/몇 시간/며칠 전"에 울려야 합니다.
+- 예를 들어, 약속이 2024-06-10 15:00이고, 알림이 "30분 전"이면 실제 알림이 울려야 할 시간은 2024-06-10 14:30입니다.
+- 따라서, 사용자가 선택한 alarmTime("10분 전", "30분 전" 등)과 appointmentTime(약속 시간)으로
+  실제로 알림이 울릴 정확한 시각(triggerAt)을 계산해야 합니다.
+- 이 triggerAt 값이 DB에 저장되고, node-schedule 등에서 알림 예약의 기준이 됩니다.
+
+정리:
+- 알림 트리거 시간 계산은 "언제 알림을 울릴지"를 정확히 결정하기 위해 반드시 필요합니다.
+*/
+
+// 문제 원인 설명:
+// AlarmTimeSelector에서 alarmTime을 변경하고 모달을 닫으면, 변경된 alarmTime이 서버에 저장되고
+// message 컴포넌트에서 약속보기 버튼을 눌러 AppointmentEditModal을 다시 열 때
+// 최신 alarmTime이 반영되도록 하려면
+// message 리스트(혹은 약속 데이터)를 fetch/리패칭하는 로직이 필요합니다.
+//
+// 따라서, 약속/알림을 수정한 뒤 모달이 닫힐 때
+// 부모 컴포넌트(메시지 리스트 등)에서 데이터를 다시 불러오는 함수(예: fetchMessages, refetch, mutate 등)를 호출해야 합니다.
+//
+// 이 코드는 AppointmentEditModal의 onSuccess(즉, 약속 생성/수정 성공 후)에서
+// 모달을 닫기 전에 부모에게 "데이터를 다시 불러와라"는 신호를 주는 콜백을 실행하도록 수정하면 됩니다.
+//
+// 즉, AppointmentEditModal의 onSuccess(= useMutation의 onSuccess)에서
+// props로 전달받은 refetchMessages, onUpdate, onChange 등 콜백을 호출하도록 수정하면 됩니다.
+// 2. React Query, SWR 등으로 message 데이터를 invalidate/refetch 하거나
+// 3. 상태 관리(예: Redux, Context 등)로 message 데이터를 갱신해야 합니다.
+//
+// 결론:
+// message 컴포넌트가 사용하는 약속 데이터가 최신 상태로 갱신되지 않아서
+// alarmTime 변경이 UI에 반영되지 않는 것입니다.
+// 3. 상태 관리(예: Redux, Context 등)로 message 데이터를 갱신해야 합니다.
+//
+// 결론:
+// message 컴포넌트가 사용하는 약속 데이터가 최신 상태로 갱신되지 않아서
+// alarmTime 변경이 UI에 반영되지 않는 것입니다.
 
 /*
 알림 트리거 시간 계산이 필요한 이유

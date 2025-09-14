@@ -20,6 +20,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     alarmTime,
     triggerAt,
     userId: user?.id,
+    disableAlarm,
   });
 
   // 공통 검증
@@ -134,11 +135,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             },
           });
 
+          let canceledAlarm = null;
           if (existingAlarm) {
-            await tx.alarmSetting.update({
+            canceledAlarm = await tx.alarmSetting.update({
               where: { id: existingAlarm.id },
               data: { status: AlarmStatus.CANCELED },
             });
+            console.log("canceledAlarm:", canceledAlarm);
           }
 
           return { canceled: existingAlarm?.id, newAlarm: null };
@@ -168,8 +171,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           },
         });
 
+        let canceledAlarm = null;
         if (existingAlarm) {
-          await tx.alarmSetting.update({
+          canceledAlarm = await tx.alarmSetting.update({
             where: { id: existingAlarm.id },
             data: { status: AlarmStatus.CANCELED },
           });
@@ -225,108 +229,108 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     // PUT 메소드 - 기존 알림 수정
-    if (req.method === "PUT") {
-      // 알림 비활성화 처리
-      if (disableAlarm) {
-        const result = await client.$transaction(async (tx) => {
-          const existingAlarm = await tx.alarmSetting.findFirst({
-            where: {
-              messageId: +messageId,
-              userId: user.id,
-              status: AlarmStatus.SCHEDULED,
-            },
-          });
+    // if (req.method === "PUT") {
+    //   // 알림 비활성화 처리
+    //   if (disableAlarm) {
+    //     const result = await client.$transaction(async (tx) => {
+    //       const existingAlarm = await tx.alarmSetting.findFirst({
+    //         where: {
+    //           messageId: +messageId,
+    //           userId: user.id,
+    //           status: AlarmStatus.SCHEDULED,
+    //         },
+    //       });
 
-          if (existingAlarm) {
-            await tx.alarmSetting.update({
-              where: { id: existingAlarm.id },
-              data: { status: AlarmStatus.CANCELED },
-            });
-          }
+    //       if (existingAlarm) {
+    //         await tx.alarmSetting.update({
+    //           where: { id: existingAlarm.id },
+    //           data: { status: AlarmStatus.CANCELED },
+    //         });
+    //       }
 
-          return { canceled: existingAlarm?.id, newAlarm: null };
-        });
+    //       return { canceled: existingAlarm?.id, newAlarm: null };
+    //     });
 
-        if (result.canceled) {
-          await cancelExistingAlarm(result.canceled);
-        }
+    //     if (result.canceled) {
+    //       await cancelExistingAlarm(result.canceled);
+    //     }
 
-        return res.status(200).json({
-          ok: true,
-          alarmSetting: null,
-          message: "Alarm disabled successfully",
-          disableAlarm: true,
-          alarmTime,
-        });
-      }
+    //     return res.status(200).json({
+    //       ok: true,
+    //       alarmSetting: null,
+    //       message: "Alarm disabled successfully",
+    //       disableAlarm: true,
+    //       alarmTime,
+    //     });
+    //   }
 
-      // 기존 알림 업데이트
-      const result = await client.$transaction(async (tx) => {
-        // 기존 알람 설정 조회 및 취소
-        const existingAlarm = await tx.alarmSetting.findFirst({
-          where: {
-            messageId: +messageId,
-            userId: user.id,
-            status: AlarmStatus.SCHEDULED,
-          },
-        });
+    //   // 기존 알림 업데이트
+    //   const result = await client.$transaction(async (tx) => {
+    //     // 기존 알람 설정 조회 및 취소
+    //     const existingAlarm = await tx.alarmSetting.findFirst({
+    //       where: {
+    //         messageId: +messageId,
+    //         userId: user.id,
+    //         status: AlarmStatus.SCHEDULED,
+    //       },
+    //     });
 
-        if (existingAlarm) {
-          await tx.alarmSetting.update({
-            where: { id: existingAlarm.id },
-            data: { status: AlarmStatus.CANCELED },
-          });
-        }
+    //     if (existingAlarm) {
+    //       await tx.alarmSetting.update({
+    //         where: { id: existingAlarm.id },
+    //         data: { status: AlarmStatus.CANCELED },
+    //       });
+    //     }
 
-        // upsert 방식으로 알람 설정 업데이트
-        const updatedAlarm = await tx.alarmSetting.upsert({
-          where: {
-            messageId_userId: {
-              messageId: +messageId,
-              userId: user.id,
-            },
-          },
-          update: {
-            chatMeetupId: appointmentMessage.chatMeetup!.id,
-            alarmTime,
-            triggerAt: new Date(triggerAt),
-            status: AlarmStatus.SCHEDULED,
-          },
-          create: {
-            userId: user.id,
-            chatRoomId: +id,
-            messageId: +messageId,
-            chatMeetupId: appointmentMessage.chatMeetup!.id,
-            alarmTime,
-            triggerAt: new Date(triggerAt),
-            status: AlarmStatus.SCHEDULED,
-          },
-        });
+    //     // upsert 방식으로 알람 설정 업데이트
+    //     const updatedAlarm = await tx.alarmSetting.upsert({
+    //       where: {
+    //         messageId_userId: {
+    //           messageId: +messageId,
+    //           userId: user.id,
+    //         },
+    //       },
+    //       update: {
+    //         chatMeetupId: appointmentMessage.chatMeetup!.id,
+    //         alarmTime,
+    //         triggerAt: new Date(triggerAt),
+    //         status: AlarmStatus.SCHEDULED,
+    //       },
+    //       create: {
+    //         userId: user.id,
+    //         chatRoomId: +id,
+    //         messageId: +messageId,
+    //         chatMeetupId: appointmentMessage.chatMeetup!.id,
+    //         alarmTime,
+    //         triggerAt: new Date(triggerAt),
+    //         status: AlarmStatus.SCHEDULED,
+    //       },
+    //     });
 
-        return { canceled: existingAlarm?.id, newAlarm: updatedAlarm };
-      });
+    //     return { canceled: existingAlarm?.id, newAlarm: updatedAlarm };
+    //   });
 
-      // 트랜잭션 외부에서 스케줄러 관리
-      if (result.canceled) {
-        await cancelExistingAlarm(result.canceled);
-      }
+    //   // 트랜잭션 외부에서 스케줄러 관리
+    //   if (result.canceled) {
+    //     await cancelExistingAlarm(result.canceled);
+    //   }
 
-      if (result.newAlarm) {
-        const isLocalhost = req.headers.host?.startsWith("localhost");
-        const baseUrl =
-          process.env.NEXT_PUBLIC_API_URL ||
-          `${isLocalhost ? "http" : "https"}://${req.headers.host}`;
-        await scheduleAlarmById(result.newAlarm.id, baseUrl);
-      }
+    //   if (result.newAlarm) {
+    //     const isLocalhost = req.headers.host?.startsWith("localhost");
+    //     const baseUrl =
+    //       process.env.NEXT_PUBLIC_API_URL ||
+    //       `${isLocalhost ? "http" : "https"}://${req.headers.host}`;
+    //     await scheduleAlarmById(result.newAlarm.id, baseUrl);
+    //   }
 
-      return res.status(200).json({
-        ok: true,
-        alarmSetting: result.newAlarm,
-        message: "Alarm updated successfully",
-        disableAlarm: false,
-        alarmTime,
-      });
-    }
+    //   return res.status(200).json({
+    //     ok: true,
+    //     alarmSetting: result.newAlarm,
+    //     message: "Alarm updated successfully",
+    //     disableAlarm: false,
+    //     alarmTime,
+    //   });
+    // }
   } catch (error) {
     // 오류 로깅 개선
     console.error(

@@ -1,4 +1,8 @@
-import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+} from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import "../styles/globals.css";
 import type { AppProps } from "next/app";
@@ -41,7 +45,10 @@ type CustomPageProps = {
   [key: string]: any;
 };
 
-function AppContent({ Component, pageProps }: AppProps & { pageProps: CustomPageProps }) {
+function AppContent({
+  Component,
+  pageProps,
+}: AppProps & { pageProps: CustomPageProps }) {
   const router = useRouter();
   const [socket] = useSocket("market");
   const [isMounted, setIsMounted] = useState(false);
@@ -51,7 +58,7 @@ function AppContent({ Component, pageProps }: AppProps & { pageProps: CustomPage
   }, []);
 
   // Enter 페이지에서는 불필요한 쿼리 실행 방지
-  const isEnterPage = router.pathname === '/enter';
+  const isEnterPage = router.pathname === "/enter";
 
   // 클라이언트에서만 실행되는 쿼리
   const { data: channelData } = useQuery({
@@ -60,8 +67,8 @@ function AppContent({ Component, pageProps }: AppProps & { pageProps: CustomPage
     enabled: isMounted && !isEnterPage,
     staleTime: 2 * 60 * 1000, // 🟢 2분간 신선한 데이터로 간주
     refetchOnWindowFocus: false, // 🟢 포커스 시 재요청 방지
-    refetchOnReconnect: false,   // 🟢 재연결 시 재요청 방지  
-    retry: false,                // 🟢 즉시 에러 처리
+    refetchOnReconnect: false, // 🟢 재연결 시 재요청 방지
+    retry: false, // 🟢 즉시 에러 처리
   });
 
   // 소켓 연결 (클라이언트에서만, Enter 페이지 제외)
@@ -77,12 +84,12 @@ function AppContent({ Component, pageProps }: AppProps & { pageProps: CustomPage
         });
       }
     }
-  }, [socket, channelData, isMounted, isEnterPage]);
+  }, [socket, channelData, isMounted, isEnterPage, pageProps?.user?.id]);
 
   // SSR 중에는 기본 컴포넌트만 렌더링
   if (!isMounted) {
     return (
-      <div className="w-full max-w-xl mx-auto">
+      <div className="mx-auto w-full max-w-xl">
         <Component {...pageProps} /> {/* 🟢 서버와 동일한 렌더링 */}
       </div>
     );
@@ -90,7 +97,7 @@ function AppContent({ Component, pageProps }: AppProps & { pageProps: CustomPage
 
   // 클라이언트에서만 ToastContainer 등 추가 기능 렌더링
   return (
-    <div className="w-full max-w-xl mx-auto">
+    <div className="mx-auto w-full max-w-xl">
       <Component {...pageProps} />
       <AppInitializer />
       <ToastContainer
@@ -116,7 +123,7 @@ export default MyApp;
 // - useUser() 제거로 Enter 페이지에서 리다이렉트 루프 방지
 // - 미들웨어 기반 인증과 완벽 호환
 
-// 2. 안정적인 SSR/CSR 처리  
+// 2. 안정적인 SSR/CSR 처리
 // - isMounted 상태로 하이드레이션 불일치 방지
 // - 서버와 클라이언트 렌더링 결과 일치 보장
 

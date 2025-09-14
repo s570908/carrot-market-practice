@@ -31,10 +31,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           locationLatitude: true,
           locationLongitude: true,
           alarmTime: true, // 알람 시간 추가
+          messageId: true,
         },
       });
 
-      console.log("================latestMeetup: ", latestMeetup);
+      // console.log("================latestMeetup: ", latestMeetup);
 
       if (!latestMeetup) {
         return res
@@ -44,8 +45,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       return res.status(200).json({
         ok: true,
-        // latestMeetupId: latestMeetup.id,
-        // appointmentTime: latestMeetup.appointmentTime,
         lastestMeetup: latestMeetup,
       });
     } catch (error) {

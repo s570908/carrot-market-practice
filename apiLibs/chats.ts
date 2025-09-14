@@ -231,37 +231,37 @@ export const writeAlarmSettings = async (params: {
 };
 
 // 기존 알람 설정 부분 수정
-export const updateAlarmSettings = async (params: {
-  chatId: number;
-  messageId: number;
-  alarmTime?: string;
-  triggerAt?: string;
-  disableAlarm?: boolean;
-}) => {
-  console.log("updateAlarmSettings params:", params);
+// export const updateAlarmSettings = async (params: {
+//   chatId: number;
+//   messageId: number;
+//   alarmTime?: string;
+//   triggerAt?: string;
+//   disableAlarm?: boolean;
+// }) => {
+//   console.log("updateAlarmSettings params:", params);
 
-  try {
-    // PATCH 방식으로 부분 업데이트
-    const response = await aclient.patch(
-      `/api/chat/${params.chatId}/alarm-settings/${params.messageId}`,
-      {
-        alarmTime: params.alarmTime,
-        triggerAt: params.triggerAt,
-        disableAlarm: params.disableAlarm,
-      }
-    );
-    return response.data;
-  } catch (error: any) {
-    // 404 에러는 기존 알람이 없다는 의미이므로 명확한 에러 메시지 반환
-    if (error?.response?.status === 404) {
-      return {
-        ok: false,
-        error: "기존 알람 설정이 존재하지 않습니다. 먼저 알람을 생성하세요.",
-      };
-    }
-    throw error;
-  }
-};
+//   try {
+//     // PATCH 방식으로 부분 업데이트
+//     const response = await aclient.patch(
+//       `/api/chat/${params.chatId}/alarm-settings/${params.messageId}`,
+//       {
+//         alarmTime: params.alarmTime,
+//         triggerAt: params.triggerAt,
+//         disableAlarm: params.disableAlarm,
+//       }
+//     );
+//     return response.data;
+//   } catch (error: any) {
+//     // 404 에러는 기존 알람이 없다는 의미이므로 명확한 에러 메시지 반환
+//     if (error?.response?.status === 404) {
+//       return {
+//         ok: false,
+//         error: "기존 알람 설정이 존재하지 않습니다. 먼저 알람을 생성하세요.",
+//       };
+//     }
+//     throw error;
+//   }
+// };
 
 // 알람 설정을 삭제하는 함수
 export const deleteAlarmSettings = async (

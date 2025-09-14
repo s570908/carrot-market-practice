@@ -25,7 +25,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       where: { id: chatMeetupId },
       data: { alarmTime },
     });
-    console.log("chatMeetup, alarmTime:", chatMeetupId, alarmTime);
+    console.log(
+      "chatMeetup, alarmTime, messageId:",
+      chatMeetupId,
+      alarmTime,
+      updated.messageId
+    );
     return res.status(200).json({ ok: true, chatMeetup: updated });
   } catch (error) {
     return res
