@@ -104,9 +104,10 @@ export const SYSTEM_MESSAGES = {
   APPOINTMENT_UPDATED: (time: Date) => {
     try {
       const dateTime = dayjs(time);
-      return `약속이 변경되었습니다. (${dateTime
-        .locale("ko")
-        .format("M월 D일 A h:mm")})`;
+      // return `약속이 변경되었습니다. (${dateTime
+      //   .locale("ko")
+      //   .format("M월 D일 A h:mm")})`;
+      return "약속이 변경되었습니다.";
     } catch (err) {
       console.error("Error parsing date:", err);
       return `약속이 변경되었습니다.`;

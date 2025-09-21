@@ -94,6 +94,18 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   // 알림 ActionSheet 상태 관리
   const [alarmSheetOpen, setAlarmSheetOpen] = useState(false);
+  const [alarmSheetValue, setAlarmSheetValue] = useState("");
+
+  // ActionSheet가 열릴 때마다 defaultValue로 초기화
+  // useEffect(() => {
+  //   if (alarmSheetOpen) {
+  //     if (latestAppointment?.chatMeetup?.alarmTime) {
+  //       setAlarmSheetValue(latestAppointment.chatMeetup.alarmTime);
+  //     } else {
+  //       setAlarmSheetValue("");
+  //     }
+  //   }
+  // }, [alarmSheetOpen, latestAppointment?.chatMeetup?.alarmTime]);
 
   // 현재 메시지 ID 저장 (알림 설정 버튼이 클릭된 메시지)
   const [currentMessageId, setCurrentMessageId] = useState<number | null>(null);
@@ -119,6 +131,27 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     // },
   });
 
+  // 최신 약속 정보 가져오기
+  const latestAppointment = (() => {
+    if (!data?.sellerChat) return null;
+    const appointmentMessages = data.sellerChat.filter(
+      (message: any) => message.chatMeetup && message.chatMeetup.appointmentTime
+    );
+    if (appointmentMessages.length === 0) return null;
+    const latestMsg = appointmentMessages[appointmentMessages.length - 1];
+    // latestMsg.id가 최신 약속 메시지의 id (messageId)
+    return latestMsg;
+  })();
+
+  useEffect(() => {
+    if (alarmSheetOpen) {
+      if (latestAppointment?.chatMeetup?.alarmTime) {
+        setAlarmSheetValue(latestAppointment.chatMeetup.alarmTime);
+      } else {
+        setAlarmSheetValue("");
+      }
+    }
+  }, [alarmSheetOpen, latestAppointment?.chatMeetup?.alarmTime]);
   //console.log("/api/chat/${router.query.id}--data:", data);
 
   // const { openModal: openReservedModal, renderModal: renderReservedModal } = useAwaitableModal(
@@ -933,12 +966,10 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     if (!currentMessageId) return;
 
     try {
-      // currentMessageId는 알림 메시지의 ID
+      // 1. 약속 정보 및 알림 메시지 확인
       const alertMessage = data?.sellerChat?.find(
         (msg: ChatWithUser) => msg.id === currentMessageId
       );
-
-      console.log("알림 메시지:", alertMessage);
 
       if (!alertMessage) {
         alert("알림 메시지를 찾을 수 없습니다.");
@@ -949,19 +980,17 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       const parsedMeta = getMetaData(alertMessage.meta);
       const chatMeetupId = parsedMeta.chatMeetupId;
 
-      console.log("메타데이터에서 추출한 chatMeetupId:", chatMeetupId);
-
       if (!chatMeetupId) {
         alert("약속 정보를 찾을 수 없습니다.");
         return;
       }
 
-      // chatMeetupId로 실제 약속 메시지 찾기 - 개선된 로직
+      // chatMeetupId로 실제 약속 메시지 찾기
       let appointmentMessage = data?.sellerChat?.find(
         (msg: ChatWithUser) => msg.chatMeetup?.id === chatMeetupId
       );
 
-      // 숫자/문자열 타입 불일치 문제 해결
+      // 타입 불일치 문제 해결
       if (!appointmentMessage) {
         appointmentMessage = data?.sellerChat?.find(
           (msg: ChatWithUser) =>
@@ -977,41 +1006,79 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         if (appointmentMessages && appointmentMessages.length > 0) {
           appointmentMessage =
             appointmentMessages[appointmentMessages.length - 1];
-          console.log("대안으로 선택된 약속 메시지:", appointmentMessage);
         }
       }
-
-      console.log("최종 약속 메시지:", appointmentMessage);
 
       if (!appointmentMessage || !appointmentMessage.chatMeetup) {
         alert("약속 정보를 찾을 수 없습니다.");
         return;
       }
 
-      // 약속 시간 가져오기
+      // 2. 약속 시간이 이미 지났는지 확인
       const meetupTime = new Date(
         appointmentMessage.chatMeetup.appointmentTime
       );
-
-      // 첫 번째 검증: 약속 시간이 이미 지났는지 확인
       if (meetupTime < new Date()) {
         alert("이미 지난 약속입니다. 알림을 설정할 수 없습니다.");
         return;
       }
 
-      // 알림 끄기 처리
-      if (timeOption === "알림 끄기") {
-        setAlarmSettings({
-          chatId: id,
-          messageId: currentMessageId,
-          alarmTime: timeOption,
-          disableAlarm: true,
-        });
-        return;
+      // 3. 알림 끄기 처리
+      if (timeOption === "없음") {
+        try {
+          // 3-1. 약속 정보 업데이트 (alarmTime 제거)
+          if (chatMeetupId) {
+            await axios.patch(`/api/appointments/${chatMeetupId}/alarm`, {
+              alarmTime: null,
+            });
+          }
+
+          // 3-2. 기존 SCHEDULED 알림 취소
+          try {
+            const alarmRes = await axios.get(
+              `/api/alarm-settings/${appointmentMessage.chatMeetup.messageId}`
+            );
+            const latestAlarm = alarmRes.data.alarm || null;
+            if (latestAlarm && latestAlarm.status === "SCHEDULED") {
+              await axios.post(
+                `/api/chat/${id}/alarm-settings/${latestAlarm.messageId}/cancel`,
+                {}
+              );
+              console.log(`기존 알림 취소됨: ${latestAlarm.id}`);
+            }
+          } catch (fetchError) {
+            console.warn("기존 알림 조회/취소 중 오류:", fetchError);
+          }
+
+          // 3-3. 알림 해제 메시지 생성
+          await writeSystemMessage({
+            chatRoomId: id,
+            message: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
+              "없음",
+              chatMeetupId,
+              appointmentMessage.chatMeetup.messageId
+            ).message,
+            meta: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
+              "없음",
+              chatMeetupId,
+              appointmentMessage.chatMeetup.messageId
+            ).meta,
+            userId: user?.id,
+          });
+
+          alert("알림이 해제되었습니다.");
+          setAlarmSheetOpen(false);
+          refetchChat();
+          return;
+        } catch (error) {
+          console.error("알림 해제 중 오류 발생:", error);
+          alert("알림 해제에 실패했습니다.");
+          return;
+        }
       }
 
-      // 알람 트리거 시간 계산 (원본 시간을 복제하여 사용)
-      let triggerAt = new Date(meetupTime.getTime()); // Date 객체 복제를 위해 getTime() 사용
+      // 4. 알림 설정 로직 - 알림 설정 시간(triggerAt) 계산
+      let triggerAt = new Date(meetupTime.getTime());
 
       switch (timeOption) {
         case "10분 전":
@@ -1023,18 +1090,12 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         case "1시간 전":
           triggerAt.setHours(triggerAt.getHours() - 1);
           break;
-        case "3시간 전":
-          triggerAt.setHours(triggerAt.getHours() - 3);
-          break;
-        case "1일 전":
-          triggerAt.setDate(triggerAt.getDate() - 1);
-          break;
         default:
           alert("올바르지 않은 알림 시간입니다.");
           return;
       }
 
-      // 두 번째 검증: 알림 트리거 시간이 현재 시간보다 이전인지 확인
+      // 알림 트리거 시간이 이미 지났는지 확인
       if (triggerAt < new Date()) {
         alert(
           `선택한 알림 시간(${timeOption})이 이미 지났습니다. 다른 알림 시간을 선택해주세요.`
@@ -1042,20 +1103,64 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         return;
       }
 
-      console.log("알림 설정 API 호출 준비");
-      console.log("chatId:", id);
-      console.log("messageId:", currentMessageId);
-      console.log("alarmTime:", timeOption);
-      console.log("triggerAt:", triggerAt.toISOString());
+      try {
+        // 5-1. 약속 정보에 알림 시간 업데이트
+        if (chatMeetupId) {
+          await axios.patch(`/api/appointments/${chatMeetupId}/alarm`, {
+            alarmTime: timeOption,
+          });
+        }
 
-      // 1. 서버에 알림 설정 저장 API 호출
-      setAlarmSettings({
-        chatId: id,
-        messageId: currentMessageId,
-        alarmTime: timeOption,
-        triggerAt: triggerAt.toISOString(),
-        disableAlarm: false,
-      });
+        // 5-2. 기존 SCHEDULED 알림 조회 및 취소
+        let latestAlarm = null;
+        try {
+          const alarmRes = await axios.get(
+            `/api/alarm-settings/${appointmentMessage.chatMeetup.messageId}`
+          );
+          latestAlarm = alarmRes.data.alarm || null;
+          if (latestAlarm && latestAlarm.status === "SCHEDULED") {
+            await axios.post(
+              `/api/chat/${id}/alarm-settings/${latestAlarm.messageId}/cancel`,
+              {}
+            );
+            console.log(`기존 알림 취소됨: ${latestAlarm.id}`);
+          }
+        } catch (fetchError) {
+          console.warn("기존 알림 조회/취소 중 오류:", fetchError);
+        }
+
+        // 5-3. 새 AlarmSetting 생성
+        setAlarmSettings({
+          chatId: id,
+          messageId: appointmentMessage.chatMeetup.messageId,
+          alarmTime: timeOption,
+          triggerAt: triggerAt.toISOString(),
+          disableAlarm: false,
+        });
+
+        // 5-4. 시스템 메시지 생성 (알림 변경 안내)
+        await writeSystemMessage({
+          chatRoomId: id,
+          message: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
+            timeOption,
+            chatMeetupId,
+            appointmentMessage.chatMeetup.messageId
+          ).message,
+          meta: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
+            timeOption,
+            chatMeetupId,
+            appointmentMessage.chatMeetup.messageId
+          ).meta,
+          userId: user?.id,
+        });
+
+        alert(`${timeOption} 알림이 설정되었습니다.`);
+        setAlarmSheetOpen(false);
+        refetchChat();
+      } catch (error) {
+        console.error("알림 설정 중 오류 발생:", error);
+        alert("알림 설정에 실패했습니다.");
+      }
 
       console.log("=== 알림 시간 선택 디버깅 완료 ===");
     } catch (error) {
@@ -1266,29 +1371,17 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   });
   ProductStatusDisplay.displayName = "ProductStatusDisplay";
 
-  // 최신 약속 정보 가져오기
-  const latestAppointment = (() => {
-    if (!data?.sellerChat) return null;
-    const appointmentMessages = data.sellerChat.filter(
-      (message: any) => message.chatMeetup && message.chatMeetup.appointmentTime
-    );
-    if (appointmentMessages.length === 0) return null;
-    const latestMsg = appointmentMessages[appointmentMessages.length - 1];
-    // latestMsg.id가 최신 약속 메시지의 id (messageId)
-    return latestMsg;
-  })();
-
   // 약속 시간 포맷 함수
   const formatDetailedAppointmentTime = (dateTime: string | Date) => {
     const koreanDate = dayjs(dateTime).tz("Asia/Seoul");
     const now = dayjs().tz("Asia/Seoul");
     if (koreanDate.isSame(now, "day")) {
-      return `오늘 ${koreanDate.format("HH:mm")}`;
+      return `오늘 ${koreanDate.format("A h:mm")}`;
     }
     if (koreanDate.isSame(now.add(1, "day"), "day")) {
-      return `내일 ${koreanDate.format("HH:mm")}`;
+      return `내일 ${koreanDate.format("A h:mm")}`;
     }
-    return koreanDate.format("M월 D일 HH:mm");
+    return koreanDate.format("M월 D일 A h:mm");
   };
 
   // 약속 버튼 렌더링
@@ -1352,32 +1445,17 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       <ActionSheet
         isOpen={alarmSheetOpen}
         onClose={() => setAlarmSheetOpen(false)}
-        title="알림 시간 설정"
+        title="약속 전 나에게 알림"
         options={[
-          {
-            label: "10분 전",
-            onClick: () => handleAlarmTimeSelected("10분 전"),
-          },
-          {
-            label: "30분 전",
-            onClick: () => handleAlarmTimeSelected("30분 전"),
-          },
-          {
-            label: "1시간 전",
-            onClick: () => handleAlarmTimeSelected("1시간 전"),
-          },
-          {
-            label: "3시간 전",
-            onClick: () => handleAlarmTimeSelected("3시간 전"),
-          },
-          { label: "1일 전", onClick: () => handleAlarmTimeSelected("1일 전") },
-          {
-            label: "알림 끄기",
-            onClick: () => handleAlarmTimeSelected("알림 끄기"),
-            color: "danger",
-          },
+          { label: "없음", value: "없음" },
+          { label: "10분 전", value: "10분 전" },
+          { label: "30분 전", value: "30분 전" },
+          { label: "1시간 전", value: "1시간 전" },
         ]}
-        maxWidth="max-w-xs" // 작은 폭 지정
+        selectedValue={alarmSheetValue}
+        onChange={setAlarmSheetValue}
+        onConfirm={handleAlarmTimeSelected}
+        maxWidth="max-w-xs"
       />
       <Layout
         seoTitle={`${otherName} || 채팅`}
@@ -1437,6 +1515,37 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
             </div>
             <div className="mt-2 flex flex-row justify-between">
               {renderAppointmentButton()}
+              <button
+                className="text-md cursor-pointer rounded-md border border-blue-500 bg-blue-50 p-1 text-blue-700"
+                onClick={() => {
+                  const latestAppointmentMsg = data?.sellerChat?.find(
+                    (msg: any) =>
+                      msg?.chatMeetup && msg?.chatMeetup?.appointmentTime
+                  );
+
+                  console.log("latestAppointment: ", latestAppointment);
+
+                  if (!latestAppointment) {
+                    alert("약속 정보가 없습니다. 약속을 먼저 잡아주세요.");
+                    return;
+                  }
+
+                  // 약속 시간이 지났는지 확인
+                  const appointmentTime = new Date(
+                    latestAppointment?.chatMeetup?.appointmentTime ?? ""
+                  );
+                  if (appointmentTime < new Date()) {
+                    alert("이미 지난 약속입니다. 알림을 설정할 수 없습니다.");
+                    return;
+                  }
+
+                  // 알림 설정 화면 열기
+                  setCurrentMessageId(latestAppointmentMsg?.id ?? null);
+                  setAlarmSheetOpen(true);
+                }}
+              >
+                {`알림 ${latestAppointment?.chatMeetup?.alarmTime || " 없음"}`}
+              </button>
               {isSellingAndConsumer && (
                 <div
                   className="text-md cursor-pointer rounded-md border border-black p-1"
@@ -1482,22 +1591,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               >
                 {`${isProvider ? "판매" : "구매"} 후기 보내기`}
               </button>
-              <div
-                className="text-md cursor-pointer rounded-md border border-black p-1"
-                onClick={() => {
-                  console.log("장소공유가 클릭 되었습니다.");
-                }}
-              >
-                장소공유
-              </div>
-              <div
-                className="text-md cursor-pointer rounded-md border border-black p-1"
-                onClick={() => {
-                  console.log("기타가 클릭 되었습니다.");
-                }}
-              >
-                기타
-              </div>
             </div>
           </div>
           <div

@@ -1,11 +1,11 @@
 import React, { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { cls } from "@libs/utils"; // Import the cls utility
+import { cls } from "@libs/utils";
 
 interface ActionOption {
   label: string;
-  onClick: () => void;
-  color?: "default" | "danger";
+  value: string;
+  disabled?: boolean;
 }
 
 interface ActionSheetProps {
@@ -13,22 +13,27 @@ interface ActionSheetProps {
   onClose: () => void;
   title?: string;
   options: ActionOption[];
-  maxWidth?: string; // Added max width prop for controlling the sheet width
+  selectedValue: string;
+  onChange: (value: string) => void;
+  onConfirm: (value: string) => void;
+  maxWidth?: string;
 }
 
-export default function ActionSheet({ 
-  isOpen, 
-  onClose, 
-  title, 
+export default function ActionSheet({
+  isOpen,
+  onClose,
+  title,
   options,
-  maxWidth = "max-w-xl" // Default to content-width (matches Layout)
+  selectedValue,
+  onChange,
+  onConfirm,
+  maxWidth = "max-w-xl",
 }: ActionSheetProps) {
   // Close when pressing Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
-    
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
@@ -45,16 +50,13 @@ export default function ActionSheet({
             exit={{ opacity: 0 }}
             onClick={onClose}
           />
-          
           {/* Action Sheet */}
           <motion.div
-              className={cls(
-                "fixed bottom-0 z-50 overflow-hidden bg-white rounded-t-2xl",
-                "flex flex-col",
-                "w-full mx-auto", // Base width and centering
-                maxWidth, // Use the provided maxWidth (default or custom)
-                "left-0 right-0" // Center with layout content
-              )}
+            className={cls(
+              "fixed bottom-0 z-50 mx-auto flex w-full flex-col overflow-hidden rounded-t-2xl bg-white",
+              maxWidth,
+              "left-0 right-0"
+            )}
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
@@ -64,39 +66,50 @@ export default function ActionSheet({
             <div className="flex justify-center w-full pt-2 pb-1">
               <div className="w-12 h-1 bg-gray-300 rounded-full"></div>
             </div>
-            
             {/* Title */}
             {title && (
               <div className="w-full py-3 text-center border-b border-gray-200">
                 <h3 className="text-base font-medium">{title}</h3>
               </div>
             )}
-            
             {/* Options */}
             <div className="flex flex-col w-full">
-              {options.map((option, index) => (
-                <button
-                  key={index}
-                  className={`py-4 text-center text-base font-medium border-b border-gray-100 active:bg-gray-100 ${
-                    option.color === "danger" ? "text-red-500" : "text-gray-800"
-                  }`}
-                  onClick={() => {
-                    option.onClick();
-                    onClose();
-                  }}
+              {options.map((option) => (
+                <label
+                  key={option.value}
+                  className={cls(
+                    "flex cursor-pointer items-center border-b border-gray-100 px-4 py-3",
+                    option.disabled ? "cursor-not-allowed text-gray-400" : "",
+                    selectedValue === option.value
+                      ? "font-bold text-orange-500"
+                      : ""
+                  )}
                 >
+                  <input
+                    type="radio"
+                    name="action-sheet-radio"
+                    value={option.value}
+                    checked={
+                      selectedValue === option.value
+                    }
+                    disabled={option.disabled}
+                    onChange={() => !option.disabled && onChange(option.value)}
+                    className="mr-3 accent-orange-500"
+                  />
                   {option.label}
-                </button>
+                </label>
               ))}
             </div>
-            
-            {/* Cancel Button */}
             <div className="p-4">
               <button
-                className="w-full py-3 font-medium text-center bg-gray-100 rounded-xl active:bg-gray-200"
-                onClick={onClose}
+                className="w-full py-3 font-medium text-center text-white bg-orange-500 rounded-xl active:bg-orange-600"
+                onClick={() => {
+                  onConfirm(selectedValue);
+                  onClose();
+                }}
+                disabled={!selectedValue}
               >
-                취소
+                확인
               </button>
             </div>
           </motion.div>
