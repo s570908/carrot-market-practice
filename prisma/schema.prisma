@@ -181,20 +181,18 @@ model SellerChat {
   id                   Int               @id @default(autoincrement())
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
-  user                 User?             @relation(fields: [userId], references: [id], onDelete: Cascade) // Make user optional for system messages
-  userId               Int? // Make userId optional
-  messageType          MessageType       @default(USER) // Add message type field
+  user                 User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId               Int?
+  messageType          MessageType       @default(USER)
   chatMsg              String            @db.MediumText
   chatRoom             ChatRoom          @relation(name: "sellerChat", fields: [chatRoomId], references: [id], onDelete: Cascade)
   chatRoomId           Int               @default(1)
   chatRoomForRecentMsg ChatRoom?         @relation(name: "recentMsg")
-  //// 이 문자메세지를 consumer(문자를 받은 사람)가 읽었는가의 여부. isNew가 true이면 consumer가 아직 안 읽었다. 
-  //// 현재의 응용에서는 producer(문자를 보낸 사람)과 consumer가 각 1명에 국한된다.
-  //isNew                Boolean? //// 추후 지울 필요가 있는지 체크할 것
-  lastReadMessage      LastReadMessage[] // 여러 명이 이 메시지까지 읽었음을 표시한다.
-  chatMeetup           ChatMeetup?
-  alarmSettings        AlarmSetting[]    @relation("SellerChatToAlarmSetting")
-  meta                 Json? // 메타데이터를 저장할 Json 필드 추가
+  lastReadMessage      LastReadMessage[]
+  meta                 Json?
+
+  // ChatMeetup 관련 필드 - 관계는 아니지만 참조를 위한 필드
+  chatMeetupRef Int? // 약속 참조용 필드 (실제 관계는 제거)
 }
 
 model ChatRoom {
@@ -210,8 +208,61 @@ model ChatRoom {
   recentMsg       SellerChat?       @relation(name: "recentMsg", fields: [recentMsgId], references: [id])
   recentMsgId     Int?              @unique
   sellerChat      SellerChat[]      @relation(name: "sellerChat")
-  newCount        Int? //// 추후 지울 필요가 있는지 체크할 것
   lastReadMessage LastReadMessage[]
+
+  // ChatMeetup과 1:1 관계
+  chatMeetup   ChatMeetup? @relation(fields: [chatMeetupId], references: [id])
+  chatMeetupId Int?        @unique
+
+  // AlarmSetting과 1:N 관계
+  alarmSettings AlarmSetting[]
+}
+
+// 채팅 약속 모델 수정
+model ChatMeetup {
+  id                Int       @id @default(autoincrement())
+  appointmentTime   DateTime // 약속 시간
+  place             String // 약속 장소
+  locationLatitude  Float? // 위도 좌표
+  locationLongitude Float? // 경도 좌표
+  alarmTime         String? // 알림 시간 (예: "10분 전")
+  // ChatRoom과의 1:1 관계
+  chatRoom          ChatRoom?
+
+  // 메시지와의 관계 제거 (chatMeetupRef 필드로 대체)
+  chatMeetupRef Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+// AlarmStatus enum에 값 추가
+enum AlarmStatus {
+  SCHEDULED // 예약됨
+  SENT // 발송됨
+  FAILED // 실패함
+  CANCELED // 취소됨
+}
+
+model AlarmSetting {
+  id        Int         @id @default(autoincrement())
+  messageId Int // 관련 메시지 ID
+  alarmTime String // "10분 전", "30분 전" 등
+  triggerAt DateTime // 실제 알림이 울려야 할 시간
+  status    AlarmStatus @default(SCHEDULED)
+
+  // 관계 수정 - 올바른 형식으로 정리
+  user       User     @relation("UserToAlarmSetting", fields: [userId], references: [id], onDelete: Cascade)
+  userId     Int // 알림 받을 사용자
+  chatRoom   ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  chatRoomId Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@unique([messageId, userId, status])
+  @@index([chatRoomId])
+  @@index([triggerAt, status])
 }
 
 model LastReadMessage {
@@ -483,56 +534,8 @@ model ScheduledNotification {
   @@index([scheduledAt])
 }
 
-// 채팅 약속 모델 수정
-model ChatMeetup {
-  id                Int      @id @default(autoincrement())
-  appointmentTime   DateTime // Single field for date+time in UTC
-  place             String
-  locationLatitude  Float? // Latitude coordinate
-  locationLongitude Float? // Longitude coordinate
-  alarmTime         String? // optional로 변경
-
-  message   SellerChat @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  messageId Int        @unique // 하나의 챗밋업은 하나의 메시지만 가짐
-
-  alarmSettings AlarmSetting[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
-}
-
 // 알림 상태를 enum으로 선언하는 것이 좋습니다.
 // 이유:
 // 1. 오타 방지 및 일관성 보장 (ex: "SENT", "FAILED" 등 오타 불가)
-// 2. 코드 자동완성 및 타입 안정성 향상
+// 2. 코드 자동완성 및 타입 안정성 향상  SCHEDULED // scheduled가 제일 먼저 있어야 함
 // 3. 쿼리 조건, 통계, 유지보수에 유리
-
-enum AlarmStatus {
-  SCHEDULED // scheduled가 제일 먼저 있어야 함
-  SENT
-  FAILED
-  CANCELED
-}
-
-model AlarmSetting {
-  id           Int         @id @default(autoincrement())
-  userId       Int
-  messageId    Int // 알림 메시지 ID (SYSTEM 메시지)
-  alarmTime    String // "10분 전", "30분 전" 등
-  triggerAt    DateTime // 실제 알림이 울려야 할 시간
-  // ChatMeetup와의 관계를 명확히 설정 (N:1, 여러 AlarmSetting이 하나의 ChatMeetup을 참조)
-  chatRoomId   Int
-  chatMeetupId Int // 약속 ID 추가
-  status       AlarmStatus @default(SCHEDULED)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @default(now()) @updatedAt
-
-  user       User       @relation("UserToAlarmSetting", fields: [userId], references: [id], onDelete: Cascade)
-  sellerChat SellerChat @relation("SellerChatToAlarmSetting", fields: [messageId], references: [id], onDelete: Cascade)
-  chatMeetup ChatMeetup @relation(fields: [chatMeetupId], references: [id], onDelete: Cascade)
-
-  @@unique([messageId, userId, status]) // 이 제약 조건 유지
-  @@index([chatRoomId])
-  @@index([triggerAt, status]) // 알림 트리거 시간과 상태로 인덱스 최적화
-  @@index([chatMeetupId]) // ChatMeetup 관련 쿼리 최적화
-}
