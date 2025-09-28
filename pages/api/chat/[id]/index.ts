@@ -30,8 +30,6 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
             avatar: true,
           },
         },
-        // ChatMeetup 정보 포함
-        chatMeetup: true,
       },
     });
 
@@ -74,7 +72,11 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
       // 가장 최근 메시지를 가장 마지막으로 읽은 메시지로 처리
       const result = await client.lastReadMessage.upsert({
         where: { userId_chatRoomId: { userId: user?.id, chatRoomId: +id } },
-        create: { userId: user?.id, chatRoomId: +id, sellerChatId: sellerChatId },
+        create: {
+          userId: user?.id,
+          chatRoomId: +id,
+          sellerChatId: sellerChatId,
+        },
         update: { sellerChatId: sellerChatId },
       });
 
@@ -90,7 +92,10 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
       // );
     }
 
-    if (chatRoomOfSeller?.buyerId !== user?.id && chatRoomOfSeller?.sellerId !== user?.id) {
+    if (
+      chatRoomOfSeller?.buyerId !== user?.id &&
+      chatRoomOfSeller?.sellerId !== user?.id
+    ) {
       res.json({ ok: false, error: "접근 권한이 없습니다." });
     } else {
       res.json({ ok: true, sellerChat: allChatMessages, chatRoomOfSeller });
@@ -150,7 +155,10 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
     //*******************************************중요!!!!
     // Workspace를 사용하는 io일 경우에는 of(`ws-${worksapce}`) 이 부분이 매우 중요함. 반드시 사용해야함.
     //****************************************************
-    res?.socket?.server?.io?.of(namespaceName).to(channel).emit("message", message);
+    res?.socket?.server?.io
+      ?.of(namespaceName)
+      .to(channel)
+      .emit("message", message);
     console.log(
       "workspace.channel 로 message 이벤트를 전송하였다: ",
       namespaceName,
@@ -176,4 +184,6 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
   }
 }
 
-export default withApiSession(withHandler({ methods: ["GET", "POST"], handler, isPrivate: true }));
+export default withApiSession(
+  withHandler({ methods: ["GET", "POST"], handler, isPrivate: true })
+);

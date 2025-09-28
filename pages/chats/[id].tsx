@@ -1036,7 +1036,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
           // 3-2. 기존 SCHEDULED 알림 취소
           try {
             const alarmRes = await axios.get(
-              `/api/alarm-settings/${appointmentMessage.chatMeetup.messageId}`
+              `/api/alarm-settings/${appointmentMessage.id}`
             );
             const latestAlarm = alarmRes.data.alarm || null;
             if (latestAlarm && latestAlarm.status === "SCHEDULED") {
@@ -1056,12 +1056,12 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
             message: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
               "없음",
               chatMeetupId,
-              appointmentMessage.chatMeetup.messageId
+              appointmentMessage.id
             ).message,
             meta: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
               "없음",
               chatMeetupId,
-              appointmentMessage.chatMeetup.messageId
+              appointmentMessage.id
             ).meta,
             userId: user?.id,
           });
@@ -1115,7 +1115,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         let latestAlarm = null;
         try {
           const alarmRes = await axios.get(
-            `/api/alarm-settings/${appointmentMessage.chatMeetup.messageId}`
+            `/api/alarm-settings/${appointmentMessage.id}`
           );
           latestAlarm = alarmRes.data.alarm || null;
           if (latestAlarm && latestAlarm.status === "SCHEDULED") {
@@ -1132,7 +1132,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         // 5-3. 새 AlarmSetting 생성
         setAlarmSettings({
           chatId: id,
-          messageId: appointmentMessage.chatMeetup.messageId,
+          messageId: appointmentMessage.id,
           alarmTime: timeOption,
           triggerAt: triggerAt.toISOString(),
           disableAlarm: false,
@@ -1144,12 +1144,12 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
           message: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
             timeOption,
             chatMeetupId,
-            appointmentMessage.chatMeetup.messageId
+            appointmentMessage.id
           ).message,
           meta: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
             timeOption,
             chatMeetupId,
-            appointmentMessage.chatMeetup.messageId
+            appointmentMessage.id
           ).meta,
           userId: user?.id,
         });
@@ -1426,7 +1426,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
             latitude: chatMeetup.locationLatitude ?? 0,
             longitude: chatMeetup.locationLongitude ?? 0,
             alarmTime: chatMeetup.alarmTime ?? null,
-            messageId: chatMeetup.messageId, // 최신 약속 메시지의 id 전달
+            // messageId: latestAppointment.id, // 메시지의 id를 전달 (chatMeetup.messageId는 없음)
             chatMeetupId: chatMeetupId, // chatMeetup의 id 전달
           });
         }}

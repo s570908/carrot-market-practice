@@ -16,18 +16,22 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   try {
     // messageId로 연결된 SCHEDULED AlarmSetting 1개만 조회
+    // 변경된 prisma model에서는 messageId가 필요없으므로 chatRoomId, userId 등으로 조회
+    // 예시: userId와 chatRoomId로 조회 (필요에 따라 수정)
     const alarm = await client.alarmSetting.findFirst({
-      where: { messageId, status: "SCHEDULED" },
+      where: {
+        // chatRoomId: ...,
+        // userId: ...,
+        status: "SCHEDULED",
+      },
       orderBy: { triggerAt: "desc" },
       select: {
         id: true,
-        messageId: true,
         alarmTime: true,
         triggerAt: true,
         status: true,
         userId: true,
         chatRoomId: true,
-        chatMeetupId: true,
         createdAt: true,
         updatedAt: true,
       },

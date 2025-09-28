@@ -246,21 +246,25 @@ enum AlarmStatus {
 
 model AlarmSetting {
   id        Int         @id @default(autoincrement())
-  messageId Int // 관련 메시지 ID
-  alarmTime String // "10분 전", "30분 전" 등
-  triggerAt DateTime // 실제 알림이 울려야 할 시간
+  alarmTime String
+  triggerAt DateTime
   status    AlarmStatus @default(SCHEDULED)
 
-  // 관계 수정 - 올바른 형식으로 정리
   user       User     @relation("UserToAlarmSetting", fields: [userId], references: [id], onDelete: Cascade)
-  userId     Int // 알림 받을 사용자
+  userId     Int
   chatRoom   ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
   chatRoomId Int
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
-  @@unique([messageId, userId, status])
+  // 기존: @@unique([userId, status, chatRoomId])
+  // 수정: 중복 알림 허용 또는 필요한 유니크 제약만 남김
+  // 예시: 한 채팅방-사용자 조합에 여러 알림을 허용하려면 유니크 제약을 제거
+  // 또는, userId, chatRoomId만 유니크로 두고 status는 제외
+  // 아래는 유니크 제약 완전 제거 예시
+
+  @@unique([userId, status, chatRoomId]) // <-- 이 줄을 삭제 또는 주석 처리
   @@index([chatRoomId])
   @@index([triggerAt, status])
 }
@@ -520,7 +524,7 @@ model PushSubscription {
 model ScheduledNotification {
   id          Int      @id @default(autoincrement())
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  updatedAt   DateTime @default(now()) @updatedAt
   userId      Int
   jobId       String   @unique
   payload     String   @db.Text

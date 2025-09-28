@@ -25,7 +25,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const alarmToCancel = await client.alarmSetting.findFirst({
       where: {
         chatRoomId: +id,
-        messageId: +messageId,
+        userId: user.id,
         status: AlarmStatus.SCHEDULED,
       },
     });
