@@ -57,11 +57,12 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
         product: {
           select: {
             price: true,
-            images: true, // images 속성 추가
+            images: true,
             name: true,
             status: true,
           },
         },
+        chatMeetup: true, // chatRoom에 연결된 chatMeetup(약속) 정보도 함께 조회
       },
     });
 

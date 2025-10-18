@@ -155,6 +155,7 @@ export const getAlarmSettings = async (chatId: number, messageId: number) => {
 
 // createAlarmSettings 호출 전, 파라미터 유효성 체크를 추가하세요.
 export const createAlarmSettings = async (params: {
+  userId: number;
   chatId: number;
   messageId: number;
   alarmTime: string;
@@ -163,6 +164,7 @@ export const createAlarmSettings = async (params: {
 }) => {
   // 필수 파라미터 체크
   if (
+    !params.userId ||
     !params.chatId ||
     !params.messageId ||
     typeof params.alarmTime !== "string" ||

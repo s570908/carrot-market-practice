@@ -81,6 +81,12 @@ interface ChatDetailProps {
 
 const workspace = "market"; // 추후 다른 workspace를 추가하려면 로직을 개편해야 한다.
 
+// 1. getLatestChatMeetup 함수 추가
+export async function getLatestChatMeetup(chatRoomId: number) {
+  const response = await axios.get(`/api/chat/${chatRoomId}/latest-meetup`);
+  return response.data;
+}
+
 const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   const [newMessageSubmitted, setNewMessageSubmitted] = useState(false);
   //const [currentVisibleDate, setCurrentVisibleDate] = useState<string | null>(null);
@@ -131,60 +137,46 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     // },
   });
 
-  // 최신 약속 정보 가져오기
-  const latestAppointment = (() => {
-    if (!data?.sellerChat) return null;
-    const appointmentMessages = data.sellerChat.filter(
-      (message: any) => message.chatMeetup && message.chatMeetup.appointmentTime
-    );
-    if (appointmentMessages.length === 0) return null;
-    const latestMsg = appointmentMessages[appointmentMessages.length - 1];
-    // latestMsg.id가 최신 약속 메시지의 id (messageId)
-    return latestMsg;
-  })();
+  // 2. 최신 약속 정보 react-query로 가져오기
+  const {
+    data: latestMeetupData,
+    isLoading: isLoadingLatestMeetup,
+    isError: isErrorLatestMeetup,
+    error: errorLatestMeetup,
+    refetch: refetchLatestMeetup,
+  } = useQuery({
+    queryKey: ["latestMeetup", id],
+    queryFn: () => getLatestChatMeetup(id),
+    enabled: !!id,
+  });
+
+  const latestAppointment = latestMeetupData?.lastestMeetup ?? null;
+  const chatMeetupId = latestAppointment?.id ?? null;
+
+  console.log("=========lastesAppointMent: ", latestAppointment);
+
+  // {
+  //     "id": 142,
+  //     "appointmentTime": "2025-10-04T11:05:00.000Z",
+  //     "place": "위례우미린아파트 (경기 하남시 위례대로6길 100)",
+  //     "locationLatitude": 37.48493919,
+  //     "locationLongitude": 127.16156223,
+  //     "alarmTime": "30분 전"
+  // }
 
   useEffect(() => {
     if (alarmSheetOpen) {
-      if (latestAppointment?.chatMeetup?.alarmTime) {
-        setAlarmSheetValue(latestAppointment.chatMeetup.alarmTime);
+      if (latestAppointment?.alarmTime) {
+        setAlarmSheetValue(latestAppointment?.alarmTime);
       } else {
         setAlarmSheetValue("");
       }
     }
-  }, [alarmSheetOpen, latestAppointment?.chatMeetup?.alarmTime]);
-  //console.log("/api/chat/${router.query.id}--data:", data);
+  }, [alarmSheetOpen, latestAppointment?.alarmTime]);
 
-  // const { openModal: openReservedModal, renderModal: renderReservedModal } = useAwaitableModal(
-  //   (modal, params) => {
-  //     return (
-  //       <div className="fixed inset-0 z-50 flex items-center justify-center">
-  //         {/* backdrop */}
-  //         <div
-  //           className="fixed inset-0 bg-black bg-opacity-50"
-  //           //onClick={() => modal.closeWithError("backdrop_click")}
-  //         />
-
-  //         <div className="z-50">
-  //           <div className="p-4 bg-white rounded-lg w-96">
-  //             <h2 className="mb-4 text-xl font-bold">{params.name}과 예약 중입니다.</h2>
-  //             <button
-  //               className="px-4 py-2 text-white bg-blue-500 rounded-lg"
-  //               onClick={() => modal.closeWithResult("keep")}
-  //             >
-  //               예약유지
-  //             </button>
-  //             <button
-  //               className="px-4 py-2 ml-2 text-black bg-gray-200 rounded-lg"
-  //               onClick={() => modal.closeWithResult("cancel")}
-  //             >
-  //               예약취소
-  //             </button>
-  //           </div>
-  //         </div>
-  //       </div>
-  //     );
-  //   }
-  // );
+  // console.log("/api/chat/${router.query.id}--data:", data);
+  // If you want to debug appointment data, use sellerChat array:
+  // console.log("Appointment messages:", data?.sellerChat?.filter((msg: any) => msg.chatMeetup));
 
   const { openModal: openReservedModal, renderModal: renderReservedModal } =
     useAwaitableModal((modal, params) => {
@@ -668,7 +660,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
       // 2. 모든 이벤트 리스너 등록
       socket.on("message", (message: any) => {
-        console.log("message socket event received:", message);
+        console.log("-----------------message socket event received:", message);
 
         // 약속 메시지 로직
         const isAppointmentMessage =
@@ -961,63 +953,15 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   const handleAlarmTimeSelected = async (timeOption: string) => {
     console.log("=== 알림 시간 선택 디버깅 시작 ===");
     console.log("선택된 알림 시간:", timeOption);
-    console.log("현재 메시지 ID:", currentMessageId);
-
-    if (!currentMessageId) return;
 
     try {
-      // 1. 약속 정보 및 알림 메시지 확인
-      const alertMessage = data?.sellerChat?.find(
-        (msg: ChatWithUser) => msg.id === currentMessageId
-      );
-
-      if (!alertMessage) {
-        alert("알림 메시지를 찾을 수 없습니다.");
-        return;
-      }
-
-      // 메타데이터에서 chatMeetupId 추출
-      const parsedMeta = getMetaData(alertMessage.meta);
-      const chatMeetupId = parsedMeta.chatMeetupId;
-
-      if (!chatMeetupId) {
-        alert("약속 정보를 찾을 수 없습니다.");
-        return;
-      }
-
-      // chatMeetupId로 실제 약속 메시지 찾기
-      let appointmentMessage = data?.sellerChat?.find(
-        (msg: ChatWithUser) => msg.chatMeetup?.id === chatMeetupId
-      );
-
-      // 타입 불일치 문제 해결
-      if (!appointmentMessage) {
-        appointmentMessage = data?.sellerChat?.find(
-          (msg: ChatWithUser) =>
-            msg.chatMeetup?.id?.toString() === chatMeetupId?.toString()
-        );
-      }
-
-      // 여전히 못 찾으면 가장 최근 약속 사용
-      if (!appointmentMessage) {
-        const appointmentMessages = data?.sellerChat?.filter(
-          (msg) => msg.chatMeetup
-        );
-        if (appointmentMessages && appointmentMessages.length > 0) {
-          appointmentMessage =
-            appointmentMessages[appointmentMessages.length - 1];
-        }
-      }
-
-      if (!appointmentMessage || !appointmentMessage.chatMeetup) {
+      if (!latestAppointment) {
         alert("약속 정보를 찾을 수 없습니다.");
         return;
       }
 
       // 2. 약속 시간이 이미 지났는지 확인
-      const meetupTime = new Date(
-        appointmentMessage.chatMeetup.appointmentTime
-      );
+      const meetupTime = new Date(latestAppointment?.appointmentTime);
       if (meetupTime < new Date()) {
         alert("이미 지난 약속입니다. 알림을 설정할 수 없습니다.");
         return;
@@ -1027,21 +971,20 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       if (timeOption === "없음") {
         try {
           // 3-1. 약속 정보 업데이트 (alarmTime 제거)
-          if (chatMeetupId) {
-            await axios.patch(`/api/appointments/${chatMeetupId}/alarm`, {
+          if (latestAppointment?.id) {
+            await axios.patch(`/api/alarm-settings/${id}`, {
               alarmTime: null,
             });
           }
 
           // 3-2. 기존 SCHEDULED 알림 취소
           try {
-            const alarmRes = await axios.get(
-              `/api/alarm-settings/${appointmentMessage.id}`
-            );
+            const alarmRes = await axios.get(`/api/alarm-settings/${id}`);
+            console.log("-----------alarmRes: ", alarmRes);
             const latestAlarm = alarmRes.data.alarm || null;
             if (latestAlarm && latestAlarm.status === "SCHEDULED") {
               await axios.post(
-                `/api/chat/${id}/alarm-settings/${latestAlarm.messageId}/cancel`,
+                `/api/chat/${id}/alarm-settings/${id}/cancel`,
                 {}
               );
               console.log(`기존 알림 취소됨: ${latestAlarm.id}`);
@@ -1051,18 +994,12 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
           }
 
           // 3-3. 알림 해제 메시지 생성
+          // alert("writeSystemMessage1를 작성해야함");
           await writeSystemMessage({
             chatRoomId: id,
-            message: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
-              "없음",
-              chatMeetupId,
-              appointmentMessage.id
-            ).message,
-            meta: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
-              "없음",
-              chatMeetupId,
-              appointmentMessage.id
-            ).meta,
+            message: SYSTEM_MESSAGES.APPOINTMENT_ALERT("없음", chatMeetupId)
+              .message,
+            meta: SYSTEM_MESSAGES.APPOINTMENT_ALERT("없음", chatMeetupId).meta,
             userId: user?.id,
           });
 
@@ -1114,9 +1051,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         // 5-2. 기존 SCHEDULED 알림 조회 및 취소
         let latestAlarm = null;
         try {
-          const alarmRes = await axios.get(
-            `/api/alarm-settings/${appointmentMessage.id}`
-          );
+          const alarmRes = await axios.get(`/api/alarm-settings/${id}`);
           latestAlarm = alarmRes.data.alarm || null;
           if (latestAlarm && latestAlarm.status === "SCHEDULED") {
             await axios.post(
@@ -1139,20 +1074,21 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         });
 
         // 5-4. 시스템 메시지 생성 (알림 변경 안내)
-        await writeSystemMessage({
-          chatRoomId: id,
-          message: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
-            timeOption,
-            chatMeetupId,
-            appointmentMessage.id
-          ).message,
-          meta: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
-            timeOption,
-            chatMeetupId,
-            appointmentMessage.id
-          ).meta,
-          userId: user?.id,
-        });
+        alert("writeSystemMessage2를 작성해야함");
+        // await writeSystemMessage({
+        //   chatRoomId: id,
+        //   message: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
+        //     timeOption,
+        //     chatMeetupId,
+        //     appointmentMessage.id
+        //   ).message,
+        //   meta: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
+        //     timeOption,
+        //     chatMeetupId,
+        //     appointmentMessage.id
+        //   ).meta,
+        //   userId: user?.id,
+        // });
 
         alert(`${timeOption} 알림이 설정되었습니다.`);
         setAlarmSheetOpen(false);
@@ -1386,7 +1322,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   // 약속 버튼 렌더링
   const renderAppointmentButton = () => {
-    if (!latestAppointment?.chatMeetup) {
+    if (!data?.chatRoomOfSeller?.chatMeetup) {
       // 약속이 없으면 기존처럼 생성 페이지로 이동
       return (
         <div
@@ -1398,11 +1334,11 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       );
     }
 
-    const chatMeetup = latestAppointment.chatMeetup;
+    const chatMeetup = data?.chatRoomOfSeller?.chatMeetup;
     const formattedTime = formatDetailedAppointmentTime(
-      chatMeetup.appointmentTime
+      chatMeetup?.appointmentTime
     );
-    const messageId = latestAppointment.id; // 최신 약속 메시지의 id
+    const messageId = latestAppointment?.id; // 최신 약속 메시지의 id
     const chatMeetupId = chatMeetup.id; // chatMeetup의 id
 
     // 약속이 있으면 시간 표시, 클릭시 수정 모달 오픈
@@ -1515,37 +1451,34 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
             </div>
             <div className="mt-2 flex flex-row justify-between">
               {renderAppointmentButton()}
-              <button
-                className="text-md cursor-pointer rounded-md border border-blue-500 bg-blue-50 p-1 text-blue-700"
-                onClick={() => {
-                  const latestAppointmentMsg = data?.sellerChat?.find(
-                    (msg: any) =>
-                      msg?.chatMeetup && msg?.chatMeetup?.appointmentTime
-                  );
+              {latestAppointment !== null && (
+                <button
+                  className="text-md cursor-pointer rounded-md border border-blue-500 bg-blue-50 p-1 text-blue-700"
+                  onClick={() => {
+                    console.log("latestAppointment: ", latestAppointment);
 
-                  console.log("latestAppointment: ", latestAppointment);
+                    if (!latestAppointment) {
+                      alert("약속 정보가 없습니다. 약속을 먼저 잡아주세요.");
+                      return;
+                    }
 
-                  if (!latestAppointment) {
-                    alert("약속 정보가 없습니다. 약속을 먼저 잡아주세요.");
-                    return;
-                  }
+                    // 약속 시간이 지났는지 확인
+                    const appointmentTime = new Date(
+                      latestAppointment.appointmentTime ?? ""
+                    );
+                    if (appointmentTime < new Date()) {
+                      alert("이미 지난 약속입니다. 알림을 설정할 수 없습니다.");
+                      return;
+                    }
 
-                  // 약속 시간이 지났는지 확인
-                  const appointmentTime = new Date(
-                    latestAppointment?.chatMeetup?.appointmentTime ?? ""
-                  );
-                  if (appointmentTime < new Date()) {
-                    alert("이미 지난 약속입니다. 알림을 설정할 수 없습니다.");
-                    return;
-                  }
-
-                  // 알림 설정 화면 열기
-                  setCurrentMessageId(latestAppointmentMsg?.id ?? null);
-                  setAlarmSheetOpen(true);
-                }}
-              >
-                {`알림 ${latestAppointment?.chatMeetup?.alarmTime || " 없음"}`}
-              </button>
+                    // 알림 설정 화면 열기
+                    // setCurrentMessageId(latestAppointmentMsg?.id ?? null);
+                    setAlarmSheetOpen(true);
+                  }}
+                >
+                  {`알림 ${latestAppointment.alarmTime || " 없음"}`}
+                </button>
+              )}
               {isSellingAndConsumer && (
                 <div
                   className="text-md cursor-pointer rounded-md border border-black p-1"
@@ -1611,7 +1544,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               </div>
             )} */}
             {data?.sellerChat?.map((message: ChatWithUser, index: number) => {
-              //console.log("========>message: ", JSON.stringify(message, null, 2));
               const messageDate = dayjs(message.createdAt).format("YYYY-MM-DD"); // 메시지 날짜
               const showDate = lastMessageDate !== messageDate; // 날짜를 표시할지 여부
               lastMessageDate = messageDate; // 마지막 메시지 날짜 업데이트

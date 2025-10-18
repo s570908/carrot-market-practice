@@ -15,14 +15,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     try {
       // 가장 최근의 약속 메시지 가져오기
+      // 변경된 prisma model에서는 chatMeetup과 message의 직접 관계가 없으므로 chatRoomId로만 조회하면 됩니다.
       const latestMeetup = await client.chatMeetup.findFirst({
         where: {
-          message: {
-            chatRoomId: chatRoomId,
+          chatRoom: {
+            id: chatRoomId,
           },
-        },
-        orderBy: {
-          createdAt: "desc", // 약속이 생성된 시간 기준으로 정렬
         },
         select: {
           id: true,
@@ -30,12 +28,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           place: true,
           locationLatitude: true,
           locationLongitude: true,
-          alarmTime: true, // 알람 시간 추가
-          messageId: true,
+          alarmTime: true,
         },
       });
 
-      // console.log("================latestMeetup: ", latestMeetup);
+      console.log("================latestMeetup: ", latestMeetup);
 
       if (!latestMeetup) {
         return res
@@ -66,5 +63,7 @@ export default withApiSession(
 
 // where: { message: { chatRoomId: chatRoomId } }는
 // chatMeetup 테이블에서 message 테이블과의 관계를 통해
+// 해당 chatRoomId에 속한 모든 chatMeetup을 가져옵니다.
+// 즉, chatMeetup이 연결된 message의 chatRoomId가 chatRoomId와 일치하는 모든 chatMeetup을 조회합니다.
 // 해당 chatRoomId에 속한 모든 chatMeetup을 가져옵니다.
 // 즉, chatMeetup이 연결된 message의 chatRoomId가 chatRoomId와 일치하는 모든 chatMeetup을 조회합니다.

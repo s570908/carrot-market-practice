@@ -6,11 +6,11 @@ import { AlarmStatus } from "@prisma/client";
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query; // chatRoomId
-  const { alarmTime, triggerAt, disableAlarm } = req.body;
-  const { user } = req.session;
+  const { alarmTime, triggerAt, disableAlarm, userId } = req.body;
 
-  if (!user?.id) {
-    return res.status(401).json({ ok: false, error: "Unauthorized" });
+  // userId를 body에서 받으므로 세션 검사 및 user.id 사용 제거
+  if (!userId) {
+    return res.status(401).json({ ok: false, error: "userId is required" });
   }
   if (!id) {
     return res.status(400).json({ ok: false, error: "chatRoomId is required" });
@@ -23,7 +23,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const existingAlarm = await client.alarmSetting.findFirst({
         where: {
           chatRoomId: +id,
-          userId: user.id,
+          userId: userId,
           status: AlarmStatus.SCHEDULED,
         },
       });
@@ -50,7 +50,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       // 새 알림 생성
       const newAlarm = await client.alarmSetting.create({
         data: {
-          userId: user.id,
+          userId: userId,
           chatRoomId: +id,
           alarmTime,
           triggerAt: new Date(triggerAt),
@@ -72,7 +72,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const alarm = await client.alarmSetting.findFirst({
         where: {
           chatRoomId: +id,
-          userId: user.id,
+          userId: userId,
           status: AlarmStatus.SCHEDULED,
         },
       });
@@ -119,7 +119,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const alarm = await client.alarmSetting.findFirst({
         where: {
           chatRoomId: +id,
-          userId: user.id,
+          userId: userId,
           status: AlarmStatus.SCHEDULED,
         },
         orderBy: { triggerAt: "desc" },
@@ -132,7 +132,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const alarm = await client.alarmSetting.findFirst({
         where: {
           chatRoomId: +id,
-          userId: user.id,
+          userId: userId,
           status: AlarmStatus.SCHEDULED,
         },
       });

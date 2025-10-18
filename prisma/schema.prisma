@@ -46,6 +46,7 @@ model User {
   pushSubscriptions         PushSubscription[]
   alarmSettings             AlarmSetting[]           @relation("UserToAlarmSetting")
   scheduledNotifications    ScheduledNotification[]
+  ChatMeetup                ChatMeetup[]
 }
 
 model Token {
@@ -211,7 +212,7 @@ model ChatRoom {
   lastReadMessage LastReadMessage[]
 
   // ChatMeetup과 1:1 관계
-  chatMeetup   ChatMeetup? @relation(fields: [chatMeetupId], references: [id])
+  chatMeetup   ChatMeetup?
   chatMeetupId Int?        @unique
 
   // AlarmSetting과 1:N 관계
@@ -227,10 +228,13 @@ model ChatMeetup {
   locationLongitude Float? // 경도 좌표
   alarmTime         String? // 알림 시간 (예: "10분 전")
   // ChatRoom과의 1:1 관계
-  chatRoom          ChatRoom?
+  chatRoom          ChatRoom? @relation(fields: [chatRoomId], references: [id])
+  chatRoomId        Int?      @unique
 
   // 메시지와의 관계 제거 (chatMeetupRef 필드로 대체)
   chatMeetupRef Int?
+  user          User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        Int?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
@@ -258,14 +262,11 @@ model AlarmSetting {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
-  // 기존: @@unique([userId, status, chatRoomId])
-  // 수정: 중복 알림 허용 또는 필요한 유니크 제약만 남김
-  // 예시: 한 채팅방-사용자 조합에 여러 알림을 허용하려면 유니크 제약을 제거
-  // 또는, userId, chatRoomId만 유니크로 두고 status는 제외
-  // 아래는 유니크 제약 완전 제거 예시
+  // 아래 유니크 제약이 있으면 findUnique에서 chatRoomId, userId로 조회 가능
+  // 하지만 여러 알림을 허용하려면 이 줄을 삭제해야 함
+  // @@unique([userId, chatRoomId]) // <-- 여러 알림 허용 시 삭제
 
-  @@unique([userId, status, chatRoomId]) // <-- 이 줄을 삭제 또는 주석 처리
-  @@index([chatRoomId])
+  @@index([userId, chatRoomId])
   @@index([triggerAt, status])
 }
 

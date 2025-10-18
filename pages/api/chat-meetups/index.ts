@@ -3,12 +3,14 @@ import client from "@libs/client/client";
 import { withApiSession } from "@libs/server/withSession";
 import withHandler from "@libs/server/withHandler";
 import { NextApiResponseServerIo } from "@/types/types";
+import { createAlarmSettings } from "@/apiLibs/chats";
 
 const workspace = "market";
 
 async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
   if (req.method === "POST") {
     const {
+      yourId,
       appointmentTime,
       place,
       locationLatitude,
@@ -57,7 +59,34 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
             },
           });
 
-          return [createdMessage, createdChatMeetup];
+          const createdMyAlarmSetting = await createAlarmSettings({
+            userId: user.id,
+            chatId: chatRoomId,
+            messageId: createdMessage.id,
+            alarmTime,
+            triggerAt: new Date(
+              new Date(appointmentTime).getTime() - 30 * 60 * 1000
+            ).toISOString(),
+            disableAlarm: false,
+          });
+
+          const createdYourAlarmSetting = await createAlarmSettings({
+            userId: yourId,
+            chatId: chatRoomId,
+            messageId: createdMessage.id,
+            alarmTime,
+            triggerAt: new Date(
+              new Date(appointmentTime).getTime() - 30 * 60 * 1000
+            ).toISOString(),
+            disableAlarm: false,
+          });
+
+          return [
+            createdMessage,
+            createdChatMeetup,
+            createdMyAlarmSetting,
+            createdYourAlarmSetting,
+          ];
         }
       );
 
