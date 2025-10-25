@@ -6,9 +6,11 @@ import { AlarmStatus } from "@prisma/client";
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query; // chatRoomId
-  const { alarmTime, triggerAt, disableAlarm, userId } = req.body;
+  const { alarmTime, triggerAt, disableAlarm } = req.body;
+  const userId = req?.session?.user?.id;
 
-  // userId를 body에서 받으므로 세션 검사 및 user.id 사용 제거
+  console.log("Creating alarm setting...");
+
   if (!userId) {
     return res.status(401).json({ ok: false, error: "userId is required" });
   }

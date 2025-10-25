@@ -143,7 +143,7 @@ export default function AppointmentEditModal({
               const utcTriggerAt = new Date(triggerAt.toISOString());
               await createAlarmSettings({
                 chatId: chatRoomId,
-                messageId: responseData.message.id,
+                // messageId: responseData.message.id,
                 alarmTime: responseData.chatMeetup.alarmTime,
                 triggerAt: utcTriggerAt.toISOString(),
                 disableAlarm: false,
@@ -246,7 +246,7 @@ export default function AppointmentEditModal({
               const utcTriggerAt = new Date(triggerAt.toISOString());
               await createAlarmSettings({
                 chatId: chatRoomId,
-                messageId: responseData.message.id,
+                // messageId: responseData.message.id,
                 alarmTime: responseData.chatMeetup.alarmTime,
                 triggerAt: utcTriggerAt.toISOString(),
                 disableAlarm: false,
@@ -602,7 +602,7 @@ export default function AppointmentEditModal({
           });
           await createAlarmSettings({
             chatId: chatRoomId,
-            messageId: updated?.chatMeetup?.messageId ?? 0,
+            // messageId: updated?.chatMeetup?.messageId ?? 0,
             alarmTime: alarmTime ?? "",
             triggerAt: utcTriggerAt.toISOString(),
             disableAlarm: false,

@@ -55,9 +55,8 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
               locationLatitude,
               locationLongitude,
               alarmTime,
-              message: { connect: { id: message.id } },
             },
-            include: { message: true },
+            // include: { message: true },
           });
 
           return [message, meetup];
@@ -122,9 +121,63 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
     }
   }
 
+  if (req.method === "PATCH") {
+    // PATCH /api/chat-meetups?chatRoomId=...
+    const {
+      chatRoomId,
+      appointmentTime,
+      place,
+      locationLatitude,
+      locationLongitude,
+      alarmTime,
+    } = req.body;
+
+    if (!chatRoomId) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "chatRoomId is required" });
+    }
+
+    try {
+      // 기존 chatMeetup 찾기 (chatRoomId로 1:1 관계)
+      const existingMeetup = await client.chatMeetup.findUnique({
+        where: { chatRoomId: Number(chatRoomId) },
+      });
+
+      if (!existingMeetup) {
+        return res
+          .status(404)
+          .json({ ok: false, error: "ChatMeetup not found" });
+      }
+
+      // 업데이트할 데이터 준비
+      const updateData: any = {};
+      if (appointmentTime !== undefined)
+        updateData.appointmentTime = new Date(appointmentTime);
+      if (place !== undefined) updateData.place = place;
+      if (locationLatitude !== undefined)
+        updateData.locationLatitude = locationLatitude;
+      if (locationLongitude !== undefined)
+        updateData.locationLongitude = locationLongitude;
+      if (alarmTime !== undefined) updateData.alarmTime = alarmTime;
+
+      const updatedMeetup = await client.chatMeetup.update({
+        where: { id: existingMeetup.id },
+        data: updateData,
+      });
+
+      return res.status(200).json({ ok: true, chatMeetup: updatedMeetup });
+    } catch (error) {
+      console.error("Error updating chat meetup:", error);
+      return res
+        .status(500)
+        .json({ ok: false, error: "Failed to update chat meetup" });
+    }
+  }
+
   return res.status(405).json({ ok: false, error: "Method not allowed" });
 }
 
 export default withApiSession(
-  withHandler({ methods: ["POST"], handler, isPrivate: true })
+  withHandler({ methods: ["POST", "PATCH"], handler, isPrivate: true })
 );

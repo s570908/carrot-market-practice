@@ -62,7 +62,13 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
             status: true,
           },
         },
-        chatMeetup: true, // chatRoom에 연결된 chatMeetup(약속) 정보도 함께 조회
+        chatMeetup: true,
+        // 아래와 같이 alarmSettings를 include하면 chatRoomId로 연결된 모든 알람을 배열로 가져옵니다.
+        alarmSettings: {
+          where: {
+            chatRoomId: +id,
+          },
+        },
       },
     });
 

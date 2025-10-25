@@ -59,8 +59,8 @@ export async function writeChatMeetup(params: ChatMeetupParams) {
  * @param params 업데이트할 약속 데이터
  */
 export async function updateChatMeetup(params: ChatMeetupParams) {
-  // 약속 수정 API 호출 (POST /api/chat-meetups/[id])
-  const response = await aclient.post<ChatMeetupResponse>(
+  // 약속 수정 API 호출 (PATCH /api/chat-meetups/[id])
+  const response = await aclient.patch<ChatMeetupResponse>(
     `/api/chat-meetups/${params.chatRoomId}`,
     params
   );
@@ -157,7 +157,7 @@ export const getAlarmSettings = async (chatId: number, messageId: number) => {
 export const createAlarmSettings = async (params: {
   userId: number;
   chatId: number;
-  messageId: number;
+  // messageId: number;
   alarmTime: string;
   triggerAt?: string;
   disableAlarm: boolean;
@@ -166,12 +166,11 @@ export const createAlarmSettings = async (params: {
   if (
     !params.userId ||
     !params.chatId ||
-    !params.messageId ||
     typeof params.alarmTime !== "string" ||
     params.alarmTime.trim() === ""
   ) {
     throw new Error(
-      `createAlarmSettings: 필수 파라미터 누락 또는 잘못된 값. chatId=${params.chatId}, messageId=${params.messageId}, alarmTime=${params.alarmTime}`
+      `createAlarmSettings: 필수 파라미터 누락 또는 잘못된 값. chatId=${params.chatId}, alarmTime=${params.alarmTime}`
     );
   }
 
@@ -181,7 +180,7 @@ export const createAlarmSettings = async (params: {
   const response = await aclient.post(
     `/api/chat/${params.chatId}/alarm-settings`,
     {
-      messageId: params.messageId,
+      // messageId: params.messageId,
       alarmTime: params.alarmTime,
       triggerAt: params.triggerAt,
       disableAlarm: params.disableAlarm,
@@ -213,7 +212,6 @@ writeAlarmSettings와 updateAlarmSettings의 차이점
 // 기존 알람 설정 전체 업데이트 또는 생성 (upsert)
 export const writeAlarmSettings = async (params: {
   chatId: number;
-  messageId: number;
   alarmTime: string;
   triggerAt?: string;
   disableAlarm: boolean;
@@ -224,7 +222,6 @@ export const writeAlarmSettings = async (params: {
   const response = await aclient.put(
     `/api/chat/${params.chatId}/alarm-settings`,
     {
-      messageId: params.messageId,
       alarmTime: params.alarmTime,
       triggerAt: params.triggerAt,
       disableAlarm: params.disableAlarm,

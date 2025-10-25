@@ -11,6 +11,7 @@ import {
   Status,
   User as PrismaUser,
   MessageType,
+  ChatMeetup,
 } from "@prisma/client";
 import { useForm } from "react-hook-form";
 import Message from "@components/Message";
@@ -73,6 +74,7 @@ interface ChatRoomWithDetails extends ChatRoom {
   buyer: User;
   seller: User;
   product: ProductWithImages;
+  chatMeetup?: ChatMeetup; // 타입에 chatMeetup 추가
 }
 
 interface ChatDetailProps {
@@ -152,8 +154,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   const latestAppointment = latestMeetupData?.lastestMeetup ?? null;
   const chatMeetupId = latestAppointment?.id ?? null;
-
-  console.log("=========lastesAppointMent: ", latestAppointment);
 
   // {
   //     "id": 142,
@@ -1067,7 +1067,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         // 5-3. 새 AlarmSetting 생성
         setAlarmSettings({
           chatId: id,
-          messageId: appointmentMessage.id,
+          // messageId: appointmentMessage.id,
           alarmTime: timeOption,
           triggerAt: triggerAt.toISOString(),
           disableAlarm: false,
@@ -1233,6 +1233,12 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       alert(error.message || "알림 설정에 실패했습니다.");
     }
   };
+
+  // 로그인한 사용자의 알림 설정 찾기
+  const userAlarmSetting =
+    data?.chatRoomOfSeller?.alarmSettings?.find(
+      (alarm: { userId: number }) => alarm.userId === user?.id
+    ) ?? null;
 
   let optionsMenu: Option[] = selling
     ? [
@@ -1451,34 +1457,35 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
             </div>
             <div className="mt-2 flex flex-row justify-between">
               {renderAppointmentButton()}
-              {latestAppointment !== null && (
-                <button
-                  className="text-md cursor-pointer rounded-md border border-blue-500 bg-blue-50 p-1 text-blue-700"
-                  onClick={() => {
-                    console.log("latestAppointment: ", latestAppointment);
+              <button
+                className="text-md cursor-pointer rounded-md border border-blue-500 bg-blue-50 p-1 text-blue-700"
+                onClick={() => {
+                  if (!latestAppointment) {
+                    alert("약속 정보가 없습니다. 약속을 먼저 잡아주세요.");
+                    return;
+                  }
 
-                    if (!latestAppointment) {
-                      alert("약속 정보가 없습니다. 약속을 먼저 잡아주세요.");
-                      return;
-                    }
+                  // 약속 시간이 지났는지 확인
+                  const appointmentTime = new Date(
+                    latestAppointment.appointmentTime ?? ""
+                  );
+                  if (appointmentTime < new Date()) {
+                    alert("이미 지난 약속입니다. 알림을 설정할 수 없습니다.");
+                    return;
+                  }
 
-                    // 약속 시간이 지났는지 확인
-                    const appointmentTime = new Date(
-                      latestAppointment.appointmentTime ?? ""
-                    );
-                    if (appointmentTime < new Date()) {
-                      alert("이미 지난 약속입니다. 알림을 설정할 수 없습니다.");
-                      return;
-                    }
+                  // 알림 설정 화면 열기
+                  // setCurrentMessageId(latestAppointmentMsg?.id ?? null);
+                  setAlarmSheetOpen(true);
+                }}
+              >
+                {`알림 ${
+                  userAlarmSetting !== null
+                    ? latestAppointment?.alarmTime
+                    : " 없음"
+                }`}
+              </button>
 
-                    // 알림 설정 화면 열기
-                    // setCurrentMessageId(latestAppointmentMsg?.id ?? null);
-                    setAlarmSheetOpen(true);
-                  }}
-                >
-                  {`알림 ${latestAppointment.alarmTime || " 없음"}`}
-                </button>
-              )}
               {isSellingAndConsumer && (
                 <div
                   className="text-md cursor-pointer rounded-md border border-black p-1"
@@ -1549,7 +1556,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               lastMessageDate = messageDate; // 마지막 메시지 날짜 업데이트
 
               // 약속 메시지 처리 관련 조건을 강화하되 발신자/수신자 구분하지 않음
-              const isAppointment = !!message.chatMeetup;
+              // const isAppointment = !!message.chatMeetup;
+              const isAppointment = !!data.chatRoomOfSeller?.chatMeetup;
 
               // // 본인이 발신한 약속 메시지도 표시되도록 추가 로깅
               // if (isAppointment && message.userId === user?.id) {
@@ -1560,8 +1568,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               const now = new Date();
               const isAppointmentPassed =
                 isAppointment &&
-                new Date(message.chatMeetup!.appointmentTime).getTime() <
-                  now.getTime();
+                new Date(
+                  data.chatRoomOfSeller?.chatMeetup!.appointmentTime
+                ).getTime() < now.getTime();
 
               // 알림 설정 버튼 표시 여부 결정 - 과거 약속이면 완전히 제거
               const showAlarmButton =
@@ -1571,20 +1580,24 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
               // Format appointment data if this is an appointment message
               const appointmentData =
-                isAppointment && message.chatMeetup
+                isAppointment && data.chatRoomOfSeller?.chatMeetup
                   ? {
-                      appointmentTime: message.chatMeetup.appointmentTime,
-                      place: message.chatMeetup.place,
+                      appointmentTime:
+                        data.chatRoomOfSeller.chatMeetup.appointmentTime,
+                      place: data.chatRoomOfSeller.chatMeetup.place,
                       latitude:
-                        message.chatMeetup.locationLatitude ?? undefined,
+                        data.chatRoomOfSeller?.chatMeetup.locationLatitude ??
+                        undefined,
                       longitude:
-                        message.chatMeetup.locationLongitude ?? undefined,
-                      alarmTime: message.chatMeetup.alarmTime,
+                        data.chatRoomOfSeller?.chatMeetup.locationLongitude ??
+                        undefined,
+                      alarmTime: data.chatRoomOfSeller?.chatMeetup.alarmTime,
                       isPast:
                         isAppointment &&
-                        new Date(message.chatMeetup.appointmentTime) <
-                          new Date(),
-                      chatMeetupId: message.chatMeetup.id, // chatMeetupId 추가
+                        new Date(
+                          data.chatRoomOfSeller?.chatMeetup.appointmentTime
+                        ) < new Date(),
+                      chatMeetupId: data.chatRoomOfSeller?.chatMeetup.id, // chatMeetupId 추가
                     }
                   : undefined;
 
@@ -1598,13 +1611,18 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                 messageId: message.id,
                 messageType: message.messageType,
                 hasAppointment: isAppointment,
-                appointmentTime: message.chatMeetup?.appointmentTime,
+                appointmentTime:
+                  data.chatRoomOfSeller?.chatMeetup?.appointmentTime,
                 currentTime: now.toISOString(),
                 formattedAppointmentTime: isAppointment
-                  ? new Date(message.chatMeetup!.appointmentTime).toISOString()
+                  ? new Date(
+                      data.chatRoomOfSeller?.chatMeetup!.appointmentTime
+                    ).toISOString()
                   : null,
                 appointmentTimestamp: isAppointment
-                  ? new Date(message.chatMeetup!.appointmentTime).getTime()
+                  ? new Date(
+                      data.chatRoomOfSeller?.chatMeetup!.appointmentTime
+                    ).getTime()
                   : null,
                 currentTimestamp: now.getTime(),
                 isAppointmentPassed,

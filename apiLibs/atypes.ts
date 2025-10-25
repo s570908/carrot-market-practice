@@ -19,6 +19,7 @@ import {
   Prisma,
   MessageType,
   ChatMeetup,
+  AlarmSetting,
 } from "@prisma/client";
 
 /// User
@@ -559,6 +560,8 @@ export interface ChatResponse {
     buyer: UserWithwrittenReviews;
     seller: UserWithwrittenReviews;
     product: ProductWithImages;
+    chatMeetup?: ChatMeetup; // ✅ chatMeetup 타입 추가
+    alarmSettings?: AlarmSetting[];
   };
 }
 

@@ -32,11 +32,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         },
       });
 
-      console.log("================latestMeetup: ", latestMeetup);
-
       if (!latestMeetup) {
         return res
-          .status(404)
+          .status(200)
           .json({ ok: false, error: "최근 약속이 없습니다." });
       }
 
