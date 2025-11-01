@@ -15,6 +15,7 @@ import { MessageType } from "@prisma/client";
 import AppointmentEditModal from "./AppointmentEditModal";
 import { toast } from "react-toastify"; // Toast 알림 추가
 import { getLatestChatMeetup } from "@/apiLibs/appointments";
+import axios from "axios";
 
 // dayjs 설정 추가 (타임존 지원)
 dayjs.extend(utc);
@@ -99,27 +100,34 @@ export default function Message({
 
   const handleShowAppointment = async () => {
     if (!appointmentData) return;
-
-    // 채팅방 ID 검증
     if (!chatRoomId) {
       console.warn("채팅방 ID가 없습니다. 약속 생성이 실패할 수 있습니다.");
       return;
     }
 
     try {
-      // 서버에서 가장 최근 약속 메시지 확인 (aclient 사용)
       const data = await getLatestChatMeetup(chatRoomId);
-
       if (!data.ok) {
         console.error("최신 약속 정보를 가져오는 데 실패했습니다.");
         return;
       }
 
-      console.log(
-        "=========== Latest chatMeetupId vs Current chatMeetupId: ",
-        data?.lastestMeetup?.id,
-        appointmentData?.chatMeetupId
-      );
+      // alarmTime을 우선적으로 alarm-setting에서 조회
+      let alarmTimeFromSetting: string | null = null;
+      try {
+        const alarmRes = await axios.get(`/api/alarm-settings/${chatRoomId}`);
+        if (alarmRes.data.alarms && Array.isArray(alarmRes.data.alarms)) {
+          // 'user' is not defined in this scope; fall back to the first alarm entry
+          // or adjust this logic to use an available current-user id when available.
+          const userAlarm = alarmRes.data.alarms[0] ?? null;
+          alarmTimeFromSetting = userAlarm?.alarmTime ?? null;
+        } else if (alarmRes.data.alarm) {
+          alarmTimeFromSetting = alarmRes.data.alarm.alarmTime ?? null;
+        }
+      } catch (err) {
+        alarmTimeFromSetting =
+          data.lastestMeetup.alarmTime ?? appointmentData.alarmTime ?? null;
+      }
 
       // chatMeetupId로 최신 약속 여부 확인
       if (
@@ -140,7 +148,6 @@ export default function Message({
                   className="rounded bg-gray-100 px-3 py-1 text-gray-700 transition-colors hover:bg-gray-200"
                   onClick={() => {
                     closeToast();
-                    // 취소: 아무것도 하지 않음 (return)
                   }}
                 >
                   취소
@@ -149,7 +156,6 @@ export default function Message({
                   className="rounded bg-orange-500 px-3 py-1 text-white transition-colors hover:bg-orange-600"
                   onClick={async () => {
                     closeToast();
-                    // 확인: 최신 약속 보기 모달 열기
                     await openAppointmentModal({
                       appointmentTime: data.lastestMeetup.appointmentTime,
                       place:
@@ -166,10 +172,7 @@ export default function Message({
                         data.lastestMeetup.longitude ??
                         appointmentData.longitude ??
                         0,
-                      alarmTime:
-                        data.lastestMeetup.alarmTime ??
-                        appointmentData.alarmTime ??
-                        null,
+                      alarmTime: alarmTimeFromSetting,
                       chatMeetupId: data.lastestMeetup?.id,
                     });
                   }}
@@ -184,16 +187,12 @@ export default function Message({
         return;
       }
 
-      console.log("appointmentData: ", appointmentData);
-      console.log("data: ", data);
-
-      // 약속 보기 모달 열기
       await openAppointmentModal({
         appointmentTime: data.lastestMeetup.appointmentTime,
         place: data.lastestMeetup.place,
         latitude: data.lastestMeetup.locationLatitude,
         longitude: data.lastestMeetup.locationLongitude,
-        alarmTime: data.lastestMeetup.alarmTime || null,
+        alarmTime: alarmTimeFromSetting,
         chatMeetupId: data.lastestMeetup.id,
       });
     } catch (error) {

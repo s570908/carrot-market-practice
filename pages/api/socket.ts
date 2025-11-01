@@ -46,7 +46,10 @@ function initializeSocketServer(res: NextApiResponseServerIo) {
 
       // Workspace URL에 속한 모든 socket에 사용자 ID 배열을 페이로드로 송부
       // socket.nsp.emit 대신 네임스페이스 객체를 통해 직접 emit
-      marketNamespace.emit("onlineList", Object.values(onlineMap[namespaceName]));
+      marketNamespace.emit(
+        "onlineList",
+        Object.values(onlineMap[namespaceName])
+      );
 
       // 로그인 user의 socket을 각각의 채널(chat room)에 등록한다.
       data.channels.forEach((channel) => {
@@ -58,7 +61,9 @@ function initializeSocketServer(res: NextApiResponseServerIo) {
 
     // Listen for 'requestOnlineList' event
     socket.on("requestOnlineList", () => {
-      console.log(`Request for online list received from socket ID: ${socket.id}`);
+      console.log(
+        `Request for online list received from socket ID: ${socket.id}`
+      );
       const onlineList = Object.values(onlineMap[namespaceName]);
       socket.emit("onlineList", onlineList); // Respond with the online list
     });
@@ -116,12 +121,19 @@ function initializeSocketServer(res: NextApiResponseServerIo) {
       socket.emit("roomList", rooms); // Room 리스트를 클라이언트로 전송
     });
 
+    socket.on("meetup:created", (data: string) => {
+      console.log("meetup:created", data);
+    });
+
     // 사용자 연결 해제 이벤트
     socket.on("disconnect", (reason) => {
       console.log(`client disconnted from namespace: ${namespaceName}`);
       console.log(`disconnected socket.id: ${socket.id}, reason: ${reason}`);
       delete onlineMap[namespaceName][socket.id];
-      marketNamespace.emit("onlineList", Object.values(onlineMap[namespaceName]));
+      marketNamespace.emit(
+        "onlineList",
+        Object.values(onlineMap[namespaceName])
+      );
     });
 
     // 초기 연결 시 클라이언트에 이벤트 전송
@@ -131,7 +143,10 @@ function initializeSocketServer(res: NextApiResponseServerIo) {
   res.socket.server.io = io;
 }
 
-export default function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
+export default function handler(
+  req: NextApiRequest,
+  res: NextApiResponseServerIo
+) {
   if (!res.socket.server.io) {
     initializeSocketServer(res);
   }

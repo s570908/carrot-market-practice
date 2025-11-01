@@ -96,7 +96,7 @@ export default function AppointmentEditModal({
               message: SYSTEM_MESSAGES.APPOINTMENT_CREATED(
                 responseData.chatMeetup.appointmentTime
               ),
-              userId: user?.id,
+              userId: user!.id,
             });
           } catch (systemMessageError) {
             console.error("시스템 메시지 생성 실패:", systemMessageError);
@@ -147,6 +147,7 @@ export default function AppointmentEditModal({
                 alarmTime: responseData.chatMeetup.alarmTime,
                 triggerAt: utcTriggerAt.toISOString(),
                 disableAlarm: false,
+                userId: user!.id,
               });
               // 약속 생성 후 푸시 구독 상태 자동 갱신 시도 (만료된 구독 자동 복구)
               try {
@@ -200,7 +201,7 @@ export default function AppointmentEditModal({
               message: SYSTEM_MESSAGES.APPOINTMENT_UPDATED(
                 responseData.chatMeetup.appointmentTime
               ),
-              userId: user?.id,
+              userId: user!.id,
             });
           } catch (systemMessageError) {
             console.error("시스템 메시지 생성 실패:", systemMessageError);
@@ -250,6 +251,7 @@ export default function AppointmentEditModal({
                 alarmTime: responseData.chatMeetup.alarmTime,
                 triggerAt: utcTriggerAt.toISOString(),
                 disableAlarm: false,
+                userId: user!.id,
               });
               try {
                 await initializePushSubscription();
@@ -286,7 +288,7 @@ export default function AppointmentEditModal({
   const isLoading = isUserLoading || isPending;
   const isDisabled = isLoading || !isUserAvailable || !user;
 
-  //console.log("AppointmentEditModal--params:", params);
+  // console.log("AppointmentEditModal--params:", params);
 
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -606,6 +608,7 @@ export default function AppointmentEditModal({
             alarmTime: alarmTime ?? "",
             triggerAt: utcTriggerAt.toISOString(),
             disableAlarm: false,
+            userId: user!.id,
           });
 
           // 3. 시스템 메시지 생성 (알림 변경 안내)
@@ -906,6 +909,8 @@ export default function AppointmentEditModal({
     params.place,
     params.alarmTime,
   ]);
+
+  console.log("alarmTime: ", alarmTime);
 
   return (
     <>

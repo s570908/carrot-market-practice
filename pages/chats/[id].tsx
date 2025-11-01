@@ -1360,16 +1360,33 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         }`}
         onClick={async () => {
           if (isPast) return;
-          // messageId는 latestAppointment.id로 전달
-          console.log("chatMeetupId:", chatMeetupId);
+          // alarmSetting을 조회해서 현재 사용자(user)의 alarmTime을 전달
+          let alarmTimeFromSetting: string | null = null;
+          try {
+            const alarmRes = await axios.get(`/api/alarm-settings/${id}`);
+            // alarmRes.data.alarms가 배열이면, userId로 필터링
+            if (alarmRes.data.alarms && Array.isArray(alarmRes.data.alarms)) {
+              const userAlarm = alarmRes.data.alarms.find(
+                (a: any) => a.userId === user?.id
+              );
+              alarmTimeFromSetting = userAlarm?.alarmTime ?? null;
+            } else if (alarmRes.data.alarm) {
+              // 단일 alarm 객체일 경우
+              alarmTimeFromSetting = alarmRes.data.alarm.alarmTime ?? null;
+            }
+          } catch (err) {
+            // 조회 실패 시 chatMeetup.alarmTime을 fallback
+            alarmTimeFromSetting = chatMeetup.alarmTime ?? null;
+          }
+
           await openAppointmentEditModal({
             appointmentTime: chatMeetup.appointmentTime,
             place: chatMeetup.place,
             latitude: chatMeetup.locationLatitude ?? 0,
             longitude: chatMeetup.locationLongitude ?? 0,
-            alarmTime: chatMeetup.alarmTime ?? null,
-            // messageId: latestAppointment.id, // 메시지의 id를 전달 (chatMeetup.messageId는 없음)
-            chatMeetupId: chatMeetupId, // chatMeetup의 id 전달
+            alarmTime: alarmTimeFromSetting,
+            // messageId: latestAppointment.id,
+            chatMeetupId: chatMeetupId,
           });
         }}
         disabled={isPast}
