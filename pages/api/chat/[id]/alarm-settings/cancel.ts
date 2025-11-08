@@ -6,17 +6,17 @@ import { cancelExistingAlarm } from "@libs/server/alarmScheduler";
 import { AlarmStatus } from "@prisma/client";
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { id, messageId } = req.query;
+  const { id } = req.query;
   const { user } = req.session;
 
   if (!user?.id) {
     return res.status(401).json({ ok: false, error: "Unauthorized" });
   }
 
-  if (!id || !messageId) {
+  if (!id) {
     return res.status(400).json({
       ok: false,
-      error: "Chat room id and message id are required",
+      error: "Chat room id is required",
     });
   }
 

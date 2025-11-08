@@ -18,7 +18,7 @@ export async function loadAlarms(baseUrl: string) {
         status: AlarmStatus.SCHEDULED,
         triggerAt: { gt: new Date() },
       },
-      include: { chatMeetup: true },
+      // include: { chatMeetup: true },
     });
     // Prisma의 include 옵션을 사용하면 반환 객체에 chatMeetup 등 관계 필드가 추가됨
     // 하지만 alarmSetting의alarmTime은 루트에 있으므로, filter는 alarm.alarmTime !== null로 사용
@@ -31,15 +31,15 @@ export async function loadAlarms(baseUrl: string) {
     // 각 알람 예약 설정
     alarms.forEach((alarm) => {
       if ((alarm as any).alarmTime) {
-        // 명시적으로 AlarmWithMeetup 타입으로 매핑
-        const alarmWithMeetup: AlarmWithMeetup = {
+        // 명시적으로 AlarmWithTrigger 타입으로 매핑
+        const alarmWithTrigger: AlarmWithTrigger = {
           id: alarm.id,
           alarmTime: (alarm as any).alarmTime,
           status: alarm.status,
           triggerAt: alarm.triggerAt,
-          chatMeetup: alarm.chatMeetup,
+          // chatMeetup: alarm.chatMeetup,
         };
-        scheduleAlarm(alarmWithMeetup, baseUrl);
+        scheduleAlarm(alarmWithTrigger, baseUrl);
       }
     });
 
@@ -50,12 +50,12 @@ export async function loadAlarms(baseUrl: string) {
   }
 }
 
-interface AlarmWithMeetup {
+interface AlarmWithTrigger {
   id: number;
   alarmTime: string;
   status: AlarmStatus;
   triggerAt: Date;
-  chatMeetup: ChatMeetup | null;
+  // chatMeetup: ChatMeetup | null;
 }
 
 /*
@@ -74,7 +74,7 @@ scheduleAlarm 함수의 기능 요약
 5. 예약 완료 로그를 출력함.
 */
 
-export function scheduleAlarm(alarm: AlarmWithMeetup, baseUrl: string) {
+export function scheduleAlarm(alarm: AlarmWithTrigger, baseUrl: string) {
   if (!alarm.alarmTime) return; //alarmTime 없으면 스케줄링하지 않음
 
   // 기존 작업이 있다면 취소
@@ -131,15 +131,15 @@ export function scheduleAlarm(alarm: AlarmWithMeetup, baseUrl: string) {
    - triggerAt이 미래 시점임
    - chatMeetup이 존재함
 3. 조건을 모두 만족하면:
-   - AlarmWithMeetup 객체로 변환
-   - scheduleAlarm(alarmWithMeetup, baseUrl) 호출하여 실제 스케줄링
+   - AlarmWithTrigger 객체로 변환
+   - scheduleAlarm(alarmWithTrigger, baseUrl) 호출하여 실제 스케줄링
    - true 반환
 4. 조건을 만족하지 않으면 false 반환
 */
 export async function scheduleAlarmById(alarmId: number, baseUrl: string) {
   const alarm = await client.alarmSetting.findUnique({
     where: { id: alarmId },
-    include: { chatMeetup: true },
+    // include: { chatMeetup: true },
   });
 
   console.log(
@@ -154,28 +154,28 @@ export async function scheduleAlarmById(alarmId: number, baseUrl: string) {
     alarm.status === AlarmStatus.SCHEDULED &&
     alarm.triggerAt > new Date()
   ) {
-    if (!alarm.chatMeetup) {
+    if (!alarm.triggerAt) {
       console.warn(
-        `Alarm ID ${alarm.id} does not have a related chatMeetup. Skipping scheduling.`
+        `Alarm ID ${alarm.id} does not have a related triggerAt. Skipping scheduling.`
       );
       return false;
     }
-    const alarmWithMeetup: AlarmWithMeetup = {
+    const alarmWithTrigger: AlarmWithTrigger = {
       id: alarm.id,
       alarmTime: (alarm as any).alarmTime,
       status: alarm.status,
       triggerAt: alarm.triggerAt,
-      chatMeetup: alarm.chatMeetup,
+      // chatMeetup: alarm.chatMeetup,
     };
 
     console.log(
-      `scheduleAlarm 직전: Scheduling alarm with meetup: ${JSON.stringify(
-        alarmWithMeetup,
+      `scheduleAlarm 직전: Scheduling alarm with triggerAt: ${JSON.stringify(
+        alarmWithTrigger,
         null,
         2
       )}`
     );
-    scheduleAlarm(alarmWithMeetup, baseUrl);
+    scheduleAlarm(alarmWithTrigger, baseUrl);
     return true;
   }
   return false;
@@ -229,21 +229,21 @@ export async function initializeAlarmScheduler(baseUrl: string) {
         status: AlarmStatus.SCHEDULED,
         triggerAt: { gt: new Date() }, // 미래의 알람만
       },
-      include: { chatMeetup: true },
+      // include: { chatMeetup: true },
     });
 
     console.log(`Found ${scheduledAlarms.length} alarms to reschedule`);
 
     for (const alarm of scheduledAlarms) {
       if ((alarm as any).alarmTime) {
-        const alarmWithMeetup: AlarmWithMeetup = {
+        const alarmWithTrigger: AlarmWithTrigger = {
           id: alarm.id,
           alarmTime: (alarm as any).alarmTime,
           status: alarm.status,
           triggerAt: alarm.triggerAt,
-          chatMeetup: alarm.chatMeetup,
+          // chatMeetup: alarm.chatMeetup,
         };
-        scheduleAlarm(alarmWithMeetup, baseUrl);
+        scheduleAlarm(alarmWithTrigger, baseUrl);
       }
     }
 

@@ -52,7 +52,11 @@ const Streams: NextPage = () => {
   const isErrorAny = isError;
   const errorAny = error;
 
-  const loadingOrError = handleLoadingAndError(isLoadingAny, isErrorAny, errorAny);
+  const loadingOrError = handleLoadingAndError(
+    isLoadingAny,
+    isErrorAny,
+    errorAny
+  );
   if (loadingOrError) return loadingOrError;
 
   console.log(
@@ -82,11 +86,16 @@ const Streams: NextPage = () => {
                   )}
                 </div>
                 <div className="flex flex-row items-center justify-evenly space-x-32">
-                  <h1 className="mt-2 text-2xl font-bold text-gray-900">{stream.name}</h1>
+                  <h1 className="mt-2 text-2xl font-bold text-gray-900">
+                    {stream.name}
+                  </h1>
                   <div>
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className={cls(stream.live ? "text-red-500" : "text-gray-500", "h-6 w-6")}
+                      className={cls(
+                        stream.live ? "text-red-500" : "text-gray-500",
+                        "h-6 w-6"
+                      )}
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -105,7 +114,12 @@ const Streams: NextPage = () => {
           );
         })}
       </div>
-      <PaginationButton onClick={onPrevBtn} direction="prev" page={page} isGroup={true}>
+      <PaginationButton
+        onClick={onPrevBtn}
+        direction="prev"
+        page={page}
+        isGroup={true}
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           className="h-6 w-6"
@@ -125,7 +139,7 @@ const Streams: NextPage = () => {
         onClick={onNextBtn}
         direction="next"
         page={page}
-        itemLength={streamsData?.streams.length}
+        itemLength={streamsData?.streams?.length}
         isGroup={true}
       >
         <svg

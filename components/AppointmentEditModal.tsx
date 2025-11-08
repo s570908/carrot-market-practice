@@ -146,8 +146,8 @@ export default function AppointmentEditModal({
                 // messageId: responseData.message.id,
                 alarmTime: responseData.chatMeetup.alarmTime,
                 triggerAt: utcTriggerAt.toISOString(),
-                disableAlarm: false,
-                userId: user!.id,
+                // disableAlarm: false,
+                // userId: user!.id,
               });
               // 약속 생성 후 푸시 구독 상태 자동 갱신 시도 (만료된 구독 자동 복구)
               try {
@@ -250,8 +250,8 @@ export default function AppointmentEditModal({
                 // messageId: responseData.message.id,
                 alarmTime: responseData.chatMeetup.alarmTime,
                 triggerAt: utcTriggerAt.toISOString(),
-                disableAlarm: false,
-                userId: user!.id,
+                // disableAlarm: false,
+                // userId: user!.id,
               });
               try {
                 await initializePushSubscription();
@@ -607,8 +607,8 @@ export default function AppointmentEditModal({
             // messageId: updated?.chatMeetup?.messageId ?? 0,
             alarmTime: alarmTime ?? "",
             triggerAt: utcTriggerAt.toISOString(),
-            disableAlarm: false,
-            userId: user!.id,
+            // disableAlarm: false,
+            // userId: user!.id,
           });
 
           // 3. 시스템 메시지 생성 (알림 변경 안내)

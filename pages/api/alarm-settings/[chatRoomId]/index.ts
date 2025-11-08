@@ -20,7 +20,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return res.status(401).json({ ok: false, error: "Unauthorized" });
   }
 
-  if (req.method !== "GET" && req.method !== "PATCH") {
+  if (
+    req.method !== "GET" &&
+    req.method !== "PATCH" &&
+    req.method !== "POST" &&
+    req.method !== "DELETE"
+  ) {
     return res.status(405).json({ ok: false, error: "Method not allowed" });
   }
 
@@ -50,8 +55,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         },
       });
 
+      if (!alarm) {
+        return res.status(200).json({
+          ok: false,
+          exists: false,
+          alarm: null,
+        });
+      }
+
       return res.status(200).json({
         ok: true,
+        exists: true,
         alarm,
       });
     } catch (error) {
@@ -96,8 +110,62 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         .json({ ok: false, error: "Failed to update alarm setting" });
     }
   }
+
+  if (req.method === "POST") {
+    // 알림 생성
+    try {
+      const { alarmTime, triggerAt } = req.body;
+      if (!alarmTime || !triggerAt) {
+        return res
+          .status(400)
+          .json({ ok: false, error: "alarmTime and triggerAt are required" });
+      }
+      const newAlarm = await client.alarmSetting.create({
+        data: {
+          chatRoomId,
+          userId: user.id,
+          alarmTime,
+          triggerAt: new Date(triggerAt),
+          status: AlarmStatus.SCHEDULED,
+        },
+      });
+      return res.status(201).json({ ok: true, alarm: newAlarm });
+    } catch (error) {
+      return res
+        .status(500)
+        .json({ ok: false, error: "Failed to create alarm setting" });
+    }
+  }
+
+  if (req.method === "DELETE") {
+    // 알림 삭제 (status와 관계없이 삭제)
+    try {
+      const alarm = await client.alarmSetting.findFirst({
+        where: {
+          chatRoomId,
+          userId: user.id,
+          // status 조건 제거
+        },
+      });
+      if (!alarm) {
+        return res.status(404).json({ ok: false, error: "No alarm found" });
+      }
+      await client.alarmSetting.delete({
+        where: { id: alarm.id },
+      });
+      return res.status(200).json({ ok: true });
+    } catch (error) {
+      return res
+        .status(500)
+        .json({ ok: false, error: "Failed to delete alarm setting" });
+    }
+  }
 }
 
 export default withApiSession(
-  withHandler({ methods: ["GET", "PATCH"], handler, isPrivate: true })
+  withHandler({
+    methods: ["GET", "PATCH", "POST", "DELETE"],
+    handler,
+    isPrivate: true,
+  })
 );

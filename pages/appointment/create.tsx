@@ -76,22 +76,22 @@ const CreateAppointment = () => {
       try {
         console.log("약속 생성 성공:", responseData);
         // 소켓 이벤트 전송 (클라이언트에서)
-        if (socket && responseData.chatMeetup) {
-          socket.emit("meetup:created", {
-            chatRoomId: chatRoomId,
-            meetupId: responseData.chatMeetup.id,
-            appointmentTime: responseData.chatMeetup.appointmentTime,
-            place: responseData.chatMeetup.place,
-            alarmTime: responseData.chatMeetup.alarmTime,
-          });
-          console.log("소켓 이벤트 전송 완료:", {
-            chatRoomId: chatRoomId,
-            meetupId: responseData.chatMeetup.id,
-            appointmentTime: responseData.chatMeetup.appointmentTime,
-            place: responseData.chatMeetup.place,
-            alarmTime: responseData.chatMeetup.alarmTime,
-          });
-        }
+        // if (socket && responseData.chatMeetup) {
+        //   socket.emit("meetup:created", {
+        //     chatRoomId: chatRoomId,
+        //     meetupId: responseData.chatMeetup.id,
+        //     appointmentTime: responseData.chatMeetup.appointmentTime,
+        //     place: responseData.chatMeetup.place,
+        //     alarmTime: responseData.chatMeetup.alarmTime,
+        //   });
+        //   console.log("소켓 이벤트 전송 완료:", {
+        //     chatRoomId: chatRoomId,
+        //     meetupId: responseData.chatMeetup.id,
+        //     appointmentTime: responseData.chatMeetup.appointmentTime,
+        //     place: responseData.chatMeetup.place,
+        //     alarmTime: responseData.chatMeetup.alarmTime,
+        //   });
+        // }
 
         if (responseData.chatMeetup?.appointmentTime) {
           // 시스템 메시지 추가 - 일반 생성 메시지
