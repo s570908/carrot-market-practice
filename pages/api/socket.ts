@@ -121,8 +121,13 @@ function initializeSocketServer(res: NextApiResponseServerIo) {
       socket.emit("roomList", rooms); // Room 리스트를 클라이언트로 전송
     });
 
-    socket.on("meetup:created", (data: string) => {
-      console.log("meetup:created", data);
+    // meetupCreated 이벤트를 같은 채팅방(room)에 속한 모든 클라이언트에게 broadcast
+    socket.on("meetupCreated", (data) => {
+      // data.chatRoomId를 기반으로 room 이름을 생성
+      const roomName = `${socket.nsp.name}-${data.chatRoomId}`;
+      // 본인 포함 모든 클라이언트에게 이벤트 broadcast
+      marketNamespace.to(roomName).emit("meetupCreated", data);
+      console.log(`Broadcasted meetupCreated to room: ${roomName}`);
     });
 
     // 사용자 연결 해제 이벤트

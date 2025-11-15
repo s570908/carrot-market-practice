@@ -3,6 +3,7 @@ import client from "@libs/client/client";
 import { withApiSession } from "@libs/server/withSession";
 import withHandler from "@libs/server/withHandler";
 import { AlarmStatus } from "@prisma/client";
+import { cancelExistingAlarm } from "@/libs/server/alarmScheduler";
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const {
@@ -77,6 +78,42 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   if (req.method === "PATCH") {
     try {
+      // disableAlarm이 true면 알림 삭제 및 스케줄러 취소
+      if (req.body.disableAlarm === true) {
+        // SCHEDULED 상태의 알림만 삭제
+        const alarm = await client.alarmSetting.findFirst({
+          where: {
+            chatRoomId,
+            userId: user?.id,
+            status: AlarmStatus.SCHEDULED,
+          },
+        });
+
+        if (!alarm) {
+          return res
+            .status(404)
+            .json({ ok: false, error: "No scheduled alarm found" });
+        }
+
+        // 1. DB에서 알림 삭제
+        await client.alarmSetting.delete({
+          where: { id: alarm.id },
+        });
+
+        // 2. 스케줄러에서 알림 취소
+        try {
+          await cancelExistingAlarm(alarm.id);
+        } catch (e) {
+          // 스케줄러 취소 실패는 무시 (로그만)
+          console.warn("스케줄러 알림 취소 실패:", e);
+        }
+
+        return res.status(200).json({
+          ok: true,
+          deletedAlarmId: alarm.id,
+        });
+      }
+
       // SCHEDULED 상태의 알림만 업데이트
       const alarm = await client.alarmSetting.findFirst({
         where: {

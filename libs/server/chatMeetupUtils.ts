@@ -23,12 +23,14 @@ export async function createChatMeetup(params: CreateMeetupParams) {
     chatRoomId,
     userId,
     messageText,
-    messageType
+    messageType,
   } = params;
 
   // 유효성 검사
   if (!appointmentTime || !place || !chatRoomId) {
-    throw new Error("필수 필드가 누락되었습니다 (appointmentTime, place, chatRoomId)");
+    throw new Error(
+      "필수 필드가 누락되었습니다 (appointmentTime, place, chatRoomId)"
+    );
   }
 
   if (isNaN(new Date(appointmentTime).getTime())) {
@@ -44,7 +46,7 @@ export async function createChatMeetup(params: CreateMeetupParams) {
         chatRoom: { connect: { id: chatRoomId } },
       },
     });
-    
+
     const createdChatMeetup = await prisma.chatMeetup.create({
       data: {
         appointmentTime: new Date(appointmentTime),
@@ -52,11 +54,11 @@ export async function createChatMeetup(params: CreateMeetupParams) {
         locationLatitude,
         locationLongitude,
         alarmTime,
-        message: { connect: { id: createdMessage.id } },
+        chatRoom: { connect: { id: chatRoomId } },
+        user: { connect: { id: userId } },
       },
-      include: { message: true }
     });
-    
+
     return [createdMessage, createdChatMeetup];
   });
 
@@ -83,9 +85,9 @@ export function createSocketMessage(
       place: chatMeetup.place,
       locationLatitude: chatMeetup.locationLatitude,
       locationLongitude: chatMeetup.locationLongitude,
-      alarmTime: chatMeetup.alarmTime
+      alarmTime: chatMeetup.alarmTime,
     },
-    type: messageType
+    type: messageType,
   };
 }
 
@@ -98,7 +100,10 @@ export async function emitSocketEvent(
   if (res?.socket?.server?.io) {
     try {
       const channel = `/ws-${workspace}-${chatRoomId}`;
-      res?.socket?.server?.io?.of(`ws-${workspace}`).to(channel).emit("message", socketMessage);
+      res?.socket?.server?.io
+        ?.of(`ws-${workspace}`)
+        .to(channel)
+        .emit("message", socketMessage);
       console.log(`Emitting message socket event to channel: ${channel}`);
     } catch (socketError) {
       console.error("소켓 이벤트 전송 실패:", socketError);

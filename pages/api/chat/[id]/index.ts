@@ -152,7 +152,10 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
     // //*******************************************중요!!!!
     // // Workspace를 사용하는 io일 경우에는 of(`ws-${worksapce}`) 이 부분이 매우 중요함. 반드시 사용해야함.
     // //****************************************************
-    // res?.socket?.server?.io?.of(`ws-${worksapce}`).to(channel).emit("message", message);
+    // res?.socket?.server?.io
+    //   ?.of(`ws-${worksapce}`)
+    //   .to(channel)
+    //   .emit("message", message);
 
     // Keep consistent with socket.ts format
     const namespaceName = `ws-${worksapce}`;

@@ -734,8 +734,8 @@ export interface ChatMeetupParams {
   chatRoomId: number;
   appointmentTime: Date; //format UTC date-time string
   place: string;
-  locationLatitude: number;
-  locationLongitude: number;
+  locationLatitude: number | null;
+  locationLongitude: number | null;
   alarmTime: string | null; // null 허용하도록 수정
 }
 
@@ -744,6 +744,7 @@ export interface ChatMeetupResponse {
   ok: boolean;
   chatMeetup?: ChatMeetup;
   message?: any;
+  alarmSetting?: AlarmSetting;
   error?: string;
 }
 

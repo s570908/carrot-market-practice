@@ -27,12 +27,13 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
       });
 
       if (!chatMeetup) {
+        // 약속이 없는 경우 200 OK와 함께 ok: false, exists: false, chatMeetup: null 반환
         return res
-          .status(404)
-          .json({ ok: false, error: "ChatMeetup not found" });
+          .status(200)
+          .json({ ok: false, exists: false, chatMeetup: null });
       }
 
-      return res.status(200).json({ ok: true, chatMeetup });
+      return res.status(200).json({ ok: true, exists: true, chatMeetup });
     } catch (error) {
       console.error("Error fetching chat meetup:", error);
       return res
@@ -58,7 +59,7 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
     }
 
     try {
-      // 새로운 약속과 메시지 생성 (기존 약속은 수정하지 않음)
+      // 약속 생성, alarmTime이 null이 아니면 alarmSetting도 생성
       const [message, chatMeetup, alarmSetting] = await client.$transaction(
         async (prisma) => {
           const createdMessage = await prisma.sellerChat.create({
@@ -69,7 +70,6 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
             },
           });
 
-          // ChatMeetup 생성 예시 (수정)
           const createdChatMeetup = await prisma.chatMeetup.create({
             data: {
               appointmentTime: new Date(appointmentTime),
@@ -77,54 +77,30 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
               locationLatitude,
               locationLongitude,
               alarmTime,
-              chatRoom: { connect: { id: chatRoomId } }, // ✅ ChatRoom과 연결
-              user: { connect: { id: user.id } }, // 생성자(주최자) 연결
+              chatRoom: { connect: { id: chatRoomId } },
+              user: { connect: { id: user.id } },
             },
             include: {
-              chatRoom: true, // ✅ chatRoom만 include 가능
+              chatRoom: true,
             },
           });
 
-          // const createdMyAlarmSetting = await createAlarmSettings({
-          //   userId: user.id,
-          //   chatId: chatRoomId,
-          //   // messageId: createdMessage.id,
-          //   alarmTime,
-          //   triggerAt: new Date(
-          //     new Date(appointmentTime).getTime() - 30 * 60 * 1000
-          //   ).toISOString(),
-          //   disableAlarm: false,
-          // });
+          let createdMyAlarmSetting = null;
+          if (alarmTime !== null && alarmTime !== undefined) {
+            createdMyAlarmSetting = await prisma.alarmSetting.create({
+              data: {
+                userId: user.id,
+                chatRoomId: chatRoomId,
+                alarmTime,
+                triggerAt: new Date(
+                  new Date(appointmentTime).getTime() - 30 * 60 * 1000
+                ).toISOString(),
+                status: AlarmStatus.SCHEDULED,
+              },
+            });
+          }
 
-          const createdMyAlarmSetting = await prisma.alarmSetting.create({
-            data: {
-              userId: user.id,
-              chatRoomId: chatRoomId,
-              alarmTime,
-              triggerAt: new Date(
-                new Date(appointmentTime).getTime() - 30 * 60 * 1000
-              ).toISOString(),
-              status: AlarmStatus.SCHEDULED,
-            },
-          });
-
-          // const createdYourAlarmSetting = await createAlarmSettings({
-          //   userId: yourId,
-          //   chatId: chatRoomId,
-          //   messageId: createdMessage.id,
-          //   alarmTime,
-          //   triggerAt: new Date(
-          //     new Date(appointmentTime).getTime() - 30 * 60 * 1000
-          //   ).toISOString(),
-          //   disableAlarm: false,
-          // });
-
-          return [
-            createdMessage,
-            createdChatMeetup,
-            createdMyAlarmSetting,
-            // createdYourAlarmSetting,
-          ];
+          return [createdMessage, createdChatMeetup, createdMyAlarmSetting];
         }
       );
 
@@ -188,7 +164,6 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
   }
 
   if (req.method === "PATCH") {
-    // PATCH /api/chat-meetups?chatRoomId=...
     const {
       appointmentTime,
       place,
@@ -211,6 +186,7 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
 
       // 업데이트할 데이터 준비
       const updateData: any = {};
+      // PATCH 요청에 값이 undefined가 아닌 경우만 업데이트
       if (appointmentTime !== undefined)
         updateData.appointmentTime = new Date(appointmentTime);
       if (place !== undefined) updateData.place = place;
@@ -218,7 +194,8 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
         updateData.locationLatitude = locationLatitude;
       if (locationLongitude !== undefined)
         updateData.locationLongitude = locationLongitude;
-      if (alarmTime !== undefined) updateData.alarmTime = alarmTime;
+      // alarmTime은 null도 유효한 값이므로, "alarmTime" in req.body 체크
+      if ("alarmTime" in req.body) updateData.alarmTime = alarmTime;
 
       const updatedMeetup = await client.chatMeetup.update({
         where: { id: existingMeetup.id },
@@ -244,9 +221,45 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
     }
   }
 
+  // 약속(chatMeetup) 삭제
+  if (req.method === "DELETE") {
+    try {
+      // chatRoomId로 chatMeetup 찾기
+      const existingMeetup = await client.chatMeetup.findUnique({
+        where: { chatRoomId: Number(chatRoomId) },
+      });
+
+      if (!existingMeetup) {
+        return res
+          .status(404)
+          .json({ ok: false, error: "ChatMeetup not found" });
+      }
+
+      // chatMeetup 삭제
+      await client.chatMeetup.delete({
+        where: { id: existingMeetup.id },
+      });
+
+      // (선택) 관련 메시지 등 추가 삭제 로직 필요시 여기에 작성
+
+      return res
+        .status(200)
+        .json({ ok: true, deletedMeetupId: existingMeetup.id });
+    } catch (error) {
+      console.error("Error deleting chat meetup:", error);
+      return res
+        .status(500)
+        .json({ ok: false, error: "Failed to delete chat meetup" });
+    }
+  }
+
   return res.status(405).json({ ok: false, error: "Method not allowed" });
 }
 
 export default withApiSession(
-  withHandler({ methods: ["POST", "PATCH", "GET"], handler, isPrivate: true })
+  withHandler({
+    methods: ["POST", "PATCH", "GET", "DELETE"],
+    handler,
+    isPrivate: true,
+  })
 );

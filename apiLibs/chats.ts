@@ -66,11 +66,22 @@ export async function writeChatMeetup(params: ChatMeetupParams) {
  * @param params 업데이트할 약속 데이터
  */
 export async function updateChatMeetup(params: ChatMeetupParams) {
+  console.log("Updating chat meetup:", params);
   // 약속 수정 API 호출 (PATCH /api/chat-meetups/[id])
   const response = await aclient.patch<ChatMeetupResponse>(
     `/api/chat-meetups/${params.chatRoomId}`,
     params
   );
+  return response.data;
+}
+
+/**
+ * 채팅방의 약속(chatMeetup)을 삭제하는 함수
+ * @param chatRoomId 채팅방 ID
+ * @returns 서버 응답 데이터
+ */
+export async function deleteChatMeetup(chatRoomId: number) {
+  const response = await aclient.delete(`/api/chat-meetups/${chatRoomId}`);
   return response.data;
 }
 
@@ -125,7 +136,10 @@ export const SYSTEM_MESSAGES = {
     chatMeetupId: number
     // appointmentMessageId?: number
   ) => ({
-    message: `약속시간 ${alarmTime}에 알림이 울릴 거예요`,
+    message:
+      alarmTime == "없음"
+        ? "약속 시간에 알림이 울리지 않아요"
+        : `약속시간 ${alarmTime}에 알림이 울릴 거예요`,
     meta: {
       type: "APPOINTMENT_ALERT",
       chatMeetupId: chatMeetupId,
@@ -213,8 +227,8 @@ writeAlarmSettings와 updateAlarmSettings의 차이점
 // 기존 알람 설정 전체 업데이트 또는 생성 (upsert)
 export const writeAlarmSettings = async (params: {
   chatId: number;
-  alarmTime: string;
-  triggerAt?: string;
+  alarmTime: string | null;
+  triggerAt: string | null;
   disableAlarm: boolean;
 }) => {
   console.log("writeAlarmSettings params:", params);
@@ -236,8 +250,8 @@ export const writeAlarmSettings = async (params: {
     };
   }
 
-  const response = await aclient.put(
-    `/api/chat/${params.chatId}/alarm-settings`,
+  const response = await aclient.patch(
+    `/api/alarm-settings/${params.chatId}`,
     payload
   );
   return response.data;
@@ -277,13 +291,8 @@ export const writeAlarmSettings = async (params: {
 // };
 
 // 알람 설정을 삭제하는 함수
-export const deleteAlarmSettings = async (
-  chatId: number,
-  messageId: number
-) => {
-  const response = await aclient.delete(
-    `/api/chat/${chatId}/alarm-settings/${messageId}`
-  );
+export const deleteAlarmSettings = async (chatId: number) => {
+  const response = await aclient.delete(`/api/alarm-settings/${chatId}`);
   return response.data;
 };
 

@@ -42,6 +42,7 @@ import {
   writeAlarmSettings,
   getAlarmSettings,
   readChatMeetup,
+  updateChatMeetup,
 } from "apiLibs/chats";
 import { handleLoadingAndError } from "@components/LoadingError";
 import {
@@ -178,8 +179,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     queryFn: () => getAlarmSettings(id),
     enabled: !!id,
   });
-
-  console.log("alarmSettingsData: ", alarmSettingsData);
 
   useEffect(() => {
     if (alarmSheetOpen) {
@@ -382,6 +381,16 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       return { previousChatData };
       // React Query 내부에서 해당 mutation의 컨텍스트(context)로 저장,
       // 저장된 컨텍스트는 같은 mutation 내의 다른 콜백 함수들에서 세 번째 매개변수를 통해 접근
+    },
+    onSuccess: (data) => {
+      // 메시지 전송 성공 후 서버에 저장된 메시지를 socket으로 broadcast 요청
+      if (socket && data?.sellerChat) {
+        socket.emit("message", {
+          ...data.sellerChat,
+          chatRoomId: id,
+        });
+      }
+      // queryClient.invalidateQueries({ queryKey: ["chat", id] }); // <-- 이 부분은 onSettled에서 이미 처리하므로 중복입니다. 제거해도 됩니다.
     },
     onError: (error, variables, context) => {
       if (context?.previousChatData) {
@@ -715,13 +724,23 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         console.log(`Successfully joined room: ${data.room}`);
       });
 
+      // meetupCreated 이벤트 리스너 등록
+      const handleMeetupCreated = (data: any) => {
+        console.log("meetupCreated 이벤트 수신:", data);
+        // 필요하다면 알림, 모달, refetch 등 추가 동작
+        refetchChat();
+        // 예: toast.success("새 약속이 생성되었습니다!");
+      };
+      socket.on("meetupCreated", handleMeetupCreated);
+
       return () => {
         socket.off("message");
         socket.off("alarm_setting_changed");
         socket.off("joined_room");
+        socket.off("meetupCreated", handleMeetupCreated);
       };
     }
-  }, [socket, id, refetchChat, router.query.id, user?.id]);
+  }, [socket, id, refetchChat, user?.id]);
 
   const [shouldRefetch, setShouldRefetch] = useState(false);
 
@@ -987,28 +1006,20 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       // 3. 알림 끄기 처리
       if (timeOption === "없음") {
         try {
-          // 3-1. 약속 정보 업데이트 (alarmTime 제거)
-          if (appointment?.id) {
-            await axios.patch(`/api/alarm-settings/${id}`, {
-              alarmTime: null,
-            });
-          }
-
-          // 3-2. 기존 SCHEDULED 알림 취소
-          try {
-            const alarmRes = await axios.get(`/api/alarm-settings/${id}`);
-            console.log("-----------alarmRes: ", alarmRes);
-            const latestAlarm = alarmRes.data.alarm || null;
-            if (latestAlarm && latestAlarm.status === "SCHEDULED") {
-              await axios.post(
-                `/api/chat/${id}/alarm-settings/${id}/cancel`,
-                {}
-              );
-              console.log(`기존 알림 취소됨: ${latestAlarm.id}`);
-            }
-          } catch (fetchError) {
-            console.warn("기존 알림 조회/취소 중 오류:", fetchError);
-          }
+          await updateChatMeetup({
+            alarmTime: null,
+            chatRoomId: id,
+            appointmentTime: appointment?.appointmentTime,
+            place: appointment?.place,
+            locationLatitude: appointment?.locationLatitude,
+            locationLongitude: appointment?.locationLongitude,
+          });
+          await writeAlarmSettings({
+            chatId: id,
+            alarmTime: null,
+            triggerAt: null,
+            disableAlarm: true,
+          });
 
           // 3-3. 알림 해제 메시지 생성
           // alert("writeSystemMessage1를 작성해야함");
@@ -1058,6 +1069,14 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       }
 
       try {
+        await updateChatMeetup({
+          chatRoomId: id,
+          appointmentTime: appointment?.appointmentTime,
+          place: appointment?.place,
+          locationLatitude: appointment?.locationLatitude,
+          locationLongitude: appointment?.locationLongitude,
+          alarmTime: timeOption,
+        });
         await writeAlarmSettings({
           chatId: id,
           alarmTime: timeOption,
@@ -1695,12 +1714,12 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               // }
 
               // APPOINTMENT_ALERT 메시지라면, message.userId === user.id 인 경우만 렌더링
-              if (
-                message.meta?.type === "APPOINTMENT_ALERT" &&
-                message.userId !== user?.id
-              ) {
-                return null;
-              }
+              // if (
+              //   message.meta?.type === "APPOINTMENT_ALERT" &&
+              //   message.userId !== user?.id
+              // ) {
+              //   return null;
+              // }
 
               return (
                 <div

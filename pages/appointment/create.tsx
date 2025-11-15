@@ -74,24 +74,14 @@ const CreateAppointment = () => {
     mutationFn: writeChatMeetup, // 약속 생성 맟 약속 메시지 생성
     onSuccess: async (responseData) => {
       try {
-        console.log("약속 생성 성공:", responseData);
-        // 소켓 이벤트 전송 (클라이언트에서)
-        // if (socket && responseData.chatMeetup) {
-        //   socket.emit("meetup:created", {
-        //     chatRoomId: chatRoomId,
-        //     meetupId: responseData.chatMeetup.id,
-        //     appointmentTime: responseData.chatMeetup.appointmentTime,
-        //     place: responseData.chatMeetup.place,
-        //     alarmTime: responseData.chatMeetup.alarmTime,
-        //   });
-        //   console.log("소켓 이벤트 전송 완료:", {
-        //     chatRoomId: chatRoomId,
-        //     meetupId: responseData.chatMeetup.id,
-        //     appointmentTime: responseData.chatMeetup.appointmentTime,
-        //     place: responseData.chatMeetup.place,
-        //     alarmTime: responseData.chatMeetup.alarmTime,
-        //   });
-        // }
+        // 약속 생성 성공 후에만 소켓 이벤트를 emit (권장 방식)
+        if (socket && responseData.chatMeetup?.id && chatRoomId) {
+          socket.emit("meetupCreated", {
+            chatRoomId: chatRoomId,
+            chatMeetup: responseData.chatMeetup,
+            alarmSetting: responseData.alarmSetting,
+          });
+        }
 
         if (responseData.chatMeetup?.appointmentTime) {
           // 시스템 메시지 추가 - 일반 생성 메시지
@@ -109,30 +99,6 @@ const CreateAppointment = () => {
             console.error("시스템 메시지 생성 실패:", systemMessageError);
             // 시스템 메시지 실패는 치명적이지 않으므로 계속 진행
           }
-
-          // 알림 설정 및 관련 메시지 처리
-          // if (responseData.chatMeetup?.alarmTime && responseData.message?.id) {
-          //   try {
-          //     // 알람 메시지 안내 및 알림설정 메시지 생성 코드 전체 제거
-          //     // 알람 설정 메시지 없이 바로 알람만 설정
-          //     const appointmentTime = new Date(responseData.chatMeetup.appointmentTime);
-          //     const triggerAt = calculateTriggerTime(appointmentTime, responseData.chatMeetup.alarmTime);
-          //     const utcTriggerAt = new Date(triggerAt.toISOString());
-
-          //     await createAlarmSettings({
-          //       chatId: chatRoomId,
-          //       messageId: responseData.message.id,
-          //       alarmTime: responseData.chatMeetup.alarmTime,
-          //       triggerAt: utcTriggerAt.toISOString(),
-          //       disableAlarm: false
-          //     });
-
-          //     console.log("알람 설정 완료 (알림 메시지 안내 없이)");
-          //   } catch (alarmError) {
-          //     console.error("알람 설정 중 오류 발생:", alarmError);
-          //     toast.error("알람 설정에 실패했습니다. 채팅방에서 다시 설정해주세요.");
-          //   }
-          // }
         }
 
         // 성공 메시지 표시

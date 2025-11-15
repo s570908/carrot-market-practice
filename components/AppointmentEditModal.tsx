@@ -26,6 +26,8 @@ import {
   SYSTEM_MESSAGES,
   createAlarmSettings,
   updateChatMeetup,
+  writeAlarmSettings,
+  getAlarmSettings,
 } from "@/apiLibs/chats";
 import { initializePushSubscription } from "@/libs/client/pushUtils";
 import axios from "axios";
@@ -148,7 +150,7 @@ export default function AppointmentEditModal({
                 triggerAt: utcTriggerAt.toISOString(),
                 // disableAlarm: false,
                 // userId: user!.id,
-              });
+              } as any);
               // 약속 생성 후 푸시 구독 상태 자동 갱신 시도 (만료된 구독 자동 복구)
               try {
                 await initializePushSubscription();
@@ -193,66 +195,40 @@ export default function AppointmentEditModal({
     mutationFn: updateChatMeetup,
     onSuccess: async (responseData) => {
       try {
-        console.log("약속 수정 성공:", responseData);
-        if (responseData.chatMeetup?.appointmentTime) {
+        const updatedAppointmentTime = responseData.chatMeetup?.appointmentTime;
+        const updatedAlarmTime = responseData.chatMeetup?.alarmTime;
+        const oldAlarmData = await getAlarmSettings(chatRoomId);
+        if (updatedAppointmentTime) {
           try {
             await writeSystemMessage({
               chatRoomId: chatRoomId,
               message: SYSTEM_MESSAGES.APPOINTMENT_UPDATED(
-                responseData.chatMeetup.appointmentTime
+                updatedAppointmentTime
               ),
               userId: user!.id,
             });
           } catch (systemMessageError) {
             console.error("시스템 메시지 생성 실패:", systemMessageError);
           }
-          if (responseData.chatMeetup?.alarmTime && responseData.message?.id) {
+          if (updatedAlarmTime) {
             try {
-              // 1. 동일 chatRoomId에 속한 가장 최근의 SCHEDULED AlarmSetting 조회
-              let latestAlarm: any = null;
-              try {
-                const latestMeetupData = await getLatestChatMeetup(chatRoomId);
-                if (latestMeetupData?.alarm) {
-                  latestAlarm = latestMeetupData.alarm;
-                }
-              } catch (fetchError) {
-                console.warn("기존 알림 조회 중 오류:", fetchError);
-              }
-
-              // 2. 기존 SCHEDULED 알림이 있고 새로 생성될 알림과 다르면 취소
-              if (
-                latestAlarm &&
-                latestAlarm.status === "SCHEDULED" &&
-                latestAlarm.messageId !== responseData.message.id
-              ) {
+              if (oldAlarmData && oldAlarmData.alarm?.status === "SCHEDULED") {
                 try {
-                  await axios.post(
-                    `/api/chat/${chatRoomId}/alarm-settings/${latestAlarm.messageId}/cancel`,
-                    {}
+                  const triggerAt = calculateTriggerTime(
+                    updatedAppointmentTime,
+                    updatedAlarmTime
                   );
-                  console.log(`기존 알림 취소됨: ${latestAlarm.id}`);
+                  const utcTriggerAt = new Date(triggerAt.toISOString());
+                  await writeAlarmSettings({
+                    chatId: chatRoomId,
+                    alarmTime: updatedAlarmTime,
+                    triggerAt: utcTriggerAt.toISOString(),
+                    disableAlarm: false,
+                  });
                 } catch (cancelError) {
                   console.warn("기존 알림 취소 중 오류:", cancelError);
                 }
               }
-
-              // 3. 새 알림 생성
-              const appointmentTime = new Date(
-                responseData.chatMeetup.appointmentTime
-              );
-              const triggerAt = calculateTriggerTime(
-                appointmentTime,
-                responseData.chatMeetup.alarmTime
-              );
-              const utcTriggerAt = new Date(triggerAt.toISOString());
-              await createAlarmSettings({
-                chatId: chatRoomId,
-                // messageId: responseData.message.id,
-                alarmTime: responseData.chatMeetup.alarmTime,
-                triggerAt: utcTriggerAt.toISOString(),
-                // disableAlarm: false,
-                // userId: user!.id,
-              });
               try {
                 await initializePushSubscription();
               } catch (pushError) {
@@ -553,39 +529,61 @@ export default function AppointmentEditModal({
       // 알림만 변경된 경우: 시스템 메시지(APPOINTMENT_ALERT)만 생성 + 알림 설정 로직 추가
       if (isAlarmOnlyChanged) {
         try {
-          // chatMeetupId가 있는 경우 alarmTime만 업데이트
-          let updated = null;
-          if (params.chatMeetupId) {
-            updated = await updateChatMeetupAlarmTime(
-              params.chatMeetupId,
-              alarmTime ?? null
+          // 기존 alarmTime이 null(알림이 없던 상태) → 새 알림만 생성
+          if (params.alarmTime == null) {
+            // 새 알림 생성
+            const appointmentTime = new Date(params.appointmentTime);
+            const triggerAt = calculateTriggerTime(
+              appointmentTime,
+              alarmTime ?? ""
             );
+            const utcTriggerAt = new Date(triggerAt.toISOString());
+            await updateChatMeetup({
+              chatRoomId: chatRoomId,
+              alarmTime: alarmTime ?? "",
+              appointmentTime: appointmentTime,
+              place: params.place,
+              locationLatitude: params.latitude,
+              locationLongitude: params.longitude,
+            });
+            await createAlarmSettings({
+              chatId: chatRoomId,
+              alarmTime: alarmTime ?? "",
+              triggerAt: utcTriggerAt.toISOString(),
+            } as any);
+
+            // 시스템 메시지 생성 (알림 변경 안내)
+            await writeSystemMessage({
+              chatRoomId: chatRoomId,
+              message: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
+                alarmTime ?? "",
+                params.chatMeetupId ?? 0
+              ).message,
+              meta: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
+                alarmTime ?? "",
+                params.chatMeetupId ?? 0
+              ).meta,
+              userId: user?.id,
+            });
+
+            try {
+              await initializePushSubscription();
+            } catch (pushError) {
+              console.warn("푸시 구독 자동 갱신 실패:", pushError);
+            }
+
+            toast?.success?.("알림이 설정되었습니다!");
+            modal.closeWithResult({ success: true });
+            reset();
+            return;
           }
 
-          console.log("updated: ", updated);
-
           // 1. 기존 SCHEDULED 알림 조회 및 CANCELED로 변경
-          let latestAlarm: any = null;
           try {
             // 최신 chatMeetup의 messageId로 SCHEDULED 알림 조회
-            const latestMeetupData = await getLatestChatMeetup(chatRoomId);
-            const meetup = latestMeetupData?.lastestMeetup;
-            if (meetup?.messageId) {
-              const alarmRes = await axios.get(
-                `/api/alarm-settings/${meetup.messageId}`
-              );
-              latestAlarm = alarmRes.data.alarm || null;
-              if (latestAlarm && latestAlarm.status === "SCHEDULED") {
-                await axios.post(
-                  `/api/chat/${chatRoomId}/alarm-settings/${latestAlarm.messageId}/cancel`,
-                  {}
-                );
-                console.log(`기존 알림 취소됨: ${latestAlarm.id}`);
-              }
-            }
+            await getAlarmSettings(chatRoomId);
           } catch (fetchError) {
             console.warn("기존 알림 조회/취소 중 오류:", fetchError);
-            latestAlarm = null;
           }
 
           // 2. 새 AlarmSetting 생성 (status: SCHEDULED)
@@ -595,34 +593,33 @@ export default function AppointmentEditModal({
             alarmTime ?? ""
           );
           const utcTriggerAt = new Date(triggerAt.toISOString());
-          console.log("before createAlarmSetting: ", {
+          await updateChatMeetup({
+            chatRoomId: chatRoomId,
+            alarmTime: alarmTime ?? "",
+            appointmentTime: appointmentTime,
+            place: params.place,
+            locationLatitude: params.latitude,
+            locationLongitude: params.longitude,
+          });
+          await writeAlarmSettings({
             chatId: chatRoomId,
-            messageId: updated?.chatMeetup?.messageId ?? 0,
             alarmTime: alarmTime ?? "",
             triggerAt: utcTriggerAt.toISOString(),
-            disableAlarm: false,
-          });
-          await createAlarmSettings({
-            chatId: chatRoomId,
-            // messageId: updated?.chatMeetup?.messageId ?? 0,
-            alarmTime: alarmTime ?? "",
-            triggerAt: utcTriggerAt.toISOString(),
-            // disableAlarm: false,
-            // userId: user!.id,
-          });
+          } as any);
 
           // 3. 시스템 메시지 생성 (알림 변경 안내)
-          // const alertObj = SYSTEM_MESSAGES.APPOINTMENT_ALERT(
-          //   alarmTime ?? "",
-          //   params.chatMeetupId ?? 0,
-          //   params.messageId
-          // );
-          // await writeSystemMessage({
-          //   chatRoomId: chatRoomId,
-          //   message: alertObj.message,
-          //   meta: alertObj.meta,
-          //   userId: user?.id,
-          // });
+          await writeSystemMessage({
+            chatRoomId: chatRoomId,
+            message: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
+              alarmTime ?? "",
+              params.chatMeetupId ?? 0
+            ).message,
+            meta: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
+              alarmTime ?? "",
+              params.chatMeetupId ?? 0
+            ).meta,
+            userId: user?.id,
+          });
 
           try {
             await initializePushSubscription();
@@ -909,8 +906,6 @@ export default function AppointmentEditModal({
     params.place,
     params.alarmTime,
   ]);
-
-  console.log("alarmTime: ", alarmTime);
 
   return (
     <>
