@@ -36,6 +36,7 @@ import {
   updateChatMeetupAlarmTime,
 } from "@/apiLibs/appointments";
 import { last } from "lodash";
+import useSocket from "@/libs/client/useSocket";
 
 interface AppointmentEditModalProps {
   modal: ModalAPI;
@@ -185,6 +186,8 @@ export default function AppointmentEditModal({
     },
   });
 
+  const [socket] = useSocket("market");
+
   // 약속 수정용 useMutation 훅
   const {
     mutate: updateMeetup,
@@ -195,6 +198,13 @@ export default function AppointmentEditModal({
     mutationFn: updateChatMeetup,
     onSuccess: async (responseData) => {
       try {
+        if (socket && responseData.chatMeetup?.id && chatRoomId) {
+          socket.emit("meetupUpdated", {
+            chatRoomId: chatRoomId,
+            chatMeetup: responseData.chatMeetup,
+            alarmSetting: responseData.alarmSetting,
+          });
+        }
         const updatedAppointmentTime = responseData.chatMeetup?.appointmentTime;
         const updatedAlarmTime = responseData.chatMeetup?.alarmTime;
         const oldAlarmData = await getAlarmSettings(chatRoomId);

@@ -346,38 +346,38 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     data: sendChatData,
   } = useMutation({
     mutationFn: writeChatMessage,
-    onMutate: async (params) => {
-      // 기존 쿼리 취소 및 이전 데이터 저장
-      await queryClient.cancelQueries({ queryKey: ["chat", params.chatId] });
-      const previousChatData = queryClient.getQueryData([
-        "chat",
-        params.chatId,
-      ]);
+    // onMutate: async (params) => {
+    //   // 기존 쿼리 취소 및 이전 데이터 저장
+    //   await queryClient.cancelQueries({ queryKey: ["chat", params.chatId] });
+    //   const previousChatData = queryClient.getQueryData([
+    //     "chat",
+    //     params.chatId,
+    //   ]);
 
-      // optimistic update
-      queryClient.setQueryData(["chat", params.chatId], (prev: any) => {
-        if (prev) {
-          const now = new Date();
-          const newMessage = {
-            id: Date.now(),
-            chatMsg: params.chatForm.chatMsg,
-            user: { ...user },
-            userId: user?.id,
-            createdAt: now.toISOString(), // 현재 시간을 추가
-            updatedAt: now.toISOString(), // 필요한 경우 updatedAt도 추가
-            messageType: "USER", // MessageType.USER 대신 문자열로
-          };
-          return {
-            ...prev,
-            sellerChat: [...prev.sellerChat, newMessage],
-          };
-        }
-        return prev;
-      });
-      return { previousChatData };
-      // React Query 내부에서 해당 mutation의 컨텍스트(context)로 저장,
-      // 저장된 컨텍스트는 같은 mutation 내의 다른 콜백 함수들에서 세 번째 매개변수를 통해 접근
-    },
+    //   // optimistic update
+    //   queryClient.setQueryData(["chat", params.chatId], (prev: any) => {
+    //     if (prev) {
+    //       const now = new Date();
+    //       const newMessage = {
+    //         id: Date.now(),
+    //         chatMsg: params.chatForm.chatMsg,
+    //         user: { ...user },
+    //         userId: user?.id,
+    //         createdAt: now.toISOString(), // 현재 시간을 추가
+    //         updatedAt: now.toISOString(), // 필요한 경우 updatedAt도 추가
+    //         messageType: "USER", // MessageType.USER 대신 문자열로
+    //       };
+    //       return {
+    //         ...prev,
+    //         sellerChat: [...prev.sellerChat, newMessage],
+    //       };
+    //     }
+    //     return prev;
+    //   });
+    //   return { previousChatData };
+    //   // React Query 내부에서 해당 mutation의 컨텍스트(context)로 저장,
+    //   // 저장된 컨텍스트는 같은 mutation 내의 다른 콜백 함수들에서 세 번째 매개변수를 통해 접근
+    // },
     onSuccess: (data) => {
       // 메시지 전송 성공 후 서버에 저장된 메시지를 socket으로 broadcast 요청
       if (socket && data?.sellerChat) {
@@ -388,16 +388,16 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       }
       // queryClient.invalidateQueries({ queryKey: ["chat", id] }); // <-- 이 부분은 onSettled에서 이미 처리하므로 중복입니다. 제거해도 됩니다.
     },
-    onError: (error, variables, context) => {
-      if (context?.previousChatData) {
-        queryClient.setQueryData(
-          ["chat", variables.chatId],
-          context.previousChatData
-        );
-      }
-    },
+    // onError: (error, variables, context) => {
+    //   if (context?.previousChatData) {
+    //     queryClient.setQueryData(
+    //       ["chat", variables.chatId],
+    //       context.previousChatData
+    //     );
+    //   }
+    // },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["chat", id] }); // 쿼리 무효화
+      // queryClient.invalidateQueries({ queryKey: ["chat", id] }); // 쿼리 무효화
       // 채팅은 여러 사용자가 동시에 메시지를 주고받는 실시간 기능이므로,
       // 메시지 전송 후 자동으로 최신 데이터를 가져오는 것이 일관된 사용자 경험을 제공하는 데 필수적
     },
@@ -680,21 +680,24 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     if (socket) {
       console.log("useEffect socket in!!!!!!!");
       //const roomName = `/ws-${workspace}-${id}`;
+      console.log("-------------socket.id: ", socket.id);
 
       // 2. 모든 이벤트 리스너 등록
       socket.on("message", (message: any) => {
         console.log("-----------------message socket event received:", message);
 
         if (id && message.chatRoomId === id) {
-          // 여기서 발신자에게도 메시지를 표시하는 것이 타당함:
-
-          // 1. 약속 메시지는 대화의 중요 기록이며, 발신자도 이 내용을 볼 수 있어야 함
-          // 2. 발신자도 자신이 제안한 약속 내용을 확인하고 알림을 설정할 수 있어야 함
-          // 3. 일반 메시지와 달리 약속은 "공유된 약속 정보"의 성격을 가짐
-          // 4. 발신자에게 보이지 않으면 약속이 생성되었는지 확인이 어려움
-          // 5. 양방향 소통에서 발신자도 동일한 대화 컨텍스트를 볼 수 있어야 함
-
-          refetchChat();
+          // 기존: refetchChat();
+          // 변경: 새 메시지만 캐시에 추가
+          queryClient.setQueryData(["chat", id], (prev: any) => {
+            if (prev) {
+              return {
+                ...prev,
+                sellerChat: [...prev.sellerChat, message],
+              };
+            }
+            return prev;
+          });
         }
       });
 
@@ -732,7 +735,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         socket.off("meetupCreated", handleMeetupCreated);
       };
     }
-  }, [socket, id, refetchChat, user?.id]);
+  }, [id, queryClient, refetchChat, socket, user?.id]);
 
   const [shouldRefetch, setShouldRefetch] = useState(false);
 

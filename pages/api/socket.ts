@@ -121,13 +121,13 @@ function initializeSocketServer(res: NextApiResponseServerIo) {
       socket.emit("roomList", rooms); // Room 리스트를 클라이언트로 전송
     });
 
-// 채팅 메시지 이벤트 핸들러 추가
+    // 채팅 메시지 이벤트 핸들러 추가
     socket.on("message", (data) => {
       console.log("message 이벤트 수신:", data);
       const roomName = `${socket.nsp.name}-${data.chatRoomId}`;
-      
+
       // 메시지를 보낸 사람을 제외하고 같은 방의 다른 사용자들에게만 브로드캐스트
-      socket.to(roomName).emit("message", data);
+      marketNamespace.to(roomName).emit("message", data);
       console.log(`Broadcasted message to room: ${roomName}`, data.chatMsg);
     });
 
@@ -138,6 +138,14 @@ function initializeSocketServer(res: NextApiResponseServerIo) {
       // 본인 포함 모든 클라이언트에게 이벤트 broadcast
       marketNamespace.to(roomName).emit("meetupCreated", data);
       console.log(`Broadcasted meetupCreated to room: ${roomName}`);
+    });
+
+    socket.on("meetupUpdated", (data) => {
+      // data.chatRoomId를 기반으로 room 이름을 생성
+      const roomName = `${socket.nsp.name}-${data.chatRoomId}`;
+      // 본인 포함 모든 클라이언트에게 이벤트 broadcast
+      marketNamespace.to(roomName).emit("meetupUpdated", data);
+      console.log(`Broadcasted meetupUpdated to room: ${roomName}`);
     });
 
     // 사용자 연결 해제 이벤트
