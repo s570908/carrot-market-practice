@@ -44,7 +44,11 @@ interface EachChatRoomProps {
 
 const workspace = "market"; // 추후 다른 workspace를 추가하려면 로직을 개편해야 한다.
 
-const EachChatRoom = ({ chatRoomId, onlineUsers, shouldRefetch }: EachChatRoomProps) => {
+const EachChatRoom = ({
+  chatRoomId,
+  onlineUsers,
+  shouldRefetch,
+}: EachChatRoomProps) => {
   const [socket, disconnectSocket] = useSocket(workspace);
   const { user } = useUser();
 
@@ -114,11 +118,13 @@ const EachChatRoom = ({ chatRoomId, onlineUsers, shouldRefetch }: EachChatRoomPr
   }
 
   if (isError) {
-    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+    const errorMessage =
+      error instanceof Error ? error.message : "An unknown error occurred";
     return <div>Error: {errorMessage}</div>;
   }
 
   const chatRoom = chatRoomData?.chatRoom;
+
   // Calculate whether the user is online
   let isUserOnline = false;
   if (chatRoom) {
@@ -127,6 +133,11 @@ const EachChatRoom = ({ chatRoomId, onlineUsers, shouldRefetch }: EachChatRoomPr
       chatRoom.buyerId === user?.id ? chatRoom.sellerId : chatRoom.buyerId
     );
   }
+  // 상대방 userId 계산
+  // const otherUserId =
+  //   chatRoom?.buyerId === user?.id ? chatRoom?.sellerId : chatRoom?.buyerId;
+  // // 온라인 여부 계산 (props가 바뀌면 항상 최신값)
+  // const isUserOnline = otherUserId ? onlineUsers.includes(otherUserId) : false;
 
   // 로그인 유저가 채팅방에서 구매자인지 여부
   const isBuyer = chatRoom?.buyerId === user?.id;
@@ -142,23 +153,23 @@ const EachChatRoom = ({ chatRoomId, onlineUsers, shouldRefetch }: EachChatRoomPr
     <>
       {chatRoom ? (
         <Link href={`/chats/${chatRoom.id}`} key={chatRoom.id}>
-          <a className="flex items-center px-4 py-3 space-x-3 cursor-pointer">
+          <a className="flex cursor-pointer items-center space-x-3 px-4 py-3">
             <div className="">
               <ImgComponent
-                imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${
-                  chatRoom?.product?.images?.[0]?.imageId || ""
-                }/public`}
+                imgAdd={`https://imagedelivery.net/${
+                  process.env.NEXT_PUBLIC_CF_HASH
+                }/${chatRoom?.product?.images?.[0]?.imageId || ""}/public`}
                 width={72}
                 height={72}
                 imgName={chatRoom?.product?.name}
               />
             </div>
-            <div className="flex flex-col w-full space-y-1">
+            <div className="flex w-full flex-col space-y-1">
               <div className="flex flex-row space-x-2">
                 <div className="text-md">{chatRoom?.product?.name}</div>
                 <div className="text-md">{`${chatRoom?.product?.price}원`}</div>
               </div>
-              <div className="flex flex-row items-center w-full space-x-2">
+              <div className="flex w-full flex-row items-center space-x-2">
                 <div className="relative w-10/12 space-y-1">
                   <div className="flex flex-row items-center space-x-2">
                     <div
@@ -181,21 +192,26 @@ const EachChatRoom = ({ chatRoomId, onlineUsers, shouldRefetch }: EachChatRoomPr
                           : chatRoom.buyer.name}
                       </div>
                       <div className="text-sm text-gray-500">
-                        {chatRoom.recentMsg?.chatMsg && chatRoom.recentMsg.chatMsg.length > 0
+                        {chatRoom.recentMsg?.chatMsg &&
+                        chatRoom.recentMsg.chatMsg.length > 0
                           ? truncateMessage(chatRoom.recentMsg.chatMsg, 15)
                           : "No message"}
                       </div>
                     </div>
                     {chatRoom.unreadCount > 0 ? (
-                      <div className="flex items-center justify-center w-5 h-5 bg-red-500 rounded-full">
-                        <div className="text-sm text-white">{chatRoom.unreadCount}</div>
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500">
+                        <div className="text-sm text-white">
+                          {chatRoom.unreadCount}
+                        </div>
                       </div>
                     ) : null}
                   </div>
                   <div className="text-sm text-gray-400">
                     최신 메세지 시간:{" "}
                     {chatRoom.recentMsg?.updatedAt
-                      ? dayjs(chatRoom.recentMsg.updatedAt).format("YYYY년 MM월 DD일 A h:mm")
+                      ? dayjs(chatRoom.recentMsg.updatedAt).format(
+                          "YYYY년 MM월 DD일 A h:mm"
+                        )
                       : "N/A"}
                   </div>
                 </div>

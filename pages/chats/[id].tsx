@@ -136,10 +136,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     queryFn: () => getChat(id!), // id가 undefined가 아닌 경우에만 호출
     enabled: id !== undefined, // id가 있을 때만 쿼리를 실행
     refetchInterval: 300000, // 5분마다 데이터 재패칭
-    // onSuccess: (data) => {
-    //   console.log("/api/chat/${router.query.id}--router.query.id:", router.query.id);
-    //   console.log("/api/chat/${router.query.id}--data:", data);
-    // },
   });
 
   // 2. 약속 정보 react-query로 가져오기
@@ -682,16 +678,12 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   useEffect(() => {
     if (socket) {
+      console.log("useEffect socket in!!!!!!!");
       //const roomName = `/ws-${workspace}-${id}`;
 
       // 2. 모든 이벤트 리스너 등록
       socket.on("message", (message: any) => {
         console.log("-----------------message socket event received:", message);
-
-        // 약속 메시지 로직
-        const isAppointmentMessage =
-          message.type === "appointment" ||
-          (message.chatMeetup && Object.keys(message.chatMeetup).length > 0);
 
         if (id && message.chatRoomId === id) {
           // 여기서 발신자에게도 메시지를 표시하는 것이 타당함:
@@ -1612,22 +1604,29 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               const showDate = lastMessageDate !== messageDate; // 날짜를 표시할지 여부
               lastMessageDate = messageDate; // 마지막 메시지 날짜 업데이트
 
-              // 약속 메시지 처리 관련 조건을 강화하되 발신자/수신자 구분하지 않음
-              // const isAppointment = !!message.chatMeetup;
-              const isAppointment = !!data.chatRoomOfSeller?.chatMeetup;
+              // meta를 이용해 약속 메시지 여부를 판별하는 유틸리티 함수
+              function getMetaData(meta: any) {
+                if (typeof meta === "string") {
+                  try {
+                    return JSON.parse(meta);
+                  } catch (e) {
+                    return {};
+                  }
+                } else if (typeof meta === "object" && meta !== null) {
+                  return meta;
+                }
+                return {};
+              }
 
-              // // 본인이 발신한 약속 메시지도 표시되도록 추가 로깅
-              // if (isAppointment && message.userId === user?.id) {
-              //   console.log("내가 보낸 약속 메시지 렌더링:", message);
-              // }
+              const parsedMeta = getMetaData(message.meta);
+              const isAppointmentMessage = parsedMeta.type === "appointment";
 
               // 약속 시간이 지났는지 확인 - 현재 시간과 비교
               const now = new Date();
               const isAppointmentPassed =
-                isAppointment &&
-                new Date(
-                  data.chatRoomOfSeller?.chatMeetup!.appointmentTime
-                ).getTime() < now.getTime();
+                isAppointmentMessage &&
+                parsedMeta.appointmentTime &&
+                new Date(parsedMeta.appointmentTime).getTime() < now.getTime();
 
               // 알림 설정 버튼 표시 여부 결정 - 과거 약속이면 완전히 제거
               const showAlarmButton =
@@ -1635,26 +1634,17 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                 message.chatMsg.includes("알림이 울릴 거예요") &&
                 !isAppointmentPassed;
 
-              // Format appointment data if this is an appointment message
+              // 약속 메시지에만 appointmentData 전달
               const appointmentData =
-                isAppointment && data.chatRoomOfSeller?.chatMeetup
+                isAppointmentMessage && parsedMeta.appointmentTime
                   ? {
-                      appointmentTime:
-                        data.chatRoomOfSeller.chatMeetup.appointmentTime,
-                      place: data.chatRoomOfSeller.chatMeetup.place,
-                      latitude:
-                        data.chatRoomOfSeller?.chatMeetup.locationLatitude ??
-                        undefined,
-                      longitude:
-                        data.chatRoomOfSeller?.chatMeetup.locationLongitude ??
-                        undefined,
-                      alarmTime: data.chatRoomOfSeller?.chatMeetup.alarmTime,
-                      isPast:
-                        isAppointment &&
-                        new Date(
-                          data.chatRoomOfSeller?.chatMeetup.appointmentTime
-                        ) < new Date(),
-                      chatMeetupId: data.chatRoomOfSeller?.chatMeetup.id, // chatMeetupId 추가
+                      appointmentTime: parsedMeta.appointmentTime,
+                      place: parsedMeta.place,
+                      latitude: parsedMeta.locationLatitude ?? undefined,
+                      longitude: parsedMeta.locationLongitude ?? undefined,
+                      alarmTime: parsedMeta.alarmTime,
+                      isPast: isAppointmentPassed,
+                      chatMeetupId: parsedMeta.chatMeetupId,
                     }
                   : undefined;
 
@@ -1663,64 +1653,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                 ? "이미 지난 약속입니다"
                 : undefined;
 
-              // 약속 정보 확인 및 디버깅
-              const debugData = {
-                messageId: message.id,
-                messageType: message.messageType,
-                hasAppointment: isAppointment,
-                appointmentTime:
-                  data.chatRoomOfSeller?.chatMeetup?.appointmentTime,
-                currentTime: now.toISOString(),
-                formattedAppointmentTime: isAppointment
-                  ? new Date(
-                      data.chatRoomOfSeller?.chatMeetup!.appointmentTime
-                    ).toISOString()
-                  : null,
-                appointmentTimestamp: isAppointment
-                  ? new Date(
-                      data.chatRoomOfSeller?.chatMeetup!.appointmentTime
-                    ).getTime()
-                  : null,
-                currentTimestamp: now.getTime(),
-                isAppointmentPassed,
-                isSystemMessage: message.messageType === MessageType.SYSTEM,
-                containsAlarmText:
-                  message.chatMsg.includes("알림이 울릴 거예요"),
-                showAlarmButton,
-              };
-
-              // Message 컴포넌트 반환 전 props 디버깅
-              const messageProps = {
-                appointmentData: appointmentData,
-                messageType: message.messageType || MessageType.USER,
-                actions: showAlarmButton
-                  ? [
-                      {
-                        type: "button" as const,
-                        label: "알림설정",
-                        value: "set_alarm",
-                        onClick: () => handleAlarmButtonClick(message.id),
-                        disabled: isAppointmentPassed,
-                        tooltip: disabledButtonTooltip,
-                      },
-                    ]
-                  : undefined,
-              };
-
-              // 메시지가 '약속을 만들었어요'인 경우에만 로그 출력
-              // if (message.chatMsg === '약속을 만들었어요') {
-              //   console.log('약속 알림 디버그:', debugData);
-              //   console.log('Message 컴포넌트 props:', JSON.stringify(messageProps, null, 2));
-              // }
-
-              // APPOINTMENT_ALERT 메시지라면, message.userId === user.id 인 경우만 렌더링
-              // if (
-              //   message.meta?.type === "APPOINTMENT_ALERT" &&
-              //   message.userId !== user?.id
-              // ) {
-              //   return null;
-              // }
-
               return (
                 <div
                   key={message.id}
@@ -1728,7 +1660,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                     if (el) {
                       messageRefs.current.set(`${message.id}`, {
                         element: el,
-                        createdAt: message.createdAt.toString(), // 이제 안전하게 toString() 호출 가능
+                        createdAt: message.createdAt.toString(),
                       });
                     } else {
                       messageRefs.current.delete(`${message.id}`);
@@ -1763,7 +1695,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                     message={message.chatMsg}
                     avatar={message.user?.avatar}
                     date={message.createdAt}
-                    isAppointment={isAppointment}
+                    isAppointment={isAppointmentMessage}
                     appointmentData={appointmentData}
                     messageType={message.messageType || MessageType.USER}
                     actions={

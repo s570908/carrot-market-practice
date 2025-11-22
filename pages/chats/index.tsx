@@ -2,7 +2,13 @@ import type { NextPage } from "next";
 import Layout from "@components/Layout";
 import useUser from "@libs/client/useUser";
 import ImgComponent from "@components/ImgComponent";
-import { ChatRoom, Reservation, SellerChat, Status, User } from "@prisma/client";
+import {
+  ChatRoom,
+  Reservation,
+  SellerChat,
+  Status,
+  User,
+} from "@prisma/client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import axios from "axios";
@@ -46,7 +52,9 @@ const Chats: NextPage = () => {
 
   // URL을 조건부로 설정
   // productId 가 주어지지 않으면 나와 관련된 모든 chat room 목록을 가져온다.
-  const url = productId ? `/api/chatRoomList/product/${productId}` : "/api/chatRoomList";
+  const url = productId
+    ? `/api/chatRoomList/product/${productId}`
+    : "/api/chatRoomList";
 
   const {
     data,
@@ -130,7 +138,10 @@ const Chats: NextPage = () => {
       setOnlineUsers(users); // Update online users list
     };
     const handleOnRoomList = (rooms: string[]) => {
-      console.log(`roomList event received. Rooms for socket ${socket.id}:`, rooms);
+      console.log(
+        `roomList event received. Rooms for socket ${socket.id}:`,
+        rooms
+      );
     };
 
     const handleOnChats = (chats: string) => {
@@ -150,6 +161,7 @@ const Chats: NextPage = () => {
     socket.on("changeState", handleChangeState); // 상태 변경 이벤트 리스너 추가
 
     // Request online list on component mount
+    console.log("Requesting online list from socket:", socket.id); // 추가: 요청 시점 로그
     socket.emit("requestOnlineList");
     socket.emit("requestRoomList");
 
@@ -165,7 +177,11 @@ const Chats: NextPage = () => {
   const isLoadingAny = isLoading;
   const isErrorAny = isError;
   const errorAny = error;
-  const loadingOrError = handleLoadingAndError(isLoadingAny, isErrorAny, errorAny);
+  const loadingOrError = handleLoadingAndError(
+    isLoadingAny,
+    isErrorAny,
+    errorAny
+  );
   if (loadingOrError) return loadingOrError;
 
   const chatRooms: ChatRoomByProduct[] = productId
@@ -218,19 +234,25 @@ const Chats: NextPage = () => {
     >
       <div className="divide-y-[1px]">
         {productId ? (
-          <div className="w-full max-w-xl p-4 bg-red-200 border-b border-gray-200">
-            <div className="flex items-center cursor-pointer" onClick={handleClick}>
+          <div className="w-full max-w-xl border-b border-gray-200 bg-red-200 p-4">
+            <div
+              className="flex cursor-pointer items-center"
+              onClick={handleClick}
+            >
               <div className="flex items-center space-x-4">
                 <ImgComponent
                   width={80}
                   height={80}
                   clsProps="rounded-md bg-gray-400"
-                  imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${
+                  imgAdd={`https://imagedelivery.net/${
+                    process.env.NEXT_PUBLIC_CF_HASH
+                  }/${
                     productId
-                      ? (data as ChatRoomsByProductResponse).chatRoomListWithUnreadCount[0]?.product
-                          ?.images?.[0]?.imageId
-                      : (data as ChatRoomsByKeyResponse).sellerChatRoomList[0]?.product?.images?.[0]
+                      ? (data as ChatRoomsByProductResponse)
+                          .chatRoomListWithUnreadCount[0]?.product?.images?.[0]
                           ?.imageId
+                      : (data as ChatRoomsByKeyResponse).sellerChatRoomList[0]
+                          ?.product?.images?.[0]?.imageId
                   }/public`}
                   // imgAdd={`https://imagedelivery.net/${process.env.NEXT_PUBLIC_CF_HASH}/${chatRooms[0].product?.image}/public`}
                   imgName="사진"
@@ -244,10 +266,16 @@ const Chats: NextPage = () => {
                         ? "거래완료"
                         : "판매중"}
                     </div>
-                    <div className="text-gray-900">{chatRooms[0].product?.name}</div>
+                    <div className="text-gray-900">
+                      {chatRooms[0].product?.name}
+                    </div>
                   </div>
-                  <span className="text-gray-900">￦{chatRooms[0].product?.price}</span>
-                  <div className="text-gray-900">{chatRooms[0].seller?.name}</div>
+                  <span className="text-gray-900">
+                    ￦{chatRooms[0].product?.price}
+                  </span>
+                  <div className="text-gray-900">
+                    {chatRooms[0].seller?.name}
+                  </div>
                 </div>
               </div>
             </div>
@@ -263,7 +291,9 @@ const Chats: NextPage = () => {
           </div>
         )}
         {filteredChatRooms?.length === 0 ? (
-          <div className="flex items-center justify-center h-20">채팅방이 없습니다</div>
+          <div className="flex h-20 items-center justify-center">
+            채팅방이 없습니다
+          </div>
         ) : (
           filteredChatRooms.map((chatRoom: any) => {
             return (

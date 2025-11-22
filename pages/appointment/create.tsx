@@ -314,7 +314,7 @@ const CreateAppointment = () => {
           <select
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className="w-2/3 rounded-md border border-gray-300 px-3 py-2 text-gray-700 focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+            className="w-2/3 px-3 py-2 text-gray-700 border border-gray-300 rounded-md focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
             title="알림 시간을 선택하세요"
           >
             <option value="" disabled hidden className="text-gray-500">
@@ -347,7 +347,7 @@ const CreateAppointment = () => {
         </div>
         {/* 더 명확한 안내 메시지 */}
         {allExceptNoneDisabled && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+          <div className="p-3 text-sm border rounded-lg border-amber-200 bg-amber-50 text-amber-700">
             <div className="flex items-center gap-2">
               <span className="text-amber-600">⚠️</span>
               <span>
@@ -476,8 +476,8 @@ const CreateAppointment = () => {
         canGoBack
         backUrl={"back"}
       >
-        <div className="flex h-screen flex-col bg-white p-4">
-          <div className="mt-6 flex flex-col space-y-6">
+        <div className="flex flex-col h-screen p-4 bg-white">
+          <div className="flex flex-col mt-6 space-y-6">
             {/* 날짜 */}
             <DatePicker value={date} onChange={(newDate) => setDate(newDate)} />
 
@@ -502,12 +502,12 @@ const CreateAppointment = () => {
             />
 
             {/* 장소 */}
-            <div className="flex w-full flex-col">
-              <div className="flex w-full flex-col space-y-2">
-                <div className="flex w-full items-center justify-between">
+            <div className="flex flex-col w-full">
+              <div className="flex flex-col w-full space-y-2">
+                <div className="flex items-center justify-between w-full">
                   <span className="font-medium text-gray-700">장소</span>
                   {selectedLocation ? (
-                    <div className="flex cursor-pointer items-center gap-1">
+                    <div className="flex items-center gap-1 cursor-pointer">
                       <span className="text-gray-700" onClick={handleOpenModal}>
                         {selectedLocation.selectedAddress}
                       </span>
@@ -517,7 +517,7 @@ const CreateAppointment = () => {
                       >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
-                          className="ml-1 h-5 w-5 text-gray-500"
+                          className="w-5 h-5 ml-1 text-gray-500"
                           viewBox="0 0 20 20"
                           fill="currentColor"
                         >
@@ -530,13 +530,13 @@ const CreateAppointment = () => {
                       </button>
                     </div>
                   ) : (
-                    <div className="flex cursor-pointer items-center justify-end gap-1">
+                    <div className="flex items-center justify-end gap-1 cursor-pointer">
                       <span className="text-gray-500" onClick={handleOpenModal}>
                         장소 선택
                       </span>
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="ml-1 h-5 w-5 text-gray-400"
+                        className="w-5 h-5 ml-1 text-gray-400"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"

@@ -66,12 +66,6 @@ export default function Message({
   chatRoomId,
   otherName, // 기본값 제거
 }: MessageProps) {
-  // chatMeetupId 콘솔로그 출력
-  // console.log(
-  //   "Message - appointmentData chatMeetupId:",
-  //   appointmentData?.chatMeetupId
-  // );
-
   // AppointmentEditModal에 채팅방 ID 직접 전달
   const {
     openModal: openAppointmentModal,
