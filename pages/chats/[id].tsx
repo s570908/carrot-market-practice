@@ -1663,7 +1663,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                     if (el) {
                       messageRefs.current.set(`${message.id}`, {
                         element: el,
-                        createdAt: message.createdAt.toString(),
+                        createdAt: message.createdAt?.toString(),
                       });
                     } else {
                       messageRefs.current.delete(`${message.id}`);

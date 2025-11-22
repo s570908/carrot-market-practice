@@ -10,6 +10,7 @@ import {
   ProductListResponse,
   SellerRatingResponse,
 } from "@/types";
+import axios from "axios";
 
 export async function getProducts(kind: Kind) {
   //console.log("getProducts: kind---", kind);
@@ -20,12 +21,16 @@ export async function getProducts(kind: Kind) {
 }
 
 export async function getSimpleProfile(otherId: number) {
-  const response = await aclient.get<UserResponse>(`/api/users/${otherId}/simpleProfile`);
+  const response = await aclient.get<UserResponse>(
+    `/api/users/${otherId}/simpleProfile`
+  );
   return response.data;
 }
 
 export async function getOther(otherId: number) {
-  const response = await aclient.get<ProfileResponse>(`/api/users/other/${otherId}`);
+  const response = await aclient.get<ProfileResponse>(
+    `/api/users/other/${otherId}`
+  );
   return response.data;
 }
 
@@ -35,16 +40,29 @@ export async function getMe() {
 }
 
 export async function writeEnter(validForm: EnterForm) {
-  const response = await aclient.post<BaseMutation>(`/api/users/enter`, validForm);
+  const response = await aclient.post<BaseMutation>(
+    `/api/users/enter`,
+    validForm
+  );
   return response.data;
 }
 
 export async function updateMe(profileData: EditProfileForm) {
-  const response = await aclient.put<EditProfileResponse>(`/api/users/me`, profileData);
+  const response = await aclient.put<EditProfileResponse>(
+    `/api/users/me`,
+    profileData
+  );
   return response.data;
 }
 
 export async function getSellerRating(sellerId: number) {
-  const response = await aclient.get<SellerRatingResponse>(`/api/users/${sellerId}/rating`);
+  const response = await aclient.get<SellerRatingResponse>(
+    `/api/users/${sellerId}/rating`
+  );
   return response.data;
+}
+
+export async function logout() {
+  const response = await aclient.post("/api/users/logout");
+  return response;
 }

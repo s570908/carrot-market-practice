@@ -47,6 +47,7 @@ export default function Layout({
   openDots,
   userId,
   goHome,
+  rightButton,
   ...rest
 }: LayoutProps) {
   const { user } = useUser();
@@ -54,16 +55,18 @@ export default function Layout({
   const [isNew, setIsNew] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const { openModal: openPostOptionsModal, renderModal: renderPostOptionsModal } =
-    useAwaitableModal((modal, params) => (
-      <PostOptionsModal
-        postId={params.postId}
-        onEdit={() => router.push(`/products/${params.postId}/edit`)}
-        onClose={(result) => modal.closeWithResult(result)}
-      />
-    ));
-  const { openModal: openDeleteModal, renderModal: renderDeleteModal } = useAwaitableModal(
-    (modal) => (
+  const {
+    openModal: openPostOptionsModal,
+    renderModal: renderPostOptionsModal,
+  } = useAwaitableModal((modal, params) => (
+    <PostOptionsModal
+      postId={params.postId}
+      onEdit={() => router.push(`/products/${params.postId}/edit`)}
+      onClose={(result) => modal.closeWithResult(result)}
+    />
+  ));
+  const { openModal: openDeleteModal, renderModal: renderDeleteModal } =
+    useAwaitableModal((modal) => (
       <DeleteConfirmModal
         onClose={(result) =>
           result === "backdrop_click" || result === "삭제 취소됨"
@@ -71,8 +74,7 @@ export default function Layout({
             : modal.closeWithResult(result)
         }
       />
-    )
-  );
+    ));
   const handlePostOptionsClick = async () => {
     try {
       const result = await openPostOptionsModal({ postId: router.query.id });
@@ -124,12 +126,12 @@ export default function Layout({
         </Head>
         <div
           {...rest}
-          className="fixed top-0 z-10 flex items-center justify-center w-full h-12 max-w-xl px-10 text-lg font-medium text-gray-800 bg-white border-b"
+          className="fixed top-0 z-10 flex h-12 w-full max-w-xl items-center justify-center border-b bg-white px-10 text-lg font-medium text-gray-800"
         >
           {canGoBack ? (
             <button onClick={onClick} className="absolute left-4 z-[2]">
               <svg
-                className="w-6 h-6"
+                className="h-6 w-6"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -147,9 +149,12 @@ export default function Layout({
             </button>
           ) : null}
           {goHome && (
-            <button onClick={handleHomeClick} className="absolute left-4 z-[2] ml-10">
+            <button
+              onClick={handleHomeClick}
+              className="absolute left-4 z-[2] ml-10"
+            >
               <svg
-                className="w-6 h-6"
+                className="h-6 w-6"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -160,10 +165,18 @@ export default function Layout({
               </svg>
             </button>
           )}
-          {title ? <span className={cls(canGoBack ? "mx-auto" : "", "")}>{title}</span> : null}
+          {/* rightButton을 오른쪽에서 왼쪽으로 이동 */}
+          {rightButton && (
+            <div className="absolute left-4 top-0 flex h-full items-center">
+              {rightButton}
+            </div>
+          )}
+          {title ? (
+            <span className={cls(canGoBack ? "mx-auto" : "", "")}>{title}</span>
+          ) : null}
           {notice ? (
             <Link href="/blog">
-              <a className="absolute p-1 text-sm text-white bg-orange-500 border-2 rounded-md right-4 hover:bg-orange-600">
+              <a className="absolute right-4 rounded-md border-2 bg-orange-500 p-1 text-sm text-white hover:bg-orange-600">
                 <span>공지사항</span>
               </a>
             </Link>
@@ -172,20 +185,24 @@ export default function Layout({
             <div className="absolute right-4">
               <button
                 onClick={handlePostOptionsClick}
-                className="p-2 rounded-full cursor-pointer hover:bg-gray-100"
+                className="cursor-pointer rounded-full p-2 hover:bg-gray-100"
               >
-                <IoEllipsisVerticalSharp className="w-6 h-6" />
+                <IoEllipsisVerticalSharp className="h-6 w-6" />
               </button>
             </div>
           ) : null}
         </div>
         <div
-          className={cls("z-0 pt-12", hasTabBar ? "pb-24" : "", isProfile ? "pb-5 sm:pb-10" : "")}
+          className={cls(
+            "z-0 pt-12",
+            hasTabBar ? "pb-24" : "",
+            isProfile ? "pb-5 sm:pb-10" : ""
+          )}
         >
           {children}
         </div>
         {hasTabBar ? (
-          <nav className="fixed bottom-0 flex justify-between w-full max-w-xl px-10 pt-3 pb-5 text-xs text-gray-700 bg-white border-t">
+          <nav className="fixed bottom-0 flex w-full max-w-xl justify-between border-t bg-white px-10 pb-5 pt-3 text-xs text-gray-700">
             <Link href="/">
               <a
                 className={cls(
@@ -197,7 +214,7 @@ export default function Layout({
                 suppressHydrationWarning
               >
                 <svg
-                  className="w-6 h-6"
+                  className="h-6 w-6"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -226,7 +243,7 @@ export default function Layout({
                 suppressHydrationWarning
               >
                 <svg
-                  className="w-6 h-6"
+                  className="h-6 w-6"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -255,7 +272,7 @@ export default function Layout({
                 suppressHydrationWarning
               >
                 <svg
-                  className="w-6 h-6"
+                  className="h-6 w-6"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -271,10 +288,10 @@ export default function Layout({
                   ></path>
                 </svg>
                 {notice && router.pathname !== "/chats" ? (
-                  <div className="absolute text-orange-500 -right-3 -top-3">
+                  <div className="absolute -right-3 -top-3 text-orange-500">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="w-5 h-5"
+                      className="h-5 w-5"
                       viewBox="0 0 20 20"
                       fill="currentColor"
                     >
@@ -296,7 +313,7 @@ export default function Layout({
                 suppressHydrationWarning
               >
                 <svg
-                  className="w-6 h-6"
+                  className="h-6 w-6"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -325,7 +342,7 @@ export default function Layout({
                 suppressHydrationWarning
               >
                 <svg
-                  className="w-6 h-6"
+                  className="h-6 w-6"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
