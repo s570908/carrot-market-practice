@@ -14,30 +14,36 @@ export default function usePersistentSocket(
   const isInitialized = useRef(false);
 
   useEffect(() => {
-    if (!socket || !user?.id || !chatRoomIds?.length) return;
+    if (!socket || !user?.id) return;
 
-    // 최초 연결 또는 새로고침/페이지 이동 시 login 이벤트 재전송
+    // chatRoomIds가 빈 배열일 때도 처리할 수 있도록 조건 완화
     if (!isInitialized.current) {
-      socket.emit("login", { id: user.id, channels: chatRoomIds });
+      socket.emit("login", { id: user.id, channels: chatRoomIds || [] });
       isInitialized.current = true;
     }
 
     // onlineList 등 이벤트 핸들러 등록
     const handleOnlineList = (onlineUsers: number[]) => {
       // 온라인 유저 목록을 상태로 관리하거나, UI에 반영
-      // 예: setOnlineUsers(onlineUsers);
+      console.log("온라인 유저 목록:", onlineUsers);
     };
     socket.on("onlineList", handleOnlineList);
-
-    // 필요시 다른 이벤트 핸들러도 등록
 
     // cleanup: 언마운트 시 핸들러 해제
     return () => {
       socket.off("onlineList", handleOnlineList);
-      // 필요시 disconnectSocket();
       isInitialized.current = false;
     };
   }, [socket, user?.id, chatRoomIds]);
+
+  // 컴포넌트 언마운트 시 소켓 연결 해제
+  useEffect(() => {
+    return () => {
+      if (disconnectSocket) {
+        disconnectSocket();
+      }
+    };
+  }, [disconnectSocket]);
 
   return socket;
 }

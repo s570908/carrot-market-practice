@@ -32,7 +32,7 @@ import { getChatRoomData } from "@libs/server/chatUtils";
 import Dropdown from "@components/Dropdown";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import useSocket from "@libs/client/useSocket";
+import usePersistentSocket from "@libs/client/usePersistentSocket";
 import dayjs from "@libs/dayjs";
 import {
   writeSystemMessage,
@@ -84,7 +84,7 @@ interface ChatDetailProps {
   chatRoomData: ChatRoomWithDetails;
 }
 
-const workspace = "market"; // 추후 다른 workspace를 추가하려면 로직을 개편해야 한다.
+const workspace = "market"; // 그대로 사용
 
 // 1. getLatestChatMeetup 함수 추가
 export async function getLatestChatMeetup(chatRoomId: number) {
@@ -98,10 +98,15 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   const [isScrolling, setIsScrolling] = useState(false);
   const { user } = useUser();
   const queryClient = useQueryClient();
-  const [socket, disconnectSocket] = useSocket(workspace);
   const router = useRouter();
   const id =
     (router.query.id !== undefined ? parseId(router.query.id) : 0) ?? 0;
+
+  // chatRoomIds는 현재 채팅방 id만 배열로 전달
+  const chatRoomIds = useMemo(() => (id ? [id] : []), [id]);
+
+  // 기존 useSocket 제거, 아래로 교체
+  const socket = usePersistentSocket(workspace, chatRoomIds);
 
   // 알림 ActionSheet 상태 관리
   const [alarmSheetOpen, setAlarmSheetOpen] = useState(false);

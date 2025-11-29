@@ -155,10 +155,18 @@ const Chats: NextPage = () => {
       setHasStateChanged(true);
     };
 
+    // 최신 메시지 실시간 감지
+    const handleMessage = (message: any) => {
+      console.log("message event received in chat list:", message);
+      // 메시지의 chatRoomId가 목록에 있는 채팅방이면 refetch
+      refetchChats();
+    };
+
     socket.on("onlineList", handleOnlineList);
     socket.on("roomList", handleOnRoomList);
     socket.on("chats", handleOnChats);
-    socket.on("changeState", handleChangeState); // 상태 변경 이벤트 리스너 추가
+    socket.on("changeState", handleChangeState);
+    socket.on("message", handleMessage); // 추가
 
     // Request online list on component mount
     console.log("Requesting online list from socket:", socket.id); // 추가: 요청 시점 로그
@@ -170,7 +178,8 @@ const Chats: NextPage = () => {
       socket.off("onlineList", handleOnlineList);
       socket.off("roomList", handleOnRoomList);
       socket.off("chats", handleOnChats);
-      socket.off("changeState", handleChangeState); // 리스너 제거
+      socket.off("changeState", handleChangeState);
+      socket.off("message", handleMessage); // 추가
     };
   }, [refetchChats, socket]); // Add 'socket' as a dependency to ensure it updates when the socket changes
 

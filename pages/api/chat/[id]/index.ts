@@ -128,15 +128,24 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
             id: +id,
           },
         },
-        // chat message를 만드는 사람은 항상 로그인 user다.
         user: {
           connect: {
             id: user?.id,
           },
         },
-        //isNew: true, //// 이 chat message는 상대방이 읽지 않았으므로 true, 추후 지운다.
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            avatar: true,
+          },
+        },
       },
     });
+
+    // 이제 sellerChat.user.name, sellerChat.user.avatar 등 사용 가능
 
     const message: MessageData = {
       id: sellerChat.id,
@@ -190,7 +199,7 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
       },
     });
 
-    res.json({ ok: true, sellerChat });
+    res.json({ ok: true, sellerChat, updatedChatRoom });
   }
 }
 
