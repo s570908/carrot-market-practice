@@ -1434,6 +1434,12 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     );
   };
 
+  console.log("data: ", data);
+  // console.log("message: ", message)
+  // console.log("message.messageType", message.messageType)
+  // console.log("MessageType.SYSTEM: ", MessageType.SYSTEM)
+  // console.log("message.messageType === MessageType.SYSTEM", message.messageType === MessageType.SYSTEM)
+
   return (
     <>
       {renderReservedModal()}

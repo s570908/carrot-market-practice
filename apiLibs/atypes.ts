@@ -783,7 +783,7 @@ export interface SystemMessageResponse {
 export interface SystemMessageParams {
   chatRoomId: number;
   message: string;
-  userId?: number;
+  userId?: number | null;
   meta?: {
     type?: string; // APPOINTMENT_ALERT의 type 필드
     chatMeetupId?: number; // APPOINTMENT_ALERT의 chatMeetupId 필드

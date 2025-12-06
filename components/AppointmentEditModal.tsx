@@ -210,13 +210,20 @@ export default function AppointmentEditModal({
         const oldAlarmData = await getAlarmSettings(chatRoomId);
         if (updatedAppointmentTime) {
           try {
-            await writeSystemMessage({
+            const systemMessageRes = await writeSystemMessage({
               chatRoomId: chatRoomId,
               message: SYSTEM_MESSAGES.APPOINTMENT_UPDATED(
                 updatedAppointmentTime
               ),
               userId: user!.id,
             });
+
+            // 시스템 메시지 DB 저장 후, 클라이언트에서 소켓으로 broadcast (비권장, but 가능)
+            if (socket && systemMessageRes?.systemMessage) {
+              socket.emit("message", {
+                ...systemMessageRes.systemMessage,
+              });
+            }
           } catch (systemMessageError) {
             console.error("시스템 메시지 생성 실패:", systemMessageError);
           }

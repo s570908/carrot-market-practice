@@ -9,12 +9,14 @@ import type { AppProps } from "next/app";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import useSocket from "@libs/client/useSocket";
+import useUser from "@libs/client/useUser";
 import { useEffect, useState } from "react";
 import { getChatRoomIDs } from "apiLibs/chatRooms";
 import { ChatRoomType } from "apiLibs/atypes";
 import PushNotificationService from "@components/PushNotificationService";
 import { useRouter } from "next/router";
 import AppInitializer from "@/components/AppInitializer";
+import axios from "axios";
 
 // QueryClient 생성
 const queryClient = new QueryClient({
@@ -52,10 +54,21 @@ function AppContent({
   const router = useRouter();
   const [socket] = useSocket("market");
   const [isMounted, setIsMounted] = useState(false);
+  const { user } = useUser();
+  const [clientUser, setClientUser] = useState<{ id?: number } | null>(null);
 
   useEffect(() => {
     setIsMounted(true); // 클라이언트에서만 true
   }, []);
+
+  // useUser에서 가져온 user를 clientUser에 설정
+  useEffect(() => {
+    if (user?.id) {
+      setClientUser({ id: user.id });
+    } else {
+      setClientUser(null);
+    }
+  }, [user?.id]);
 
   // Enter 페이지에서는 불필요한 쿼리 실행 방지
   const isEnterPage = router.pathname === "/enter";
@@ -73,18 +86,23 @@ function AppContent({
 
   // 소켓 연결 (클라이언트에서만, Enter 페이지 제외)
   useEffect(() => {
-    if (isMounted && socket && channelData?.ok && !isEnterPage) {
-      console.info("로그인 유저 소켓 연결:", socket);
-      // user 정보는 pageProps 또는 다른 적절한 위치에서 추출
-      const userId = pageProps?.user?.id;
-      if (userId) {
-        socket.emit("login", {
-          id: userId,
-          channels: channelData.sellerChatRoomList.map((v: any) => v.id),
-        });
-      }
+    if (
+      isMounted &&
+      socket &&
+      channelData?.ok &&
+      !isEnterPage &&
+      clientUser?.id
+    ) {
+      console.log(
+        "-------------------Emitting login event for user:",
+        clientUser.id
+      );
+      socket.emit("login", {
+        id: clientUser.id,
+        channels: channelData.sellerChatRoomList.map((v: any) => v.id),
+      });
     }
-  }, [socket, channelData, isMounted, isEnterPage, pageProps?.user?.id]);
+  }, [socket, channelData, isMounted, isEnterPage, clientUser?.id]);
 
   // SSR 중에는 기본 컴포넌트만 렌더링
   if (!isMounted) {

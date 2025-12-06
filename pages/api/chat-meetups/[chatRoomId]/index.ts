@@ -185,6 +185,15 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
                 alarmTime: updatedMeetup.alarmTime,
               }),
             },
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  avatar: true,
+                },
+              },
+            },
           });
 
           // --- alarmSetting의 triggerAt도 업데이트 ---
