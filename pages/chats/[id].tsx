@@ -689,15 +689,18 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         if (id && message.chatRoomId === id) {
           // 기존: refetchChat();
           // 변경: 새 메시지만 캐시에 추가
-          queryClient.setQueryData(["chat", id], (prev: any) => {
-            if (prev) {
-              return {
-                ...prev,
-                sellerChat: [...prev.sellerChat, message],
-              };
-            }
-            return prev;
-          });
+          console.log("before QueryClient message: ", message);
+          // queryClient.setQueryData(["chat", id], (prev: any) => {
+          //   if (prev) {
+          //     return {
+          //       ...prev,
+          //       sellerChat: [...prev.sellerChat, message],
+          //     };
+          //   }
+          //   return prev;
+          // });
+          refetchChat();
+          console.log("after QueryClient");
         }
       });
 
@@ -719,20 +722,32 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         console.log(`Successfully joined room: ${data.room}`);
       });
 
-      // meetupCreated 이벤트 리스너 등록
-      const handleMeetupCreated = (data: any) => {
+      socket.on("meetupCreated", (data: any) => {
         console.log("meetupCreated 이벤트 수신:", data);
         // 필요하다면 알림, 모달, refetch 등 추가 동작
         refetchChat();
         // 예: toast.success("새 약속이 생성되었습니다!");
-      };
-      socket.on("meetupCreated", handleMeetupCreated);
+      });
+
+      // const handleMeetupCreated = (data: any) => {
+      //   console.log("meetupCreated 이벤트 수신:", data);
+      //   // 필요하다면 알림, 모달, refetch 등 추가 동작
+      //   refetchChat();
+      //   // 예: toast.success("새 약속이 생성되었습니다!");
+      // };
+      // socket.on("meetupCreated", handleMeetupCreated);
+
+      socket.on("meetupUpdated", (data) => {
+        console.log("meetupUpdated 이벤트 수신: ", data);
+        refetchChat();
+      });
 
       return () => {
         socket.off("message");
         socket.off("alarm_setting_changed");
         socket.off("joined_room");
-        socket.off("meetupCreated", handleMeetupCreated);
+        socket.off("meetupCreated");
+        socket.off("meetupUpdated");
       };
     }
   }, [id, queryClient, refetchChat, socket, user?.id]);
@@ -1434,7 +1449,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     );
   };
 
-  console.log("data: ", data);
   // console.log("message: ", message)
   // console.log("message.messageType", message.messageType)
   // console.log("MessageType.SYSTEM: ", MessageType.SYSTEM)

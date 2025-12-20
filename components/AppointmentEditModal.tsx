@@ -100,6 +100,7 @@ export default function AppointmentEditModal({
                 responseData.chatMeetup.appointmentTime
               ),
               userId: user!.id,
+              meta: responseData?.message?.id,
             });
           } catch (systemMessageError) {
             console.error("시스템 메시지 생성 실패:", systemMessageError);
@@ -216,6 +217,7 @@ export default function AppointmentEditModal({
                 updatedAppointmentTime
               ),
               userId: user!.id,
+              meta: responseData.message?.id,
             });
 
             // 시스템 메시지 DB 저장 후, 클라이언트에서 소켓으로 broadcast (비권장, but 가능)

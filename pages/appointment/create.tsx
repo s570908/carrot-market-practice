@@ -93,8 +93,8 @@ const CreateAppointment = () => {
               message: SYSTEM_MESSAGES.APPOINTMENT_CREATED(
                 responseData.chatMeetup.appointmentTime
               ),
-              // userId: user?.id,
-              userId: null,
+              userId: user?.id,
+              meta: responseData?.message?.id,
             });
 
             // 시스템 메시지 DB 저장 후, 클라이언트에서 소켓으로 broadcast (비권장, but 가능)
