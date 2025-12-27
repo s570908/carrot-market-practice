@@ -176,15 +176,21 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     enabled: !!id,
   });
 
+  console.log("alarmSettingsData:", alarmSettingsData);
+
   useEffect(() => {
     if (alarmSheetOpen) {
       if (alarmSettingsData?.ok) {
-        setAlarmSheetValue(appointment?.alarmTime ?? "없음");
+        setAlarmSheetValue(alarmSettingsData?.alarm?.alarmTime ?? "없음");
       } else {
         setAlarmSheetValue("없음");
       }
     }
-  }, [alarmSettingsData?.ok, alarmSheetOpen, appointment?.alarmTime]);
+  }, [
+    alarmSettingsData?.alarm?.alarmTime,
+    alarmSettingsData?.ok,
+    alarmSheetOpen,
+  ]);
 
   // console.log("/api/chat/${router.query.id}--data:", data);
   // If you want to debug appointment data, use sellerChat array:
@@ -1291,6 +1297,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     data?.chatRoomOfSeller?.alarmSettings?.find(
       (alarm: { userId: number }) => alarm.userId === user?.id
     ) ?? null;
+
+  console.log("userAlarmSetting: ", userAlarmSetting);
 
   let optionsMenu: Option[] = selling
     ? [
