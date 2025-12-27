@@ -1,18 +1,13 @@
 {
-  // ...existing code...
-  "files.exclude": {
-    "node_modules": true,
-    "build": true,
-    "dist": true,
-    ".next": true,
-    ".git": true
-  },
   "search.exclude": {
     "node_modules": true,
     "build": true,
     "dist": true,
     ".next": true,
     ".git": true
+  },
+  "editor.formatOnSave": false,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "never"
   }
-  // ...existing code...
 }
