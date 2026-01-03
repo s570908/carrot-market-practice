@@ -178,6 +178,13 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   console.log("alarmSettingsData:", alarmSettingsData);
 
+  // ActionSheet가 열릴 때마다 alarmSettings를 refetch
+  useEffect(() => {
+    if (alarmSheetOpen) {
+      refetchAlarmSettings();
+    }
+  }, [alarmSheetOpen, refetchAlarmSettings]);
+
   useEffect(() => {
     if (alarmSheetOpen) {
       if (alarmSettingsData?.ok) {
@@ -206,17 +213,17 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
             //onClick={() => modal.closeWithError("backdrop_click")}
           />
           <div className="z-50">
-            <div className="w-96 rounded-lg bg-white p-4 text-base font-normal">
+            <div className="p-4 text-base font-normal bg-white rounded-lg w-96">
               <h4 className="mb-4">예약 중입니다. 예약자: {params.name} </h4>
               <h4 className="mb-4">예약취소 후 판매중으로 변경하시겠습니까?</h4>
               <button
-                className="rounded-lg bg-blue-500 px-4 py-2 text-white"
+                className="px-4 py-2 text-white bg-blue-500 rounded-lg"
                 onClick={() => modal.closeWithResult("selling")}
               >
                 변경
               </button>
               <button
-                className="ml-2 rounded-lg bg-gray-200 px-4 py-2 text-black"
+                className="px-4 py-2 ml-2 text-black bg-gray-200 rounded-lg"
                 onClick={() => modal.closeWithResult("keep")}
               >
                 예약유지
@@ -488,18 +495,18 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   } = useMutation({
     mutationFn: writeAlarmSettings,
     onSuccess: (data) => {
-      console.log("알림 설정 성공 데이터:", data);
       // data.alarmTime이 undefined인 경우를 방지
-      const alarmTimeText = data.alarmTime || "알림";
+      const alarmTimeText = data?.alarm?.alarmTime || "알림";
       alert(
         `${
-          data.disableAlarm
+          data?.alarm?.disableAlarm
             ? "알림이 해제되었습니다."
             : `${alarmTimeText} 알림이 설정되었습니다.`
         }`
       );
       setAlarmSheetOpen(false); // ActionSheet 닫기 추가
       refetchChat();
+      refetchAlarmSettings(); // 추가: 알림 설정 쿼리도 갱신
     },
     onError: (error: any) => {
       console.error("알림 설정 중 오류 발생:", error);
@@ -1085,14 +1092,14 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       }
 
       try {
-        await updateChatMeetup({
-          chatRoomId: id,
-          appointmentTime: appointment?.appointmentTime,
-          place: appointment?.place,
-          locationLatitude: appointment?.locationLatitude,
-          locationLongitude: appointment?.locationLongitude,
-          alarmTime: timeOption,
-        });
+        // await updateChatMeetup({
+        //   chatRoomId: id,
+        //   appointmentTime: appointment?.appointmentTime,
+        //   place: appointment?.place,
+        //   locationLatitude: appointment?.locationLatitude,
+        //   locationLongitude: appointment?.locationLongitude,
+        //   alarmTime: timeOption,
+        // });
         await writeAlarmSettings({
           chatId: id,
           alarmTime: timeOption,
@@ -1133,22 +1140,21 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
         // 5-4. 시스템 메시지 생성 (알림 변경 안내)
         // alert("writeSystemMessage2를 작성해야함");
-        await writeSystemMessage({
-          chatRoomId: id,
-          message: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
-            timeOption,
-            chatMeetupId!
-            // appointmentMessage.id
-          ).message,
-          meta: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
-            timeOption,
-            chatMeetupId!
-            // appointmentMessage.id
-          ).meta,
-          userId: user?.id,
-        });
+        // await writeSystemMessage({
+        //   chatRoomId: id,
+        //   message: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
+        //     timeOption,
+        //     chatMeetupId!
+        //     // appointmentMessage.id
+        //   ).message,
+        //   meta: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
+        //     timeOption,
+        //     chatMeetupId!
+        //     // appointmentMessage.id
+        //   ).meta,
+        //   userId: user?.id,
+        // });
 
-        alert(`${timeOption} 알림이 설정되었습니다.`);
         setAlarmSheetOpen(false);
         refetchChat();
       } catch (error) {
@@ -1392,7 +1398,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       // 약속이 없으면 기존처럼 생성 페이지로 이동
       return (
         <div
-          className="text-md cursor-pointer rounded-md border border-black p-1"
+          className="p-1 border border-black rounded-md cursor-pointer text-md"
           onClick={handleAppointmentClick}
         >
           약속잡기
@@ -1459,7 +1465,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   // console.log("message: ", message)
   // console.log("message.messageType", message.messageType)
-  // console.log("MessageType.SYSTEM: ", MessageType.SYSTEM)
+  // console.log("MessageType.SYSTEM: ", MessageType)
   // console.log("message.messageType === MessageType.SYSTEM", message.messageType === MessageType.SYSTEM)
 
   return (
@@ -1488,9 +1494,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         backUrl={"back"}
       >
         <div className="relative h-full px-4 pb-12">
-          <div className="w-full max-w-xl border-b border-gray-200 bg-red-200 p-4">
+          <div className="w-full max-w-xl p-4 bg-red-200 border-b border-gray-200">
             <div
-              className="flex cursor-pointer items-center"
+              className="flex items-center cursor-pointer"
               onClick={() => {
                 router.push(`/products/${productId}`);
               }}
@@ -1537,38 +1543,30 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                 </div>
               </div>
             </div>
-            <div className="mt-2 flex flex-row justify-between">
+            <div className="flex flex-row justify-between mt-2">
               {renderAppointmentButton()}
               <button
-                className="text-md cursor-pointer rounded-md border border-blue-500 bg-blue-50 p-1 text-blue-700"
+                className="p-1 text-blue-700 border border-blue-500 rounded-md cursor-pointer text-md bg-blue-50"
                 onClick={() => {
                   if (!appointment) {
                     alert("약속 정보가 없습니다. 약속을 먼저 잡아주세요.");
                     return;
                   }
-
-                  // 약속 시간이 지났는지 확인
-                  const appointmentTime = new Date(
-                    appointment.appointmentTime ?? ""
-                  );
+                  const appointmentTime = new Date(appointment.appointmentTime ?? "");
                   if (appointmentTime < new Date()) {
                     alert("이미 지난 약속입니다. 알림을 설정할 수 없습니다.");
                     return;
                   }
-
-                  // 알림 설정 화면 열기
-                  // setCurrentMessageId(appointmentMsg?.id ?? null);
+                  refetchAlarmSettings(); // 추가: ActionSheet 열기 전에 최신값 요청
                   setAlarmSheetOpen(true);
                 }}
               >
-                {`알림 ${
-                  userAlarmSetting ? userAlarmSetting?.alarmTime : "없음"
-                }`}
+                {`알림 ${userAlarmSetting ? userAlarmSetting?.alarmTime : "없음"}`}
               </button>
 
               {isSellingAndConsumer && (
                 <div
-                  className="text-md cursor-pointer rounded-md border border-black p-1"
+                  className="p-1 border border-black rounded-md cursor-pointer text-md"
                   onClick={() => {
                     console.log("당근페이가 클릭되었습니다.");
                   }}
@@ -1578,7 +1576,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               )}
               {isSellingAndProvider && (
                 <div
-                  className="text-md cursor-pointer rounded-md border border-black p-1"
+                  className="p-1 border border-black rounded-md cursor-pointer text-md"
                   onClick={() => {
                     console.log("송금요청이 클릭되었습니다.");
                   }}
@@ -1588,7 +1586,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
               )}
               {isSellingAndConsumer && (
                 <div
-                  className="text-md cursor-pointer rounded-md border border-black p-1"
+                  className="p-1 border border-black rounded-md cursor-pointer text-md"
                   onClick={() => {
                     console.log("물품추가가 클릭되었습니다.");
                   }}
@@ -1697,18 +1695,18 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                       messageRefs.current.delete(`${message.id}`);
                     }
                   }}
-                  className="border-b border-gray-200 p-4"
+                  className="p-4 border-b border-gray-200"
                 >
                   {/* 날짜 툴팁 */}
                   {showTooltip && tooltipDate && (
-                    <div className="fixed left-1/2 top-2 z-20 -translate-x-1/2 transform rounded-full bg-gray-600 bg-opacity-20 px-4 py-2 text-sm text-white">
+                    <div className="fixed z-20 px-4 py-2 text-sm text-white transform -translate-x-1/2 bg-gray-600 rounded-full left-1/2 top-2 bg-opacity-20">
                       {tooltipDate}
                     </div>
                   )}
                   {/* 날짜 변경 시 날짜 표시 */}
                   {showDate && (
-                    <div className="my-2 text-center text-sm text-white">
-                      <span className="rounded-full bg-gray-400 px-4">
+                    <div className="my-2 text-sm text-center text-white">
+                      <span className="px-4 bg-gray-400 rounded-full">
                         {dayjs(message.createdAt)
                           .locale("ko")
                           .format("YYYY년 MM월 DD일 dddd")}
@@ -1769,9 +1767,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
           <div>
             <form
               onSubmit={handleSubmit(onValid)}
-              className="mt-10 w-full border-t px-1 py-1"
+              className="w-full px-1 py-1 mt-10 border-t"
             >
-              <div className="relative w-full rounded-md bg-white px-2 py-2 outline-none">
+              <div className="relative w-full px-2 py-2 bg-white rounded-md outline-none">
                 <input
                   {...register("chatMsg", { required: true, maxLength: 80 })}
                   maxLength={80}
