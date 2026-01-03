@@ -43,6 +43,7 @@ import {
   getAlarmSettings,
   readChatMeetup,
   updateChatMeetup,
+  deleteAlarmSettings,
 } from "apiLibs/chats";
 import { handleLoadingAndError } from "@components/LoadingError";
 import {
@@ -575,7 +576,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   //   //// scrollTop 의 최대치는 scrollHeight-clientHeght. scrollTop에 이 최대치보다 큰 수를 넣더라도 scrollTop은 최대치 만큼만 반응한다.
   //   chatBox.scrollTop = chatBox.scrollHeight + 20;
   // }, [data?.ok, sendChatData, mutate]);
-  // ref: https://velog.io/@lumpenop/TIL-nextron-React-%EC%B1%84%ED%8C%85%EC%B0%BD-%EA%B5%AC%ED%98%84-%EC%9E%85%EB%A0%A5-%EC%8B%9C-%EC%B1%84%ED%8C%85%EC%B0%BD-%EC%95%84%EB%A1%9C-%EC%8A%A4%ED%81%AC%EB%A1%A4-220724
+  // ref: https://velog.io/@lumpenop/TIL-nextron-React-%EC%B1%84%ED%8C%90%EC%B0%BD-%EA%B5%AC%ED%98%84-%EC%9E%85%EB%A0%A5-%EC%8B%9C-%EC%B1%84%ED%8C%90%EC%B0%BD-%EC%95%84%EB%A1%9C-%EC%8A%A4%ED%81%AC%EB%A1%A4-220724
 
   // 새로운 메시지를 작성하고 submit하면 scroll to bottom이 되게 한다.
   const isScrollToBottom = newMessageSubmitted === true;
@@ -1029,30 +1030,25 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       // 3. 알림 끄기 처리
       if (timeOption === "없음") {
         try {
-          await updateChatMeetup({
-            alarmTime: null,
-            chatRoomId: id,
-            appointmentTime: appointment?.appointmentTime,
-            place: appointment?.place,
-            locationLatitude: appointment?.locationLatitude,
-            locationLongitude: appointment?.locationLongitude,
-          });
-          await writeAlarmSettings({
-            chatId: id,
-            alarmTime: null,
-            triggerAt: null,
-            disableAlarm: true,
-          });
+          // await updateChatMeetup({
+          //   alarmTime: null,
+          //   chatRoomId: id,
+          //   appointmentTime: appointment?.appointmentTime,
+          //   place: appointment?.place,
+          //   locationLatitude: appointment?.locationLatitude,
+          //   locationLongitude: appointment?.locationLongitude,
+          // });
+          await deleteAlarmSettings(id);
 
           // 3-3. 알림 해제 메시지 생성
           // alert("writeSystemMessage1를 작성해야함");
-          await writeSystemMessage({
-            chatRoomId: id,
-            message: SYSTEM_MESSAGES.APPOINTMENT_ALERT("없음", chatMeetupId!)
-              .message,
-            meta: SYSTEM_MESSAGES.APPOINTMENT_ALERT("없음", chatMeetupId!).meta,
-            userId: user?.id,
-          });
+          // await writeSystemMessage({
+          //   chatRoomId: id,
+          //   message: SYSTEM_MESSAGES.APPOINTMENT_ALERT("없음", chatMeetupId!)
+          //     .message,
+          //   meta: SYSTEM_MESSAGES.APPOINTMENT_ALERT("없음", chatMeetupId!).meta,
+          //   userId: user?.id,
+          // });
 
           alert("알림이 해제되었습니다.");
           setAlarmSheetOpen(false);
@@ -1445,15 +1441,18 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
             alarmTimeFromSetting = chatMeetup.alarmTime ?? null;
           }
 
-          await openAppointmentEditModal({
+          const result = await openAppointmentEditModal({
             appointmentTime: chatMeetup.appointmentTime,
             place: chatMeetup.place,
             latitude: chatMeetup.locationLatitude ?? 0,
             longitude: chatMeetup.locationLongitude ?? 0,
             alarmTime: alarmTimeFromSetting,
-            // messageId: appointment.id,
             chatMeetupId: chatMeetupId,
           });
+          // ✅ 약속/알림이 변경된 경우 refetchChat() 호출
+          if (result && result.success) {
+            refetchChat();
+          }
         }}
         disabled={isPast}
         title={isPast ? "이미 지난 약속입니다" : ""}

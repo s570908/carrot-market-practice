@@ -25,7 +25,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     req.method !== "GET" &&
     req.method !== "PATCH" &&
     req.method !== "POST" &&
-    req.method !== "DELETE"
+    req.method !== "DELETE" &&
+    req.method !== "PUT"
   ) {
     return res.status(405).json({ ok: false, error: "Method not allowed" });
   }
@@ -197,11 +198,54 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         .json({ ok: false, error: "Failed to delete alarm setting" });
     }
   }
+
+  if (req.method === "PUT") {
+    try {
+      const { alarmTime, triggerAt, status } = req.body;
+      if (!alarmTime || !triggerAt) {
+        return res.status(400).json({ ok: false, error: "alarmTime and triggerAt are required" });
+      }
+      // 1. 가장 처음 것을 찾는다
+      let alarm = await client.alarmSetting.findFirst({
+        where: {
+          chatRoomId,
+          userId: user.id,
+        },
+      });
+
+      if (alarm) {
+        // 2. 있으면 업데이트
+        alarm = await client.alarmSetting.update({
+          where: { id: alarm.id },
+          data: {
+            alarmTime,
+            triggerAt: new Date(triggerAt),
+            status: status ?? alarm.status,
+          },
+        });
+        return res.status(200).json({ ok: true, alarm, updated: true });
+      } else {
+        // 3. 없으면 생성
+        alarm = await client.alarmSetting.create({
+          data: {
+            chatRoomId,
+            userId: user.id,
+            alarmTime,
+            triggerAt: new Date(triggerAt),
+            status: status ?? AlarmStatus.SCHEDULED,
+          },
+        });
+        return res.status(201).json({ ok: true, alarm, created: true });
+      }
+    } catch (error) {
+      return res.status(500).json({ ok: false, error: "Failed to upsert alarm setting" });
+    }
+  }
 }
 
 export default withApiSession(
   withHandler({
-    methods: ["GET", "PATCH", "POST", "DELETE"],
+    methods: ["GET", "PATCH", "POST", "DELETE", "PUT"],
     handler,
     isPrivate: true,
   })

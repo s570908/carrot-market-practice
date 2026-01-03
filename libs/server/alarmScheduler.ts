@@ -311,3 +311,95 @@ export function cancelScheduledJob(alarmId: number) {
   console.log(`No scheduled job found for alarm ID: ${alarmId}`);
   return false;
 }
+
+/*
+서버 시작 시 알람 스케줄링 초기화
+
+- `initializeAlarmScheduler(baseUrl)` 호출
+  - DB에서 미래의 SCHEDULED 상태 알람을 모두 조회
+  - 각 알람에 대해 `scheduleAlarm(alarm, baseUrl)`로 예약
+
+알람 예약 함수
+
+- `scheduleAlarm(alarm, baseUrl)`
+  - alarm.alarmTime이 없으면 아무 작업도 하지 않음
+  - 이미 같은 alarm.id로 예약된 작업이 있으면 기존 작업을 취소
+  - node-schedule로 alarm.triggerAt 시각에 작업 예약
+    - 예약된 시각이 되면:
+      - callAlarmTrigger({ baseUrl, alarmId }) 호출 (알림 발송)
+      - 작업 완료 후 activeJobs Map에서 해당 작업을 제거
+
+알람 개별 예약 함수
+
+- `scheduleAlarmById(alarmId, baseUrl)`
+  - alarmId로 알람 정보를 DB에서 조회
+  - SCHEDULED 상태, 미래 triggerAt, alarmTime이 있으면 예약
+  - 조건을 만족하면 `scheduleAlarm` 호출
+
+알람 취소 함수
+
+- `cancelExistingAlarm(alarmId)`
+  - DB에서 알람 상태 확인
+  - SCHEDULED 상태면 node-schedule 작업 취소 및 DB 상태를 CANCELED로 변경
+
+알람 예약/취소 관리
+
+- 예약된 작업은 `activeJobs` Map에서 관리 (alarmId → Job 객체)
+- 작업 완료/취소 시 Map에서 제거하여 메모리 누수 방지
+
+알람 트리거
+
+- 예약된 시간이 되면 callAlarmTrigger가 실행되어 실제 알림 발송
+- 알림 발송 후 알람 상태를 SENT로 변경
+*/
+
+/*
+### alarmScheduler.ts에서 사용된 주요 함수와 call하는 컴포넌트/모듈
+
+#### 1. initializeAlarmScheduler(baseUrl)
+- **서버 시작 시** 호출됨
+- 일반적으로 서버의 entry point(`server.ts`, `index.ts`, `app.ts` 등)에서 호출
+- 목적: 서버 재시작 시 모든 미래 알람을 다시 예약
+
+#### 2. loadAlarms(baseUrl)
+- 서버 관리/테스트용으로 별도 호출 가능
+- 서버 entry 또는 관리 API에서 호출될 수 있음
+
+#### 3. scheduleAlarm(alarm, baseUrl)
+- 내부적으로 `initializeAlarmScheduler`, `loadAlarms`, `scheduleAlarmById` 등에서 호출
+- 직접적으로 외부 컴포넌트에서 호출하지 않음 (내부 예약용)
+
+#### 4. scheduleAlarmById(alarmId, baseUrl)
+- 알람 생성/수정/복구 시 API 라우트(`pages/api/alarm-settings/[chatRoomId]/index.ts` 등)에서 호출
+- 예: 알람 생성/수정 후 해당 알람을 예약할 때
+
+#### 5. cancelExistingAlarm(alarmId)
+- 알람 삭제/해제/취소 API 라우트(`pages/api/alarm-settings/[chatRoomId]/index.ts` 등)에서 호출
+- 예: 클라이언트에서 알림 해제 요청 시
+
+#### 6. cancelScheduledJob(alarmId)
+- 내부적으로 `cancelExistingAlarm`에서 사용
+- 직접적으로 외부 컴포넌트에서 호출하지 않음
+
+---
+
+### 실제 call하는 컴포넌트/모듈 예시
+
+- **API 라우트**
+  - `/pages/api/alarm-settings/[chatRoomId]/index.ts`
+    - 알람 생성/수정/삭제 시 `scheduleAlarmById`, `cancelExistingAlarm` 호출
+
+- **서버 entry point**
+  - `server.ts`, `index.ts`, `app.ts` 등
+    - 서버 시작 시 `initializeAlarmScheduler` 호출
+
+- **테스트/관리용 스크립트**
+  - 필요에 따라 `loadAlarms` 등 호출
+
+---
+
+**요약:**  
+- 서버 시작 시: `initializeAlarmScheduler`  
+- 알람 생성/수정/삭제 API: `scheduleAlarmById`, `cancelExistingAlarm`  
+- 내부 예약/취소: `scheduleAlarm`, `cancelScheduledJob` (직접 호출 X)
+*/

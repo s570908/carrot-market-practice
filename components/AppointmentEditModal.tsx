@@ -549,41 +549,92 @@ export default function AppointmentEditModal({
       if (isAlarmOnlyChanged) {
         try {
           // 기존 alarmTime이 null(알림이 없던 상태) → 새 알림만 생성
-          if (params.alarmTime == null) {
-            // 새 알림 생성
+          // if (params.alarmTime == null) {
+          //   // 새 알림 생성
+          //   const appointmentTime = new Date(params.appointmentTime);
+          //   const triggerAt = calculateTriggerTime(
+          //     appointmentTime,
+          //     alarmTime ?? ""
+          //   );
+          //   const utcTriggerAt = new Date(triggerAt.toISOString());
+          //   // await updateChatMeetup({
+          //   //   chatRoomId: chatRoomId,
+          //   //   alarmTime: alarmTime ?? "",
+          //   //   appointmentTime: appointmentTime,
+          //   //   place: params.place,
+          //   //   locationLatitude: params.latitude,
+          //   //   locationLongitude: params.longitude,
+          //   // });
+          //   // alarmSetting upsert
+          //   await writeAlarmSettings({
+          //     chatId: chatRoomId,
+          //     alarmTime: alarmTime ?? "",
+          //     triggerAt: utcTriggerAt.toISOString(),
+          //   } as any);
+
+            
+          //   // 시스템 메시지 생성 (알림 변경 안내)
+          //   // await writeSystemMessage({
+          //   //   chatRoomId: chatRoomId,
+          //   //   message: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
+          //   //     alarmTime ?? "",
+          //   //     params.chatMeetupId ?? 0
+          //   //   ).message,
+          //   //   meta: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
+          //   //     alarmTime ?? "",
+          //   //     params.chatMeetupId ?? 0
+          //   //   ).meta,
+          //   //   userId: user?.id,
+          //   // });
+
+          //   try {
+          //     await initializePushSubscription();
+          //   } catch (pushError) {
+          //     console.warn("푸시 구독 자동 갱신 실패:", pushError);
+          //   }
+
+          //   toast?.success?.("알림이 설정되었습니다!");
+          //   modal.closeWithResult({ success: true });
+          //   reset();
+          //   return;
+          // }
+         
+          // 새 알림 생성
             const appointmentTime = new Date(params.appointmentTime);
             const triggerAt = calculateTriggerTime(
               appointmentTime,
               alarmTime ?? ""
             );
             const utcTriggerAt = new Date(triggerAt.toISOString());
-            await updateChatMeetup({
-              chatRoomId: chatRoomId,
-              alarmTime: alarmTime ?? "",
-              appointmentTime: appointmentTime,
-              place: params.place,
-              locationLatitude: params.latitude,
-              locationLongitude: params.longitude,
-            });
-            await createAlarmSettings({
+            // await updateChatMeetup({
+            //   chatRoomId: chatRoomId,
+            //   alarmTime: alarmTime ?? "",
+            //   appointmentTime: appointmentTime,
+            //   place: params.place,
+            //   locationLatitude: params.latitude,
+            //   locationLongitude: params.longitude,
+            // });
+            // alarmSetting upsert
+            await writeAlarmSettings({
               chatId: chatRoomId,
               alarmTime: alarmTime ?? "",
               triggerAt: utcTriggerAt.toISOString(),
             } as any);
 
+            
             // 시스템 메시지 생성 (알림 변경 안내)
-            await writeSystemMessage({
-              chatRoomId: chatRoomId,
-              message: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
-                alarmTime ?? "",
-                params.chatMeetupId ?? 0
-              ).message,
-              meta: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
-                alarmTime ?? "",
-                params.chatMeetupId ?? 0
-              ).meta,
-              userId: user?.id,
-            });
+            // await writeSystemMessage({
+            //   chatRoomId: chatRoomId,
+            //   message: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
+            //     alarmTime ?? "",
+            //     params.chatMeetupId ?? 0
+            //   ).message,
+            //   meta: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
+            //     alarmTime ?? "",
+            //     params.chatMeetupId ?? 0
+            //   ).meta,
+            //   userId: user?.id,
+            // });
 
             try {
               await initializePushSubscription();
@@ -595,60 +646,58 @@ export default function AppointmentEditModal({
             modal.closeWithResult({ success: true });
             reset();
             return;
-          }
-
           // 1. 기존 SCHEDULED 알림 조회 및 CANCELED로 변경
-          try {
-            // 최신 chatMeetup의 messageId로 SCHEDULED 알림 조회
-            await getAlarmSettings(chatRoomId);
-          } catch (fetchError) {
-            console.warn("기존 알림 조회/취소 중 오류:", fetchError);
-          }
+          // try {
+          //   // 최신 chatMeetup의 messageId로 SCHEDULED 알림 조회
+          //   await getAlarmSettings(chatRoomId);
+          // } catch (fetchError) {
+          //   console.warn("기존 알림 조회/취소 중 오류:", fetchError);
+          // }
 
-          // 2. 새 AlarmSetting 생성 (status: SCHEDULED)
-          const appointmentTime = new Date(params.appointmentTime);
-          const triggerAt = calculateTriggerTime(
-            appointmentTime,
-            alarmTime ?? ""
-          );
-          const utcTriggerAt = new Date(triggerAt.toISOString());
-          await updateChatMeetup({
-            chatRoomId: chatRoomId,
-            alarmTime: alarmTime ?? "",
-            appointmentTime: appointmentTime,
-            place: params.place,
-            locationLatitude: params.latitude,
-            locationLongitude: params.longitude,
-          });
-          await writeAlarmSettings({
-            chatId: chatRoomId,
-            alarmTime: alarmTime ?? "",
-            triggerAt: utcTriggerAt.toISOString(),
-          } as any);
+          // // 2. 새 AlarmSetting 생성 (status: SCHEDULED)
+          // const appointmentTime = new Date(params.appointmentTime);
+          // const triggerAt = calculateTriggerTime(
+          //   appointmentTime,
+          //   alarmTime ?? ""
+          // );
+          // const utcTriggerAt = new Date(triggerAt.toISOString());
+          // await updateChatMeetup({
+          //   chatRoomId: chatRoomId,
+          //   alarmTime: alarmTime ?? "",
+          //   appointmentTime: appointmentTime,
+          //   place: params.place,
+          //   locationLatitude: params.latitude,
+          //   locationLongitude: params.longitude,
+          // });
+          // await writeAlarmSettings({
+          //   chatId: chatRoomId,
+          //   alarmTime: alarmTime ?? "",
+          //   triggerAt: utcTriggerAt.toISOString(),
+          // } as any);
 
-          // 3. 시스템 메시지 생성 (알림 변경 안내)
-          await writeSystemMessage({
-            chatRoomId: chatRoomId,
-            message: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
-              alarmTime ?? "",
-              params.chatMeetupId ?? 0
-            ).message,
-            meta: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
-              alarmTime ?? "",
-              params.chatMeetupId ?? 0
-            ).meta,
-            userId: user?.id,
-          });
+          // // 3. 시스템 메시지 생성 (알림 변경 안내)
+          // await writeSystemMessage({
+          //   chatRoomId: chatRoomId,
+          //   message: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
+          //     alarmTime ?? "",
+          //     params.chatMeetupId ?? 0
+          //   ).message,
+          //   meta: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
+          //     alarmTime ?? "",
+          //     params.chatMeetupId ?? 0
+          //   ).meta,
+          //   userId: user?.id,
+          // });
 
-          try {
-            await initializePushSubscription();
-          } catch (pushError) {
-            console.warn("푸시 구독 자동 갱신 실패:", pushError);
-          }
+          // try {
+          //   await initializePushSubscription();
+          // } catch (pushError) {
+          //   console.warn("푸시 구독 자동 갱신 실패:", pushError);
+          // }
 
-          toast?.success?.("알림이 변경되었습니다!");
-          modal.closeWithResult({ success: true });
-          reset();
+          // toast?.success?.("알림이 변경되었습니다!");
+          // modal.closeWithResult({ success: true });
+          // reset();
         } catch (error) {
           toast?.error?.("알림 변경 시스템 메시지/알림 설정 실패");
           modal.closeWithResult({ success: true, withError: true });
@@ -660,6 +709,21 @@ export default function AppointmentEditModal({
       // React Query의 useMutation으로 약속 생성 API 호출
       if (isChanged) {
         updateMeetup(newAppointmentData);
+
+        // 약속 정보가 바뀌었으니 alarmTime이 null이 아니면 알림 트리거 시간도 새로 저장
+        if (newAppointmentData.alarmTime) {
+          const triggerAt = calculateTriggerTime(
+            newAppointmentData.appointmentTime,
+            newAppointmentData.alarmTime
+          );
+          const utcTriggerAt = new Date(triggerAt.toISOString());
+          await writeAlarmSettings({
+            chatId: chatRoomId,
+            alarmTime: newAppointmentData.alarmTime,
+            triggerAt: utcTriggerAt.toISOString(),
+            disableAlarm: false,
+          });
+        }
       }
     } catch (error) {
       console.error("약속 생성 중 오류 발생:", error);
@@ -935,7 +999,7 @@ export default function AppointmentEditModal({
           onClick={() => modal.closeWithResult(null)}
         ></div>
         <div className="z-10 max-h-[95vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
-          <h2 className="mb-5 text-center text-lg font-medium">
+          <h2 className="mb-5 text-lg font-medium text-center">
             {chatUsername ? `${chatUsername} 님과의 약속` : "상대방과의 약속"}
           </h2>
           <form onSubmit={handleSubmit}>
@@ -966,7 +1030,7 @@ export default function AppointmentEditModal({
                     type="text"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 pr-10 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-orange-500"
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm focus:border-orange-500 focus:outline-none focus:ring-orange-500"
                     required
                   />
                   <button
@@ -978,7 +1042,7 @@ export default function AppointmentEditModal({
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5 text-gray-400"
+                      className="w-5 h-5 text-gray-400"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -1002,7 +1066,7 @@ export default function AppointmentEditModal({
                 </div>
               </div>
 
-              <div className="mt-4 w-full overflow-hidden rounded-lg shadow-md">
+              <div className="w-full mt-4 overflow-hidden rounded-lg shadow-md">
                 <MapViewer
                   lat={
                     selectedLocationByAddressInfo?.latitude || params.latitude
@@ -1028,18 +1092,18 @@ export default function AppointmentEditModal({
               />
             </div>
 
-            <div className="mt-6 flex gap-3">
+            <div className="flex gap-3 mt-6">
               <button
                 type="button"
                 onClick={handleCancel}
-                className="flex-1 rounded-md border border-gray-300 bg-gray-100 py-2 font-medium text-gray-700 hover:bg-gray-200"
+                className="flex-1 py-2 font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
               >
                 취소
               </button>
               <button
                 type="submit"
                 disabled={isDisabled}
-                className="flex-1 rounded-md bg-orange-500 py-2 font-medium text-white hover:bg-orange-600 disabled:opacity-50"
+                className="flex-1 py-2 font-medium text-white bg-orange-500 rounded-md hover:bg-orange-600 disabled:opacity-50"
               >
                 {isUserLoading
                   ? "사용자 정보 로딩 중..."
@@ -1058,45 +1122,6 @@ export default function AppointmentEditModal({
     </>
   );
 }
-
-/*
-알림 트리거 시간 계산이 필요한 이유
-
-- 알림(AlarmSetting)은 "약속 시간"이 아니라, "약속 시간 몇 분/몇 시간/며칠 전"에 울려야 합니다.
-- 예를 들어, 약속이 2024-06-10 15:00이고, 알림이 "30분 전"이면 실제 알림이 울려야 할 시간은 2024-06-10 14:30입니다.
-- 따라서, 사용자가 선택한 alarmTime("10분 전", "30분 전" 등)과 appointmentTime(약속 시간)으로
-  실제로 알림이 울릴 정확한 시각(triggerAt)을 계산해야 합니다.
-- 이 triggerAt 값이 DB에 저장되고, node-schedule 등에서 알림 예약의 기준이 됩니다.
-
-정리:
-- 알림 트리거 시간 계산은 "언제 알림을 울릴지"를 정확히 결정하기 위해 반드시 필요합니다.
-*/
-
-// 문제 원인 설명:
-// AlarmTimeSelector에서 alarmTime을 변경하고 모달을 닫으면, 변경된 alarmTime이 서버에 저장되고
-// message 컴포넌트에서 약속보기 버튼을 눌러 AppointmentEditModal을 다시 열 때
-// 최신 alarmTime이 반영되도록 하려면
-// message 리스트(혹은 약속 데이터)를 fetch/리패칭하는 로직이 필요합니다.
-//
-// 따라서, 약속/알림을 수정한 뒤 모달이 닫힐 때
-// 부모 컴포넌트(메시지 리스트 등)에서 데이터를 다시 불러오는 함수(예: fetchMessages, refetch, mutate 등)를 호출해야 합니다.
-//
-// 이 코드는 AppointmentEditModal의 onSuccess(즉, 약속 생성/수정 성공 후)에서
-// 모달을 닫기 전에 부모에게 "데이터를 다시 불러와라"는 신호를 주는 콜백을 실행하도록 수정하면 됩니다.
-//
-// 즉, AppointmentEditModal의 onSuccess(= useMutation의 onSuccess)에서
-// props로 전달받은 refetchMessages, onUpdate, onChange 등 콜백을 호출하도록 수정하면 됩니다.
-// 2. React Query, SWR 등으로 message 데이터를 invalidate/refetch 하거나
-// 3. 상태 관리(예: Redux, Context 등)로 message 데이터를 갱신해야 합니다.
-//
-// 결론:
-// message 컴포넌트가 사용하는 약속 데이터가 최신 상태로 갱신되지 않아서
-// alarmTime 변경이 UI에 반영되지 않는 것입니다.
-// 3. 상태 관리(예: Redux, Context 등)로 message 데이터를 갱신해야 합니다.
-//
-// 결론:
-// message 컴포넌트가 사용하는 약속 데이터가 최신 상태로 갱신되지 않아서
-// alarmTime 변경이 UI에 반영되지 않는 것입니다.
 
 /*
 알림 트리거 시간 계산이 필요한 이유

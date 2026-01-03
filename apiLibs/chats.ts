@@ -53,6 +53,7 @@ export async function readChatMeetup(chatRoomId: number) {
 // Updated ChatMeetup creation API function
 export async function writeChatMeetup(params: ChatMeetupParams) {
   // 약속 생성 + 약속 메시지 생성 API 호출
+  params.alarmTime = null;
   const response = await aclient.post<ChatMeetupResponse>(
     `/api/chat-meetups/${params.chatRoomId}`,
     params
@@ -68,6 +69,7 @@ export async function writeChatMeetup(params: ChatMeetupParams) {
 export async function updateChatMeetup(params: ChatMeetupParams) {
   console.log("Updating chat meetup:", params);
   // 약속 수정 API 호출 (PATCH /api/chat-meetups/[id])
+  params.alarmTime = null;
   const response = await aclient.patch<ChatMeetupResponse>(
     `/api/chat-meetups/${params.chatRoomId}`,
     params
@@ -250,7 +252,7 @@ export const writeAlarmSettings = async (params: {
     };
   }
 
-  const response = await aclient.patch(
+  const response = await aclient.put(
     `/api/alarm-settings/${params.chatId}`,
     payload
   );

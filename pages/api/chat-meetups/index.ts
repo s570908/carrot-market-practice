@@ -21,7 +21,6 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
       chatRoomId,
     } = req.body;
     const { user } = req.session;
-
     if (!user?.id) {
       return res.status(401).json({ ok: false, error: "로그인이 필요합니다" });
     }
@@ -101,7 +100,7 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
       place,
       locationLatitude,
       locationLongitude,
-      alarmTime,
+      // alarmTime,
     } = req.body;
 
     if (!chatRoomId) {
@@ -131,7 +130,7 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
         updateData.locationLatitude = locationLatitude;
       if (locationLongitude !== undefined)
         updateData.locationLongitude = locationLongitude;
-      if (alarmTime !== undefined) updateData.alarmTime = alarmTime;
+      // if (alarmTime !== undefined) updateData.alarmTime = alarmTime;
 
       const updatedMeetup = await client.chatMeetup.update({
         where: { id: existingMeetup.id },
