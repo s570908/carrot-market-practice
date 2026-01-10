@@ -183,3 +183,73 @@ export function startPushSubscriptionMonitoring(): void {
     clearInterval(intervalId);
   });
 }
+
+/**
+ * 만료된 구독을 처리하고 갱신하는 함수
+ * 
+ * 1. 기존 구독 해제
+ * 2. 새 구독 생성
+ * 3. 서버에 새 구독 정보 전송
+ */
+export async function handleExpiredSubscription() {
+  try {
+    // 1. 기존 구독 해제
+    const registration = await navigator.serviceWorker.ready;
+    const existingSubscription = await registration.pushManager.getSubscription();
+    
+    if (existingSubscription) {
+      await existingSubscription.unsubscribe();
+    }
+
+    // 2. 새 구독 생성
+    const newSubscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!) as BufferSource
+    });
+
+    // 3. 서버에 새 구독 정보 전송
+    await fetch('/api/push-subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subscription: newSubscription,
+        action: 'renew'
+      })
+    });
+
+    return { success: true, subscription: newSubscription };
+  } catch (error) {
+    console.error('구독 갱신 실패:', error);
+    return { success: false, error };
+  }
+}
+
+// 주기적으로 구독 상태 확인
+export async function checkSubscriptionStatus() {
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+    
+    if (!subscription) {
+      // 구독이 없으면 새로 생성
+      return await handleExpiredSubscription();
+    }
+
+    // 구독 상태 테스트 (서버에 테스트 요청 전송)
+    const testResult = await fetch('/api/push-test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subscription })
+    });
+
+    if (!testResult.ok) {
+      // 테스트 실패 시 구독 갱신
+      return await handleExpiredSubscription();
+    }
+
+    return { success: true, subscription };
+  } catch (error) {
+    console.error('구독 상태 확인 실패:', error);
+    return { success: false, error };
+  }
+}

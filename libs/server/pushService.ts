@@ -42,12 +42,14 @@ export async function sendPushNotification(
     // payload를 문자열로 변환
     const stringifiedPayload = JSON.stringify(payload);
 
+    console.log("before webpush.sendNotification:", { subscription, stringifiedPayload });
     // 푸시 알림 전송
     await webpush.sendNotification(
       subscription,
       stringifiedPayload
     );
 
+    console.log("Push notification sent successfully");
     return { success: true };
   } catch (error) {
     console.error('Push notification error:', error);

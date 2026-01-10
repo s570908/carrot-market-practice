@@ -21,16 +21,16 @@ export async function callAlarmTrigger({ baseUrl, alarmId}: CallAlarmTriggerPara
     where: { id: alarmId },
     include: {
       user: true,
-      sellerChat: {
-        include: {
-          chatRoom: {
-            include: {
-              product: true
-            }
-          }
-        }
-      },
-      chatMeetup: true
+      // sellerChat: {
+      //   include: {
+      //     chatRoom: {
+      //       include: {
+      //         product: true
+      //       }
+      //     }
+      //   }
+      // },
+      // chatMeetup: true
     }
   });
 
@@ -53,12 +53,19 @@ export async function callAlarmTrigger({ baseUrl, alarmId}: CallAlarmTriggerPara
   });
 
   // 푸시 알림 페이로드 구성을 위한 변수 정의
-  const chatRoom = alarm.sellerChat?.chatRoom;
-  const meetup = alarm.chatMeetup;
+  // chatRoom과 meetup을 alarm.chatRoomId로 직접 조회
+  const chatRoom = await client.chatRoom.findUnique({
+    where: { id: alarm.chatRoomId },
+    include: { product: true },
+  });
 
-  // 사용자의 푸시 구독 정보 조회
+  const meetup = await client.chatMeetup.findFirst({
+    where: { chatRoomId: alarm.chatRoomId },
+  });
+
+  // 사용자의 푸시 구독 정보 조회 (ACTIVE만 대상으로)
   const subscriptions = await client.pushSubscription.findMany({
-    where: { userId: alarm.userId }
+    where: { userId: alarm.userId, status: 'ACTIVE' }
   });
 
   let pushSent = false;
@@ -83,14 +90,10 @@ export async function callAlarmTrigger({ baseUrl, alarmId}: CallAlarmTriggerPara
         timestamp: new Date().getTime(),
       },
       requireInteraction: true
-    };    // 유효한 구독만 필터링 (ACTIVE 상태만 포함)
-    const activeSubscriptions = subscriptions.filter(sub => sub.status === 'ACTIVE');
-    
-    // 발송 전 로깅 (디버깅 정보)
-    console.log(`총 구독 수: ${subscriptions.length}, 활성 구독 수: ${activeSubscriptions.length}, 비활성 구독 수: ${subscriptions.length - activeSubscriptions.length}`);
-    
+    };
+
     // 모든 활성 구독에 대해 푸시 알림 전송
-    for (const subscription of activeSubscriptions) {
+    for (const subscription of subscriptions) {
       try {
         const pushConfig = {
           endpoint: subscription.endpoint,
@@ -107,53 +110,27 @@ export async function callAlarmTrigger({ baseUrl, alarmId}: CallAlarmTriggerPara
           pushSent = true;
         } else {
           failedCount++;
-          if (result.error) reasons.push(result.error);          // 에러 코드에 따라 구독 상태 업데이트 및 자동 정리
-          if (result.error) {
-            // 에러 메시지로 상태 판단 (web-push 라이브러리의 에러 메시지 패턴 활용)
-            if (result.error.includes('410') || result.error.includes('expired') || 
-                result.error.includes('unsubscribed') || 
-                result.error === 'Received unexpected response code') {
-              // 410 Gone 또는 만료된 구독의 경우
-              if (process.env.AUTO_DELETE_EXPIRED_SUBSCRIPTIONS === 'true') {
-                // 환경 변수로 자동 삭제 활성화된 경우 바로 삭제
-                try {
-                  await client.pushSubscription.delete({
-                    where: { id: subscription.id }
-                  });
-                  console.log(`Subscription ${subscription.id} automatically deleted due to 410 Gone.`);
-                } catch (deleteError) {
-                  console.error(`Failed to delete expired subscription ${subscription.id}:`, deleteError);
-                  // 삭제 실패 시 상태만 업데이트
-                  await client.pushSubscription.update({
-                    where: { id: subscription.id },
-                    data: { status: 'EXPIRED' }
-                  });
-                }
-              } else {
-                // 자동 삭제가 비활성화된 경우 상태만 업데이트
-                await client.pushSubscription.update({
-                  where: { id: subscription.id },
-                  data: { status: 'EXPIRED' }
-                });
-              }
-            } 
-            else if (result.error.includes('404') || result.error.includes('not found')) {
-              // 404 Not Found - 구독을 찾을 수 없음 (상태 업데이트 또는 선택적 자동 삭제)
-              if (process.env.AUTO_DELETE_INVALID_SUBSCRIPTIONS === 'true') {
-                await client.pushSubscription.delete({
-                  where: { id: subscription.id }
-                });
-                console.log(`Subscription ${subscription.id} automatically deleted due to 404 Not Found.`);
-              } else {
-                await client.pushSubscription.update({
-                  where: { id: subscription.id },
-                  data: { status: 'INVALID' }
-                });
-              }
-            }
-            else {
-              // 그 외의 에러는 일시적인 문제일 수 있으므로 상태 유지
-              console.error(`Push error for subscription ${subscription.id}: ${result.error}`);
+          if (result.error) reasons.push(result.error);
+          // 410 Gone 등 만료 에러 발생 시 구독 상태를 즉시 EXPIRED로 업데이트
+          if (result.error && (
+            result.error.includes('410') ||
+            result.error.includes('expired') ||
+            result.error.includes('unsubscribed') ||
+            result.error === 'Received unexpected response code'
+          )) {
+            // 자동 삭제 옵션이 활성화된 경우 바로 삭제
+            if (process.env.AUTO_DELETE_EXPIRED_SUBSCRIPTIONS === 'true') {
+              await client.pushSubscription.delete({
+                where: { id: subscription.id }
+              });
+              console.log(`Subscription ${subscription.id} automatically deleted due to expiration.`);
+            } else {
+              // 구독을 EXPIRED로 마킹
+              await client.pushSubscription.update({
+                where: { id: subscription.id },
+                data: { status: 'EXPIRED' }
+              });
+              console.log(`Subscription ${subscription.id} marked as EXPIRED.`);
             }
           }
         }
@@ -168,9 +145,12 @@ export async function callAlarmTrigger({ baseUrl, alarmId}: CallAlarmTriggerPara
           error: errorMessage, 
           subscriptionId: subscription.id 
         });
+        // 🔴 중복 제거: catch 블록에서는 상태 업데이트하지 않음 (위에서 이미 처리됨)
       }
     }
-  }  // 상세 결과는 유지하되, reasons 배열은 고유 항목으로 요약
+  }
+
+  // 상세 결과는 유지하되, reasons 배열은 고유 항목으로 요약
   const uniqueReasons = [...new Set(reasons)];
   const reasonsSummary = uniqueReasons.map(reason => {
     const count = reasons.filter(r => r === reason).length;

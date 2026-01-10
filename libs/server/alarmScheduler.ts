@@ -148,6 +148,8 @@ export async function scheduleAlarmById(alarmId: number, baseUrl: string) {
     }`
   );
 
+  console.log("Alarm details:", alarm);
+
   if (
     alarm &&
     (alarm as any).alarmTime &&

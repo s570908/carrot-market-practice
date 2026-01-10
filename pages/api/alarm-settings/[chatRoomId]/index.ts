@@ -3,7 +3,7 @@ import client from "@libs/client/client";
 import { withApiSession } from "@libs/server/withSession";
 import withHandler from "@libs/server/withHandler";
 import { AlarmStatus } from "@prisma/client";
-import { cancelExistingAlarm } from "@/libs/server/alarmScheduler";
+import { cancelExistingAlarm, scheduleAlarmById } from "@/libs/server/alarmScheduler";
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const {
@@ -223,7 +223,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             status: status ?? alarm.status,
           },
         });
-        return res.status(200).json({ ok: true, alarm, updated: true });
+        // --- 추가: 알람 예약 ---
+        const baseUrl =
+          process.env.NEXT_PUBLIC_API_URL ||
+          req.headers.origin ||
+          `http://${req.headers.host}`;
+        const scheduled = await scheduleAlarmById(alarm.id, baseUrl);
+        console.log(
+          `[알림 PUT] scheduleAlarmById 호출됨: alarmId=${alarm.id}, result=${scheduled}`
+        );
+        return res.status(200).json({ ok: true, alarm, updated: true, scheduled });
       } else {
         // 3. 없으면 생성
         alarm = await client.alarmSetting.create({
@@ -235,7 +244,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             status: status ?? AlarmStatus.SCHEDULED,
           },
         });
-        return res.status(201).json({ ok: true, alarm, created: true });
+        // --- 추가: 알람 예약 ---
+        const baseUrl =
+          process.env.NEXT_PUBLIC_API_URL ||
+          req.headers.origin ||
+          `http://${req.headers.host}`;
+        const scheduled = await scheduleAlarmById(alarm.id, baseUrl);
+        console.log(
+          `[알림 PUT] scheduleAlarmById 호출됨: alarmId=${alarm.id}, result=${scheduled}`
+        );
+        return res.status(201).json({ ok: true, alarm, created: true, scheduled });
       }
     } catch (error) {
       return res.status(500).json({ ok: false, error: "Failed to upsert alarm setting" });

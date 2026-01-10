@@ -17,6 +17,7 @@ import PushNotificationService from "@components/PushNotificationService";
 import { useRouter } from "next/router";
 import AppInitializer from "@/components/AppInitializer";
 import axios from "axios";
+import PushSubscriptionManager from "@/components/PushSubscriptionManager";
 
 // QueryClient 생성
 const queryClient = new QueryClient({
@@ -107,7 +108,7 @@ function AppContent({
   // SSR 중에는 기본 컴포넌트만 렌더링
   if (!isMounted) {
     return (
-      <div className="mx-auto w-full max-w-xl">
+      <div className="w-full max-w-xl mx-auto">
         <Component {...pageProps} /> {/* 🟢 서버와 동일한 렌더링 */}
       </div>
     );
@@ -115,7 +116,8 @@ function AppContent({
 
   // 클라이언트에서만 ToastContainer 등 추가 기능 렌더링
   return (
-    <div className="mx-auto w-full max-w-xl">
+    <div className="w-full max-w-xl mx-auto">
+      {/* <PushSubscriptionManager /> */}
       <Component {...pageProps} />
       <AppInitializer />
       <ToastContainer

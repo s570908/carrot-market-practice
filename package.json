@@ -10,7 +10,8 @@
     "prisma:seed": "node prisma/seed.js",
     "prisma:miggen": "prisma migrate dev --name $npm_config_name && prisma generate",
     "prisma:dbpush": "prisma db push",
-    "json-server": "json-server --watch libs/server/db.json --port 4000"
+    "json-server": "json-server --watch libs/server/db.json --port 4000",
+    "cleanup-subscriptions": "tsx scripts/cleanup-subscriptions.ts"
   },
   "dependencies": {
     "@dnd-kit/accessibility": "^3.1.1",
