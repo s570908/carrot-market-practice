@@ -177,8 +177,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     enabled: !!id,
   });
 
-  console.log("alarmSettingsData:", alarmSettingsData);
-
   // ActionSheet가 열릴 때마다 alarmSettings를 refetch
   useEffect(() => {
     if (alarmSheetOpen) {
@@ -1299,8 +1297,6 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     data?.chatRoomOfSeller?.alarmSettings?.find(
       (alarm: { userId: number }) => alarm.userId === user?.id
     ) ?? null;
-
-  console.log("userAlarmSetting: ", userAlarmSetting);
 
   let optionsMenu: Option[] = selling
     ? [

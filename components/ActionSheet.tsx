@@ -37,8 +37,6 @@ export default function ActionSheet({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
-
-console.log("ActionSheet rendered with selectedValue:", selectedValue);
   
   return (
     <AnimatePresence>
