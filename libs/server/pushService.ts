@@ -39,6 +39,19 @@ export async function sendPushNotification(
   payload: PushPayload
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // DB에서 해당 endpoint의 구독 상태를 확인
+    const dbSub = await client.pushSubscription.findFirst({
+      where: { endpoint: subscription.endpoint }
+    });
+    
+    if (!dbSub) {
+      throw new Error("subscription not found in database");
+    }
+    
+    if (dbSub.status !== PushSubscriptionStatus.ACTIVE) {
+      throw new Error(`${dbSub.status.toLowerCase()}`);
+    }
+
     // payload를 문자열로 변환
     const stringifiedPayload = JSON.stringify(payload);
 
@@ -53,9 +66,9 @@ export async function sendPushNotification(
     return { success: true };
   } catch (error) {
     console.error('Push notification error:', error);
+    
     // 410 Gone 처리: 구독 만료/삭제 시 DB에서 비활성화
     if (error && typeof error === 'object' && 'statusCode' in error && error.statusCode === 410 && 'endpoint' in error) {
-      // endpoint로 구독 찾기
       try {
         const endpoint = typeof error.endpoint === 'string' ? error.endpoint : undefined;
         if (endpoint) {
@@ -72,6 +85,7 @@ export async function sendPushNotification(
         console.error('DB update error for expired subscription:', dbError);
       }
     }
+    
     return { 
       success: false, 
       error: error instanceof Error ? error.message : 'Unknown error' 

@@ -111,26 +111,48 @@ export async function callAlarmTrigger({ baseUrl, alarmId}: CallAlarmTriggerPara
         } else {
           failedCount++;
           if (result.error) reasons.push(result.error);
-          // 410 Gone 등 만료 에러 발생 시 구독 상태를 즉시 EXPIRED로 업데이트
-          if (result.error && (
-            result.error.includes('410') ||
-            result.error.includes('expired') ||
-            result.error.includes('unsubscribed') ||
-            result.error === 'Received unexpected response code'
-          )) {
+
+          // 구독 상태가 ACTIVE가 아닌 경우 (예: "expired", "inactive", "invalid")
+          if (
+            result.error === "expired" ||
+            result.error === "inactive" ||
+            result.error === "invalid" ||
+            result.error === "subscription not found in database"
+          ) {
+            // 이미 비활성화된 상태 또는 DB에 없는 구독이므로 추가 DB 업데이트/삭제 불필요
+            console.log(`Subscription ${subscription.id} status: ${result.error}, skipping DB update.`);
+            
+            // inactive/invalid 상태의 구독을 자동 정리하려면:
+            // (선택사항) AUTO_DELETE_INACTIVE_SUBSCRIPTIONS 환경변수가 true일 때만 삭제
+            if (process.env.AUTO_DELETE_INACTIVE_SUBSCRIPTIONS === 'true') {
+              await client.pushSubscription.delete({
+                where: { id: subscription.id }
+              });
+              console.log(`Subscription ${subscription.id} (${result.error}) automatically deleted.`);
+            }
+          }
+          // 410 Gone 등 네트워크/FCM 만료 에러 발생 시 구독 상태를 즉시 EXPIRED로 업데이트
+          else if (
+            result.error &&
+            (
+              result.error.includes('410') ||
+              result.error.includes('unsubscribed') ||
+              result.error === 'Received unexpected response code'
+            )
+          ) {
             // 자동 삭제 옵션이 활성화된 경우 바로 삭제
             if (process.env.AUTO_DELETE_EXPIRED_SUBSCRIPTIONS === 'true') {
               await client.pushSubscription.delete({
                 where: { id: subscription.id }
               });
-              console.log(`Subscription ${subscription.id} automatically deleted due to expiration.`);
+              console.log(`Subscription ${subscription.id} automatically deleted due to FCM 410 Gone.`);
             } else {
               // 구독을 EXPIRED로 마킹
               await client.pushSubscription.update({
                 where: { id: subscription.id },
                 data: { status: 'EXPIRED' }
               });
-              console.log(`Subscription ${subscription.id} marked as EXPIRED.`);
+              console.log(`Subscription ${subscription.id} marked as EXPIRED due to FCM error.`);
             }
           }
         }
