@@ -716,15 +716,15 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         }
       });
 
-      socket.on("alarm_setting_changed", (data: any) => {
-        console.log("alarm_setting_changed event received:", data);
-        if (id && data.chatRoomId === id) {
-          // 나 자신이 보낸 이벤트가 아닌 경우에만 refetch (이미 로컬에서 처리했으므로)
-          if (data.updatedBy !== user?.id) {
-            refetchChat();
-          }
-        }
-      });
+      // socket.on("alarm_setting_changed", (data: any) => {
+      //   console.log("alarm_setting_changed event received:", data);
+      //   if (id && data.chatRoomId === id) {
+      //     // 나 자신이 보낸 이벤트가 아닌 경우에만 refetch (이미 로컬에서 처리했으므로)
+      //     if (data.updatedBy !== user?.id) {
+      //       refetchChat();
+      //     }
+      //   }
+      // });
 
       // // 3. 리스너 등록 후 룸 참여 요청 (roomName 재선언 없이 사용)
       // socket.emit("joinRoom", { room: roomName });
@@ -756,7 +756,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
       return () => {
         socket.off("message");
-        socket.off("alarm_setting_changed");
+        // socket.off("alarm_setting_changed");
         socket.off("joined_room");
         socket.off("meetupCreated");
         socket.off("meetupUpdated");
@@ -1071,6 +1071,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
           break;
         case "1시간 전":
           triggerAt.setHours(triggerAt.getHours() - 1);
+          break;
+        case "1일 전":
+          triggerAt.setDate(triggerAt.getDate() - 1);
           break;
         default:
           alert("올바르지 않은 알림 시간입니다.");
@@ -1556,7 +1559,44 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                   setAlarmSheetOpen(true);
                 }}
               >
-                {`알림 ${userAlarmSetting ? userAlarmSetting?.alarmTime : "없음"}`}
+                {`알림 ${userAlarmSetting ? userAlarmSetting?.alarmTime : "없음"}`}{/* {(() => {
+                  if (!userAlarmSetting?.alarmTime) {
+                    return "알림 없음";
+                  }
+                  
+                  // 약속 시간이 없으면 알림 없음
+                  if (!appointment?.appointmentTime) {
+                    return "알림 없음";
+                  }
+                  
+                  // 알림 트리거 시간 계산
+                  const appointmentDate = new Date(appointment.appointmentTime);
+                  let triggerAt = new Date(appointmentDate);
+                  
+                  switch (userAlarmSetting.alarmTime) {
+                    case "10분 전":
+                      triggerAt.setMinutes(triggerAt.getMinutes() - 10);
+                      break;
+                    case "30분 전":
+                      triggerAt.setMinutes(triggerAt.getMinutes() - 30);
+                      break;
+                    case "1시간 전":
+                      triggerAt.setHours(triggerAt.getHours() - 1);
+                      break;
+                    case "1일 전":
+                      triggerAt.setDate(triggerAt.getDate() - 1);
+                      break;
+                    default:
+                      return "알림 없음";
+                  }
+                  
+                  // 트리거 시간이 이미 지났으면 "알림 없음"
+                  if (triggerAt < new Date()) {
+                    return "알림 없음";
+                  }
+                  
+                  return `알림 ${userAlarmSetting.alarmTime}`;
+                })()} */}
               </button>
 
               {isSellingAndConsumer && (

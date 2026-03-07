@@ -182,7 +182,7 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
                 place: updatedMeetup.place,
                 locationLatitude: updatedMeetup.locationLatitude,
                 locationLongitude: updatedMeetup.locationLongitude,
-                alarmTime: updatedMeetup.alarmTime,
+                // alarmTime: updatedMeetup.alarmTime,
               }),
             },
             include: {
@@ -199,6 +199,7 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
           // --- alarmSetting의 triggerAt도 업데이트 ---
           // appointmentTime이 변경되었거나 alarmTime이 설정되어 있으면 triggerAt을 새로 계산
           let updatedAlarmSetting = null;
+          // To do: chatMeetup에는 alarmTime이 항상 null이다. 이 부분을 수정해야 한다.
           if (updatedMeetup.alarmTime) {
             const alarmSetting = await prisma.alarmSetting.findFirst({
               where: {
@@ -239,6 +240,7 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
               updatedAlarmSetting = await prisma.alarmSetting.update({
                 where: { id: alarmSetting.id },
                 data: {
+                  // chatMeetup에는 alarmTime이 항상 null이다. 이 부분을 수정해야 한다.
                   alarmTime: updatedMeetup.alarmTime,
                   triggerAt: newTriggerAt.toISOString(),
                 },

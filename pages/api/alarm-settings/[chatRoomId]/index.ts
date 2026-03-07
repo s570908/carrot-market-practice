@@ -220,7 +220,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           data: {
             alarmTime,
             triggerAt: new Date(triggerAt),
-            status: status ?? alarm.status,
+            // 항상 SCHEDULED로 상태를 되돌림 (알림 재설정 시)
+            status: AlarmStatus.SCHEDULED,
           },
         });
         // --- 추가: 알람 예약 ---
