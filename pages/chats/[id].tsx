@@ -1416,11 +1416,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
     return (
       <button
-        className={`text-md rounded-md border border-blue-500 bg-blue-50 p-1 text-blue-700 ${
-          isPast ? "cursor-not-allowed opacity-50" : "cursor-pointer"
-        }`}
+        className={`text-md rounded-md border border-blue-500 bg-blue-50 p-1 text-blue-700 cursor-pointer`}
         onClick={async () => {
-          if (isPast) return;
+          // if (isPast) return;
           // alarmSetting을 조회해서 현재 사용자(user)의 alarmTime을 전달
           let alarmTimeFromSetting: string | null = null;
           try {
@@ -1453,7 +1451,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
             refetchChat();
           }
         }}
-        disabled={isPast}
+        // disabled={isPast}
         title={isPast ? "이미 지난 약속입니다" : ""}
       >
         {formattedTime}
@@ -1582,7 +1580,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
             <div className="flex flex-row justify-between mt-2">
               {renderAppointmentButton()}
               <button
-                className="p-1 text-blue-700 border border-blue-500 rounded-md cursor-pointer text-md bg-blue-50"
+                className={`p-1 text-blue-700 border border-blue-500 rounded-md cursor-pointer text-md bg-blue-50 ${new Date(appointment?.appointmentTime ?? "") < new Date() ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
                 onClick={() => {
                   if (!appointment) {
                     alert("약속 정보가 없습니다. 약속을 먼저 잡아주세요.");
@@ -1596,6 +1594,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                   refetchAlarmSettings(); // 추가: ActionSheet 열기 전에 최신값 요청
                   setAlarmSheetOpen(true);
                 }}
+                title={new Date(appointment?.appointmentTime ?? "")< new Date() ? "이미 지난 약속입니다" : ""}
+                disabled={new Date(appointment?.appointmentTime ?? "") < new Date()}
               >
                 {`알림 ${userAlarmSetting ? userAlarmSetting?.alarmTime : "없음"}`}{/* {(() => {
                   if (!userAlarmSetting?.alarmTime) {
