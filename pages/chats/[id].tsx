@@ -1466,6 +1466,44 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   // console.log("MessageType.SYSTEM: ", MessageType)
   // console.log("message.messageType === MessageType.SYSTEM", message.messageType === MessageType.SYSTEM)
 
+  // 커스텀 이벤트 리스너 등록: Message 컴포넌트에서 약속 모달 오픈 요청 감지
+  useEffect(() => {
+    const handleOpenAppointmentModal = async (event: Event) => {
+      const customEvent = event as CustomEvent;
+      const {
+        appointmentTime,
+        place,
+        latitude,
+        longitude,
+        alarmTime,
+        chatMeetupId,
+      } = customEvent.detail;
+
+      try {
+        const result = await openAppointmentEditModal({
+          appointmentTime,
+          place,
+          latitude: latitude ?? 0,
+          longitude: longitude ?? 0,
+          alarmTime,
+          chatMeetupId,
+        });
+
+        if (result && result.success) {
+          refetchChat();
+        }
+      } catch (error) {
+        console.error("약속 모달 오픈 중 오류:", error);
+      }
+    };
+
+    window.addEventListener("openAppointmentModal", handleOpenAppointmentModal);
+
+    return () => {
+      window.removeEventListener("openAppointmentModal", handleOpenAppointmentModal);
+    };
+  }, [openAppointmentEditModal, refetchChat]);
+
   return (
     <>
       {renderReservedModal()}
@@ -1693,23 +1731,23 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                 new Date(parsedMeta.appointmentTime).getTime() < now.getTime();
 
               // 알림 설정 버튼 표시 여부 결정 - 과거 약속이면 완전히 제거
-              const showAlarmButton =
-                message.messageType === MessageType.SYSTEM &&
-                message.chatMsg.includes("알림이 울릴 거예요") &&
-                !isAppointmentPassed;
+              const showAlarmButton
+                = message.messageType === MessageType.SYSTEM
+                && message.chatMsg.includes("알림이 울릴 거예요")
+                && !isAppointmentPassed;
 
               // 약속 메시지에만 appointmentData 전달
-              const appointmentData =
-                isAppointmentMessage && parsedMeta.appointmentTime
+              const appointmentData
+                = isAppointmentMessage && parsedMeta.appointmentTime
                   ? {
-                      appointmentTime: parsedMeta.appointmentTime,
-                      place: parsedMeta.place,
-                      latitude: parsedMeta.locationLatitude ?? undefined,
-                      longitude: parsedMeta.locationLongitude ?? undefined,
-                      alarmTime: parsedMeta.alarmTime,
-                      isPast: isAppointmentPassed,
-                      chatMeetupId: parsedMeta.chatMeetupId,
-                    }
+                    appointmentTime: parsedMeta.appointmentTime,
+                    place: parsedMeta.place,
+                    latitude: parsedMeta.locationLatitude ?? undefined,
+                    longitude: parsedMeta.locationLongitude ?? undefined,
+                    alarmTime: parsedMeta.alarmTime,
+                    isPast: isAppointmentPassed,
+                    chatMeetupId: parsedMeta.chatMeetupId,
+                  }
                   : undefined;
 
               // 알림 설정 버튼이 비활성화된 경우 툴팁 메시지

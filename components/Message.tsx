@@ -67,17 +67,17 @@ export default function Message({
   otherName, // 기본값 제거
 }: MessageProps) {
   // AppointmentEditModal에 채팅방 ID 직접 전달
-  const {
-    openModal: openAppointmentModal,
-    renderModal: renderAppointmentModal,
-  } = useAwaitableModal((modal, params) => (
-    <AppointmentEditModal
-      modal={modal}
-      params={params}
-      chatRoomId={chatRoomId || 0} // 채팅방 ID 전달 (없으면 0 사용)
-      chatUsername={otherName}
-    />
-  ));
+  // const {
+  //   openModal: openAppointmentModal,
+  //   renderModal: renderAppointmentModal,
+  // } = useAwaitableModal((modal, params) => (
+  //   <AppointmentEditModal
+  //     modal={modal}
+  //     params={params}
+  //     chatRoomId={chatRoomId || 0} // 채팅방 ID 전달 (없으면 0 사용)
+  //     chatUsername={otherName}
+  //   />
+  // ));
 
   // 시간을 한국 시간대로 변환하고 포맷팅하는 함수
   const formatKoreanTime = (date: Date | string | undefined) => {
@@ -111,8 +111,6 @@ export default function Message({
       try {
         const alarmRes = await axios.get(`/api/alarm-settings/${chatRoomId}`);
         if (alarmRes.data.alarms && Array.isArray(alarmRes.data.alarms)) {
-          // 'user' is not defined in this scope; fall back to the first alarm entry
-          // or adjust this logic to use an available current-user id when available.
           const userAlarm = alarmRes.data.alarms[0] ?? null;
           alarmTimeFromSetting = userAlarm?.alarmTime ?? null;
         } else if (alarmRes.data.alarm) {
@@ -129,66 +127,27 @@ export default function Message({
         appointmentData?.chatMeetupId &&
         data.latestMeetup?.id !== appointmentData.chatMeetupId
       ) {
-        toast(
-          ({ closeToast }) => (
-            <div className="p-4bg-gray-800 rounded-lg shadow-lg">
-              <div className="mb-3 text-white">
-                이 약속은 다른 약속으로 변경되어 수정이 불가능합니다.
-                <br />
-                최신 약속을 보시겠습니까?
-              </div>
-              <div className="flex justify-center gap-2">
-                <button
-                  className="rounded bg-gray-100 px-3 py-1 text-gray-700 transition-colors hover:bg-gray-200"
-                  onClick={() => {
-                    closeToast();
-                  }}
-                >
-                  취소
-                </button>
-                <button
-                  className="rounded bg-orange-500 px-3 py-1 text-white transition-colors hover:bg-orange-600"
-                  onClick={async () => {
-                    closeToast();
-                    await openAppointmentModal({
-                      appointmentTime: data.lastestMeetup.appointmentTime,
-                      place:
-                        data.lastestMeetup.place ??
-                        data.lastestMeetup.locationName ??
-                        appointmentData.place,
-                      latitude:
-                        data.lastestMeetup.locationLatitude ??
-                        data.lastestMeetup.latitude ??
-                        appointmentData.latitude ??
-                        0,
-                      longitude:
-                        data.lastestMeetup.locationLongitude ??
-                        data.lastestMeetup.longitude ??
-                        appointmentData.longitude ??
-                        0,
-                      alarmTime: alarmTimeFromSetting,
-                      chatMeetupId: data.lastestMeetup?.id,
-                    });
-                  }}
-                >
-                  확인
-                </button>
-              </div>
-            </div>
-          ),
-          { autoClose: 3000 }
+        console.log(
+          "[로직 에러] chatRoom:chatMeetup이 1:1 관계라면 이 분기는 실행되면 안 됩니다.",
+          {
+            latestMeetupId: data.latestMeetup?.id,
+            appointmentChatMeetupId: appointmentData?.chatMeetupId,
+          }
         );
-        return;
       }
 
-      await openAppointmentModal({
-        appointmentTime: data.lastestMeetup.appointmentTime,
-        place: data.lastestMeetup.place,
-        latitude: data.lastestMeetup.locationLatitude,
-        longitude: data.lastestMeetup.locationLongitude,
-        alarmTime: alarmTimeFromSetting,
-        chatMeetupId: data.lastestMeetup.id,
+      // 커스텀 이벤트 발생: 부모 컴포넌트(채팅방)에서 약속 모달을 열도록 요청
+      const event = new CustomEvent("openAppointmentModal", {
+        detail: {
+          appointmentTime: data.lastestMeetup.appointmentTime,
+          place: data.lastestMeetup.place,
+          latitude: data.lastestMeetup.locationLatitude,
+          longitude: data.lastestMeetup.locationLongitude,
+          alarmTime: alarmTimeFromSetting,
+          chatMeetupId: data.lastestMeetup.id,
+        },
       });
+      window.dispatchEvent(event);
     } catch (error) {
       console.error("약속 확인 중 오류 발생:", error);
     }
@@ -201,9 +160,8 @@ export default function Message({
     //   hasActions: actions && actions.length > 0,
     //   actions
     // });
-
     return (
-      <div className="my-3 flex justify-center">
+      <div className="flex justify-center my-3">
         <div className="flex max-w-[80%] items-center gap-2 rounded-2xl bg-gray-100 px-4 py-2 text-sm text-gray-700 shadow-sm">
           <div className="flex items-center">{message}</div>
 
@@ -221,7 +179,7 @@ export default function Message({
 
                 if (action.type === "button") {
                   return (
-                    <div key={index} className="group relative">
+                    <div key={index} className="relative group">
                       <button
                         className={cls(
                           "rounded-md bg-orange-500 px-2 py-1 text-xs text-white transition-colors hover:bg-orange-600",
@@ -255,10 +213,10 @@ export default function Message({
                         {action.label}
                       </button>
                       {action.tooltip && (
-                        <div className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 transform opacity-0 transition-opacity group-hover:opacity-100">
-                          <div className="whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-white">
+                        <div className="absolute mb-2 transition-opacity transform -translate-x-1/2 opacity-0 bottom-full left-1/2 group-hover:opacity-100">
+                          <div className="px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap">
                             {action.tooltip}
-                            <div className="absolute left-1/2 top-full -mt-1 -translate-x-1/2 transform border-4 border-transparent border-t-gray-800"></div>
+                            <div className="absolute -mt-1 transform -translate-x-1/2 border-4 border-transparent left-1/2 top-full border-t-gray-800"></div>
                           </div>
                         </div>
                       )}
@@ -266,7 +224,7 @@ export default function Message({
                   );
                 } else if (action.type === "link") {
                   return (
-                    <div key={index} className="group relative">
+                    <div key={index} className="relative group">
                       <a
                         href={action.value}
                         className="px-2 py-1 text-xs text-blue-500 underline hover:text-blue-600"
@@ -280,10 +238,10 @@ export default function Message({
                         {action.label}
                       </a>
                       {action.tooltip && (
-                        <div className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 transform opacity-0 transition-opacity group-hover:opacity-100">
-                          <div className="whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-white">
+                        <div className="absolute mb-2 transition-opacity transform -translate-x-1/2 opacity-0 bottom-full left-1/2 group-hover:opacity-100">
+                          <div className="px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap">
                             {action.tooltip}
-                            <div className="absolute left-1/2 top-full -mt-1 -translate-x-1/2 transform border-4 border-transparent border-t-gray-800"></div>
+                            <div className="absolute -mt-1 transform -translate-x-1/2 border-4 border-transparent left-1/2 top-full border-t-gray-800"></div>
                           </div>
                         </div>
                       )}
@@ -306,7 +264,7 @@ export default function Message({
 
   return (
     <>
-      {renderAppointmentModal()}
+      {/* {renderAppointmentModal()} */}
       <div
         className={cls(
           "flex items-end space-y-8",
@@ -348,11 +306,11 @@ export default function Message({
               "flex w-full flex-row items-end justify-start"
             )}
           >
-            <div className="w-1/2 rounded-md border border-gray-300 p-2 text-sm text-gray-700">
+            <div className="w-1/2 p-2 text-sm text-gray-700 border border-gray-300 rounded-md">
               <p>{message}</p>
 
               {isAppointment && appointmentData && (
-                <div className="mt-2 border-t border-gray-200 pt-2">
+                <div className="pt-2 mt-2 border-t border-gray-200">
                   <div className="text-xs">
                     <span className="font-semibold">날짜:</span>{" "}
                     {appointmentDateTime.date}
@@ -366,23 +324,23 @@ export default function Message({
                     {appointmentData.place}
                   </div>
 
-                  <div className="mt-2 flex flex-col space-y-1">
+                  <div className="flex flex-col mt-2 space-y-1">
                     <button
                       onClick={handleShowAppointment}
-                      className="rounded-full bg-gray-200 px-2 py-1 text-xs hover:bg-gray-300"
+                      className="px-2 py-1 text-xs bg-gray-200 rounded-full hover:bg-gray-300"
                     >
-                      약속보기
+                      최신 약속보기
                     </button>
                   </div>
                 </div>
               )}
             </div>
             {actions && actions.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 mt-2">
                 {actions.map((action, index) => {
                   if (action.type === "button") {
                     return (
-                      <div key={index} className="group relative">
+                      <div key={index} className="relative group">
                         <button
                           className={cls(
                             "rounded-md px-2 py-1 text-xs text-white transition-colors",
@@ -396,10 +354,10 @@ export default function Message({
                           {action.label}
                         </button>
                         {action.tooltip && action.disabled && (
-                          <div className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 transform opacity-0 transition-opacity group-hover:opacity-100">
-                            <div className="whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-white">
+                          <div className="absolute mb-2 transition-opacity transform -translate-x-1/2 opacity-0 bottom-full left-1/2 group-hover:opacity-100">
+                            <div className="px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap">
                               {action.tooltip}
-                              <div className="absolute left-1/2 top-full -mt-1 -translate-x-1/2 transform border-4 border-transparent border-t-gray-800"></div>
+                              <div className="absolute -mt-1 transform -translate-x-1/2 border-4 border-transparent left-1/2 top-full border-t-gray-800"></div>
                             </div>
                           </div>
                         )}
@@ -407,7 +365,7 @@ export default function Message({
                     );
                   } else if (action.type === "link") {
                     return (
-                      <div key={index} className="group relative">
+                      <div key={index} className="relative group">
                         <a
                           href={action.value}
                           className="px-2 py-1 text-xs text-blue-500 underline hover:text-blue-600"
@@ -421,10 +379,10 @@ export default function Message({
                           {action.label}
                         </a>
                         {action.tooltip && (
-                          <div className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 transform opacity-0 transition-opacity group-hover:opacity-100">
-                            <div className="whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-white">
+                          <div className="absolute mb-2 transition-opacity transform -translate-x-1/2 opacity-0 bottom-full left-1/2 group-hover:opacity-100">
+                            <div className="px-2 py-1 text-xs text-white bg-gray-800 rounded whitespace-nowrap">
                               {action.tooltip}
-                              <div className="absolute left-1/2 top-full -mt-1 -translate-x-1/2 transform border-4 border-transparent border-t-gray-800"></div>
+                              <div className="absolute -mt-1 transform -translate-x-1/2 border-4 border-transparent left-1/2 top-full border-t-gray-800"></div>
                             </div>
                           </div>
                         )}
