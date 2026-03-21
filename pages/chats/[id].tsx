@@ -139,6 +139,9 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     refetchInterval: 300000, // 5분마다 데이터 재패칭
   });
 
+  const chatMeetup = data?.chatRoomOfSeller?.chatMeetup;
+  const appointmentTimeChatMeetup = chatMeetup?.appointmentTime
+  
   // 2. 약속 정보 react-query로 가져오기
   const {
     data: chatMeetupData,
@@ -152,8 +155,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     enabled: !!id,
   });
 
-  const appointment = chatMeetupData?.chatMeetup ?? null;
-  const chatMeetupId = appointment?.id ?? null;
+  // const appointment = chatMeetupData?.chatMeetup ?? null;
+  // const chatMeetupId = appointment?.id ?? null;
 
   // {
   //     "id": 142,
@@ -1013,13 +1016,13 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     console.log("선택된 알림 시간:", timeOption);
 
     try {
-      if (!appointment) {
+      if (!chatMeetup) {
         alert("약속 정보를 찾을 수 없습니다.");
         return;
       }
 
       // 2. 약속 시간이 이미 지났는지 확인
-      const meetupTime = new Date(appointment?.appointmentTime);
+      const meetupTime = new Date(appointmentTimeChatMeetup!);
       if (meetupTime < new Date()) {
         alert("이미 지난 약속입니다. 알림을 설정할 수 없습니다.");
         return;
@@ -1300,7 +1303,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     data?.chatRoomOfSeller?.alarmSettings?.find(
       (alarm: { userId: number }) => alarm.userId === user?.id
     ) ?? null;
-
+    
   let optionsMenu: Option[] = selling
     ? [
         { value: "예약중", label: "예약중", active: true },
@@ -1375,7 +1378,8 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   ProductStatusDisplay.displayName = "ProductStatusDisplay";
 
   // 약속 시간 포맷 함수
-  const formatDetailedAppointmentTime = (dateTime: string | Date) => {
+  const formatDetailedAppointmentTime = (dateTime: string | Date | undefined) => {
+    if (!dateTime) return "날짜 없음";
     const koreanDate = dayjs(dateTime).tz("Asia/Seoul");
     const now = dayjs().tz("Asia/Seoul");
     if (koreanDate.isSame(now, "day")) {
@@ -1401,18 +1405,20 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       );
     }
 
-    const chatMeetup = data?.chatRoomOfSeller?.chatMeetup;
+    // const chatMeetup = data?.chatRoomOfSeller?.chatMeetup;
     const formattedTime = formatDetailedAppointmentTime(
       chatMeetup?.appointmentTime
     );
-    const messageId = appointment?.id; // 최신 약속 메시지의 id
-    const chatMeetupId = chatMeetup.id; // chatMeetup의 id
+    
+    const chatMeetupId = chatMeetup?.id; // chatMeetup의 id
 
     // 약속이 있으면 시간 표시, 클릭시 수정 모달 오픈
     // 약속 시간이 지났는지 체크
-    const isPast = dayjs(chatMeetup.appointmentTime).isBefore(
-      dayjs().tz("Asia/Seoul")
-    );
+    const isPast = chatMeetup?.appointmentTime
+      ? dayjs(chatMeetup.appointmentTime).isBefore(
+          dayjs().tz("Asia/Seoul")
+        )
+      : false;
 
     return (
       <button
@@ -1435,14 +1441,14 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
             }
           } catch (err) {
             // 조회 실패 시 chatMeetup.alarmTime을 fallback
-            alarmTimeFromSetting = chatMeetup.alarmTime ?? null;
+            alarmTimeFromSetting = chatMeetup?.alarmTime ?? null;
           }
 
           const result = await openAppointmentEditModal({
-            appointmentTime: chatMeetup.appointmentTime,
-            place: chatMeetup.place,
-            latitude: chatMeetup.locationLatitude ?? 0,
-            longitude: chatMeetup.locationLongitude ?? 0,
+            appointmentTime: chatMeetup?.appointmentTime,
+            place: chatMeetup?.place,
+            latitude: chatMeetup?.locationLatitude ?? 0,
+            longitude: chatMeetup?.locationLongitude ?? 0,
             alarmTime: alarmTimeFromSetting,
             chatMeetupId: chatMeetupId,
           });
@@ -1502,10 +1508,83 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     };
   }, [openAppointmentEditModal, refetchChat]);
 
+  // 알림이 울릴 시간을 계산하는 함수 추가
+  const calculateAlarmTriggerTime = (appointmentTime: string | Date | undefined, alarmTime: string | undefined): string => {
+    if (!appointmentTime || !alarmTime || alarmTime === "없음") {
+      return "없음";
+    }
+
+    const triggerTime = new Date(appointmentTime);
+    
+    switch (alarmTime) {
+      case "10분 전":
+        triggerTime.setMinutes(triggerTime.getMinutes() - 10);
+        break;
+      case "30분 전":
+        triggerTime.setMinutes(triggerTime.getMinutes() - 30);
+        break;
+      case "1시간 전":
+        triggerTime.setHours(triggerTime.getHours() - 1);
+        break;
+      case "1일 전":
+        triggerTime.setDate(triggerTime.getDate() - 1);
+        break;
+      default:
+        return "없음";
+    }
+
+    // 트리거 시간이 이미 지났으면 "없음" 반환
+    if (triggerTime < new Date()) {
+      return "없음";
+    }
+
+    // 한국어 포맷으로 반환
+    const koreanDate = dayjs(triggerTime).tz("Asia/Seoul");
+    const now = dayjs().tz("Asia/Seoul");
+    
+    if (koreanDate.isSame(now, "day")) {
+      return `오늘 ${koreanDate.format("A h:mm")}`;
+    }
+    if (koreanDate.isSame(now.add(1, "day"), "day")) {
+      return `내일 ${koreanDate.format("A h:mm")}`;
+    }
+    return koreanDate.format("M월 D일 A h:mm");
+  };
+
+  // 알림 확인 모달 추가
+  const { openModal: openAlarmConfirmModal, renderModal: renderAlarmConfirmModal } =
+    useAwaitableModal((modal, params) => {
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => modal.closeWithResult(false)} />
+          <div className="z-50 p-6 bg-white rounded-lg shadow-xl w-80">
+            <h3 className="mb-2 text-lg font-medium text-gray-900">현재 알림</h3>
+            <p className="mb-6 text-gray-700">{params.alarmTime}</p>
+            <p className="mb-6 text-gray-600">알림을 변경하시겠습니까?</p>
+            <div className="flex gap-2">
+              <button
+                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                onClick={() => modal.closeWithResult(false)}
+              >
+                취소
+              </button>
+              <button
+                className="flex-1 px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600"
+                onClick={() => modal.closeWithResult(true)}
+              >
+                변경
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    });
+
   return (
     <>
       {renderReservedModal()}
       {renderAppointmentEditModal()}
+      {renderAlarmConfirmModal()}
       <ActionSheet
         isOpen={alarmSheetOpen}
         onClose={() => setAlarmSheetOpen(false)}
@@ -1580,61 +1659,55 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
             <div className="flex flex-row justify-between mt-2">
               {renderAppointmentButton()}
               <button
-                className={`p-1 text-blue-700 border border-blue-500 rounded-md cursor-pointer text-md bg-blue-50 ${new Date(appointment?.appointmentTime ?? "") < new Date() ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
-                onClick={() => {
-                  if (!appointment) {
+                className={`p-1 text-blue-700 border border-blue-500 rounded-md text-md bg-blue-50 ${
+                  !appointmentTimeChatMeetup || 
+                  appointmentTimeChatMeetup === null || 
+                  new Date(appointmentTimeChatMeetup).getTime() < new Date().getTime()
+                    ? "cursor-not-allowed opacity-50" 
+                    : "cursor-pointer"
+                }`}
+                onClick={async () => {
+                  if (!appointmentTimeChatMeetup || appointmentTimeChatMeetup === null) {
                     alert("약속 정보가 없습니다. 약속을 먼저 잡아주세요.");
                     return;
                   }
-                  const appointmentTime = new Date(appointment.appointmentTime ?? "");
-                  if (appointmentTime < new Date()) {
+                  const appointmentTime = new Date(appointmentTimeChatMeetup);
+                  if (isNaN(appointmentTime.getTime()) || appointmentTime < new Date()) {
                     alert("이미 지난 약속입니다. 알림을 설정할 수 없습니다.");
                     return;
                   }
-                  refetchAlarmSettings(); // 추가: ActionSheet 열기 전에 최신값 요청
+                  
+                  const alarmTriggerTime = calculateAlarmTriggerTime(
+                    appointmentTimeChatMeetup,
+                    userAlarmSetting?.alarmTime
+                  );
+                  
+                  // 커스텀 모달 사용
+                  const userConfirmed = await openAlarmConfirmModal({
+                    alarmTime: alarmTriggerTime
+                  });
+                  
+                  if (!userConfirmed) {
+                    return;
+                  }
+                  
+                  refetchAlarmSettings();
                   setAlarmSheetOpen(true);
                 }}
-                title={new Date(appointment?.appointmentTime ?? "")< new Date() ? "이미 지난 약속입니다" : ""}
-                disabled={new Date(appointment?.appointmentTime ?? "") < new Date()}
+                title={
+                  !appointmentTimeChatMeetup || 
+                  appointmentTimeChatMeetup === null || 
+                  new Date(appointmentTimeChatMeetup).getTime() < new Date().getTime()
+                    ? "이미 지난 약속입니다" 
+                    : ""
+                }
+                disabled={
+                  !appointmentTimeChatMeetup || 
+                  appointmentTimeChatMeetup === null || 
+                  new Date(appointmentTimeChatMeetup).getTime() < new Date().getTime()
+                }
               >
-                {`알림 ${userAlarmSetting ? userAlarmSetting?.alarmTime : "없음"}`}{/* {(() => {
-                  if (!userAlarmSetting?.alarmTime) {
-                    return "알림 없음";
-                  }
-                  
-                  // 약속 시간이 없으면 알림 없음
-                  if (!appointment?.appointmentTime) {
-                    return "알림 없음";
-                  }
-                  
-                  // 알림 트리거 시간 계산
-                  const appointmentDate = new Date(appointment.appointmentTime);
-                  let triggerAt = new Date(appointmentDate);
-                  
-                  switch (userAlarmSetting.alarmTime) {
-                    case "10분 전":
-                      triggerAt.setMinutes(triggerAt.getMinutes() - 10);
-                      break;
-                    case "30분 전":
-                      triggerAt.setMinutes(triggerAt.getMinutes() - 30);
-                      break;
-                    case "1시간 전":
-                      triggerAt.setHours(triggerAt.getHours() - 1);
-                      break;
-                    case "1일 전":
-                      triggerAt.setDate(triggerAt.getDate() - 1);
-                      break;
-                    default:
-                      return "알림 없음";
-                  }
-                  
-                  // 트리거 시간이 이미 지났으면 "알림 없음"
-                  if (triggerAt < new Date()) {
-                    return "알림 없음";
-                  }
-                  
-                  return `알림 ${userAlarmSetting.alarmTime}`;
-                })()} */}
+                알림 설정
               </button>
 
               {isSellingAndConsumer && (
