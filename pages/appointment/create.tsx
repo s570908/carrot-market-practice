@@ -601,11 +601,11 @@ const CreateAppointment = () => {
             </div>
 
             {/* 알림 시간 */}
-            <AlarmTimeSelector
+            {/* <AlarmTimeSelector
               value={alarmTime}
               onChange={setAlarmTime}
               appointmentTime={new Date(`${date}T${time}`)}
-            />
+            /> */}
           </div>
 
           {/* 완료 버튼 */}

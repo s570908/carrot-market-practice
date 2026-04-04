@@ -28,6 +28,7 @@ import {
   updateChatMeetup,
   writeAlarmSettings,
   getAlarmSettings,
+  cancelAlarmSettings,
 } from "@/apiLibs/chats";
 import { initializePushSubscription } from "@/libs/client/pushUtils";
 import axios from "axios";
@@ -126,11 +127,7 @@ export default function AppointmentEditModal({
                 latestAlarm.messageId !== responseData.message.id
               ) {
                 try {
-                  await axios.post(
-                    `/api/chat/${chatRoomId}/alarm-settings/${latestAlarm.messageId}/cancel`,
-                    {}
-                  );
-                  console.log(`기존 알림 취소됨: ${latestAlarm.id}`);
+                  await cancelAlarmSettings(chatRoomId);
                 } catch (cancelError) {
                   console.warn("기존 알림 취소 중 오류:", cancelError);
                 }
@@ -723,6 +720,18 @@ export default function AppointmentEditModal({
             triggerAt: utcTriggerAt.toISOString(),
             disableAlarm: false,
           });
+        } else {
+          // 알림이 무효화된 경우: 기존 SCHEDULED 알림이 있으면 취소
+          if (params.alarmTime && params.alarmTime !== "알림 없이 생성") {
+            try {
+              const alarmData = await getAlarmSettings(chatRoomId);
+              if (alarmData?.alarm?.status === "SCHEDULED") {
+                await cancelAlarmSettings(chatRoomId);
+              }
+            } catch (cancelError) {
+              console.warn("기존 알림 취소 중 오류:", cancelError);
+            }
+          }
         }
       }
     } catch (error) {
@@ -1085,11 +1094,11 @@ export default function AppointmentEditModal({
                 />
               </div>
 
-              <AlarmTimeSelector
+              {/* <AlarmTimeSelector
                 value={alarmTime ?? ""}
                 onChange={setAlarmTime}
                 appointmentTime={getCurrentAppointmentTime()}
-              />
+              /> */}
             </div>
 
             <div className="flex gap-3 mt-6">

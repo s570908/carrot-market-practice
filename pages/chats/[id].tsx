@@ -57,6 +57,7 @@ import { useAwaitableModal } from "@libs/client/useAwaitableModal";
 import { ProductWithImages } from "@/types";
 import ActionSheet from "@components/ActionSheet";
 import AppointmentEditModal from "@components/AppointmentEditModal";
+import { toast } from "react-toastify";
 
 type Option = {
   value: string;
@@ -558,7 +559,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         }
       }
 
-      alert(errorMessage);
+      toast.error(errorMessage);
     },
   });
 
@@ -1017,14 +1018,14 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
     try {
       if (!chatMeetup) {
-        alert("약속 정보를 찾을 수 없습니다.");
+        toast.error("약속 정보를 찾을 수 없습니다.");
         return;
       }
 
       // 2. 약속 시간이 이미 지났는지 확인
       const meetupTime = new Date(appointmentTimeChatMeetup!);
       if (meetupTime < new Date()) {
-        alert("이미 지난 약속입니다. 알림을 설정할 수 없습니다.");
+        toast.error("이미 지난 약속입니다. 알림을 설정할 수 없습니다.");
         return;
       }
 
@@ -1057,7 +1058,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
           return;
         } catch (error) {
           console.error("알림 해제 중 오류 발생:", error);
-          alert("알림 해제에 실패했습니다.");
+          toast.error("알림 해제에 실패했습니다.");
           return;
         }
       }
@@ -1079,13 +1080,13 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
           triggerAt.setDate(triggerAt.getDate() - 1);
           break;
         default:
-          alert("올바르지 않은 알림 시간입니다.");
+          toast.error("올바르지 않은 알림 시간입니다.");
           return;
       }
 
       // 알림 트리거 시간이 이미 지났는지 확인
       if (triggerAt < new Date()) {
-        alert(
+        toast.error(
           `선택한 알림 시간(${timeOption})이 이미 지났습니다. 다른 알림 시간을 선택해주세요.`
         );
         return;
@@ -1159,13 +1160,13 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         refetchChat();
       } catch (error) {
         console.error("알림 설정 중 오류 발생:", error);
-        alert("알림 설정에 실패했습니다.");
+        toast.error("알림 설정에 실패했습니다.");
       }
 
       console.log("=== 알림 시간 선택 디버깅 완료 ===");
     } catch (error) {
       console.error("알림 설정 중 오류 발생:", error);
-      alert("알림 설정에 실패했습니다.");
+      toast.error("알림 설정에 실패했습니다.");
     }
   };
 
@@ -1556,24 +1557,32 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     useAwaitableModal((modal, params) => {
       return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => modal.closeWithResult(false)} />
-          <div className="z-50 p-6 bg-white rounded-lg shadow-xl w-80">
-            <h3 className="mb-2 text-lg font-medium text-gray-900">현재 알림</h3>
-            <p className="mb-6 text-gray-700">{params.alarmTime}</p>
-            <p className="mb-6 text-gray-600">알림을 변경하시겠습니까?</p>
-            <div className="flex gap-2">
-              <button
-                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-                onClick={() => modal.closeWithResult(false)}
-              >
-                취소
-              </button>
-              <button
-                className="flex-1 px-4 py-2 text-white bg-blue-500 rounded-lg hover:bg-blue-600"
-                onClick={() => modal.closeWithResult(true)}
-              >
-                변경
-              </button>
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => modal.closeWithResult(false)} />
+          <div className="z-50 max-w-full p-0 border border-blue-200 shadow-2xl w-96 rounded-2xl bg-gradient-to-br from-white via-blue-50 to-blue-100 animate-fadeIn">
+            <div className="flex flex-col items-center px-8 py-8">
+              {/* Icon */}
+              <div className="flex items-center justify-center w-16 h-16 mb-4 bg-blue-100 rounded-full shadow-inner">
+                <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+              </div>
+              <h3 className="mb-1 text-xl font-bold tracking-tight text-blue-700">현재 알림</h3>
+              <p className="px-3 py-1 mb-4 text-lg font-medium text-blue-600 rounded shadow-sm bg-blue-50">{params.alarmTime}</p>
+              <p className="mb-8 text-center text-gray-600">알림을 변경하시겠습니까?</p>
+              <div className="flex w-full gap-3">
+                <button
+                  className="flex-1 px-4 py-2 font-semibold text-gray-700 transition-colors duration-150 bg-white border border-gray-300 shadow-sm rounded-xl hover:bg-gray-100"
+                  onClick={() => modal.closeWithResult(false)}
+                >
+                  취소
+                </button>
+                <button
+                  className="flex-1 px-4 py-2 font-semibold text-white transition-colors duration-150 shadow-md rounded-xl bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500"
+                  onClick={() => modal.closeWithResult(true)}
+                >
+                  변경
+                </button>
+              </div>
             </div>
           </div>
         </div>

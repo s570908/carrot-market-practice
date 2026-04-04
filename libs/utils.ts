@@ -250,6 +250,8 @@ export const calculateTriggerTime = (appointmentTime: Date, alarmTime: AlarmTime
     const alertTriggerTime = new Date(appointmentTime.getTime() - (alertMinutesBefore * 60 * 1000));
     const timeDiffInMinutes = Math.floor((alertTriggerTime.getTime() - now.getTime()) / (1000 * 60));
 
+    console.log(`약속 시간: ${appointmentTime}, 현재 시간: ${now}, 알림 시간: ${alarmTime}, 알림 발송 시간: ${alertTriggerTime}, 남은 시간(분): ${timeDiffInMinutes}, 유효 여부: ${isValid}`);
+
     return {
       isValid,
       timeDiffInMinutes,

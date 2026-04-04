@@ -299,6 +299,29 @@ export const deleteAlarmSettings = async (chatId: number) => {
 };
 
 /**
+ * 기존 SCHEDULED 알림을 취소하는 함수
+ * - node-schedule 작업 취소
+ * - DB에서 AlarmSetting.status를 CANCELED로 변경
+ * @param chatRoomId 채팅방 ID
+ * @param alarmId 알림 ID
+ */
+export const cancelAlarmSettings = async (
+  chatRoomId: number
+) => {
+  try {
+    const response = await aclient.post(
+      `/api/chat/${chatRoomId}/alarm-settings/cancel`,
+      {}
+    );
+    console.log(`기존 알림 취소됨: ${response.data}`);
+    return response.data;
+  } catch (error) {
+    console.warn("기존 알림 취소 중 오류:", error);
+    throw error;
+  }
+};
+
+/**
  * 알람 변경(취소 후 새로 생성/업데이트) 요청을 서버에 보내는 함수
  * 서버에서 기존 알림을 cancel하고 새 알림을 생성/스케줄링함
  */
