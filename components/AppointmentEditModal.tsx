@@ -9,8 +9,6 @@ import dayjs from "dayjs";
 import "dayjs/locale/ko"; // 한국어 로케일 추가 - 필수
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
-import AlarmTimeSelector from "./AlarmTimeSelector";
-import { validatealarmTime } from "@/libs/utils";
 import useUser from "@/libs/client/useUser";
 import { TmapAddressInfo } from "@/types";
 import type { ModalAPI } from "@/libs/client/useAwaitableModal";
@@ -24,18 +22,9 @@ import {
   writeChatMeetup,
   writeSystemMessage,
   SYSTEM_MESSAGES,
-  createAlarmSettings,
   updateChatMeetup,
-  writeAlarmSettings,
-  getAlarmSettings,
-  cancelAlarmSettings,
 } from "@/apiLibs/chats";
-import { initializePushSubscription } from "@/libs/client/pushUtils";
 import axios from "axios";
-import {
-  getLatestChatMeetup,
-  updateChatMeetupAlarmTime,
-} from "@/apiLibs/appointments";
 import { last } from "lodash";
 import useSocket from "@/libs/client/useSocket";
 
@@ -46,7 +35,6 @@ interface AppointmentEditModalProps {
     place: string;
     latitude: number;
     longitude: number;
-    alarmTime?: string | null;
     messageId?: number; // 메시지 id
     chatMeetupId?: number; // chatMeetup id
   };
@@ -106,64 +94,6 @@ export default function AppointmentEditModal({
           } catch (systemMessageError) {
             console.error("시스템 메시지 생성 실패:", systemMessageError);
           }
-          // 알림 설정 및 관련 메시지 처리
-          if (responseData.chatMeetup?.alarmTime && responseData.message?.id) {
-            try {
-              // 1. 동일 chatRoomId에 속한 가장 최근의 SCHEDULED AlarmSetting 조회
-              let latestAlarm: any = null;
-              try {
-                const latestMeetupData = await getLatestChatMeetup(chatRoomId);
-                if (latestMeetupData?.alarm) {
-                  latestAlarm = latestMeetupData.alarm;
-                }
-              } catch (fetchError) {
-                console.warn("기존 알림 조회 중 오류:", fetchError);
-              }
-
-              // 2. 기존 SCHEDULED 알림이 있고 새로 생성될 알림과 다르면 취소
-              if (
-                latestAlarm &&
-                latestAlarm.status === "SCHEDULED" &&
-                latestAlarm.messageId !== responseData.message.id
-              ) {
-                try {
-                  await cancelAlarmSettings(chatRoomId);
-                } catch (cancelError) {
-                  console.warn("기존 알림 취소 중 오류:", cancelError);
-                }
-              }
-
-              // 3. 새 알림 생성
-              const appointmentTime = new Date(
-                responseData.chatMeetup.appointmentTime
-              );
-              const triggerAt = calculateTriggerTime(
-                appointmentTime,
-                responseData.chatMeetup.alarmTime
-              );
-              const utcTriggerAt = new Date(triggerAt.toISOString());
-              await createAlarmSettings({
-                chatId: chatRoomId,
-                // messageId: responseData.message.id,
-                alarmTime: responseData.chatMeetup.alarmTime,
-                triggerAt: utcTriggerAt.toISOString(),
-                // disableAlarm: false,
-                // userId: user!.id,
-              } as any);
-              // 약속 생성 후 푸시 구독 상태 자동 갱신 시도 (만료된 구독 자동 복구)
-              try {
-                await initializePushSubscription();
-              } catch (pushError) {
-                console.warn("푸시 구독 자동 갱신 실패:", pushError);
-              }
-              console.log("알람 설정 완료 (알림 메시지 안내 없이)");
-            } catch (alarmError) {
-              console.error("알람 설정 중 오류 발생:", alarmError);
-              toast?.error?.(
-                "알람 설정에 실패했습니다. 채팅방에서 다시 설정해주세요."
-              );
-            }
-          }
         }
         toast?.success?.("약속이 생성되었습니다!");
 
@@ -200,12 +130,9 @@ export default function AppointmentEditModal({
           socket.emit("meetupUpdated", {
             chatRoomId: chatRoomId,
             chatMeetup: responseData.chatMeetup,
-            alarmSetting: responseData.alarmSetting,
           });
         }
         const updatedAppointmentTime = responseData.chatMeetup?.appointmentTime;
-        const updatedAlarmTime = responseData.chatMeetup?.alarmTime;
-        const oldAlarmData = await getAlarmSettings(chatRoomId);
         if (updatedAppointmentTime) {
           try {
             const systemMessageRes = await writeSystemMessage({
@@ -225,38 +152,6 @@ export default function AppointmentEditModal({
             }
           } catch (systemMessageError) {
             console.error("시스템 메시지 생성 실패:", systemMessageError);
-          }
-          if (updatedAlarmTime) {
-            try {
-              if (oldAlarmData && oldAlarmData.alarm?.status === "SCHEDULED") {
-                try {
-                  const triggerAt = calculateTriggerTime(
-                    updatedAppointmentTime,
-                    updatedAlarmTime
-                  );
-                  const utcTriggerAt = new Date(triggerAt.toISOString());
-                  await writeAlarmSettings({
-                    chatId: chatRoomId,
-                    alarmTime: updatedAlarmTime,
-                    triggerAt: utcTriggerAt.toISOString(),
-                    disableAlarm: false,
-                  });
-                } catch (cancelError) {
-                  console.warn("기존 알림 취소 중 오류:", cancelError);
-                }
-              }
-              try {
-                await initializePushSubscription();
-              } catch (pushError) {
-                console.warn("푸시 구독 자동 갱신 실패:", pushError);
-              }
-              console.log("알람 설정 완료 (알림 메시지 안내 없이)");
-            } catch (alarmError) {
-              console.error("알람 설정 중 오류 발생:", alarmError);
-              toast?.error?.(
-                "알람 설정에 실패했습니다. 채팅방에서 다시 설정해주세요."
-              );
-            }
           }
         }
         toast?.success?.("약속이 수정되었습니다!");
@@ -285,7 +180,6 @@ export default function AppointmentEditModal({
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [location, setLocation] = useState<string>(params.place);
-  const [alarmTime, setAlarmTime] = useState(params.alarmTime);
   const [changed, setChanged] = useState(false);
 
   const [selectedLocationByAddressInfo, setSelectedLocationByAddressInfo] =
@@ -333,28 +227,6 @@ export default function AppointmentEditModal({
       );
     }
   );
-
-  // 트리거 시간 계산 함수 (create.tsx에서 가져옴)
-  const calculateTriggerTime = (appointmentTime: Date, alarmTime: string) => {
-    const triggerTime = new Date(appointmentTime);
-
-    switch (alarmTime) {
-      case "10분 전":
-        triggerTime.setMinutes(triggerTime.getMinutes() - 10);
-        break;
-      case "30분 전":
-        triggerTime.setMinutes(triggerTime.getMinutes() - 30);
-        break;
-      case "1시간 전":
-        triggerTime.setHours(triggerTime.getHours() - 1);
-        break;
-      case "1일 전":
-        triggerTime.setDate(triggerTime.getDate() - 1);
-        break;
-    }
-
-    return triggerTime;
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -485,34 +357,12 @@ export default function AppointmentEditModal({
       // 현재 시간 (브라우저의 로컬 시간)
       const now = new Date();
       // triggerAt 계산
-      const triggerAt = calculateTriggerTime(
-        localDateTime,
-        alarmTime ?? "알림 없이 생성"
-      );
-      const utcTriggerAt = new Date(triggerAt.toISOString());
-
-      // 최종 알림 시간 결정 로직
-      let finalalarmTime = alarmTime;
-
       // 약속시간이 과거인 경우 메시지 수정
       if (localDateTime < now) {
         const proceed = confirm(
-          "선택하신 약속 시간이 이미 지났습니다.\n그래도 새로운 약속을 생성하시겠습니까?\n\n(과거의 약속에는 알림이 설정되지 않습니다)"
+          "선택하신 약속 시간이 이미 지났습니다.\n그래도 새로운 약속을 생성하시겠습니까?"
         );
         if (!proceed) return; // 사용자가 "취소"를 누르면 여기서 함수가 종료됨
-        finalalarmTime = "알림 없이 생성";
-      }
-      // 미래 시간이지만 현재 알림 시간이 유효하지 않은 경우 메시지 수정
-      else if (alarmTime !== "알림 없이 생성") {
-        const { isValid } = validatealarmTime(localDateTime, alarmTime ?? "");
-        if (!isValid) {
-          // triggerAt이 과거인 경우 등
-          const proceed = confirm(
-            `현재 약속 시간으로는 "${alarmTime}" 알림을 설정할 수 없습니다.\n알림 없이 새 약속을 생성하시겠습니까?`
-          );
-          if (!proceed) return; // 사용자가 "취소"를 누르면 여기서 함수가 종료됨
-          finalalarmTime = "알림 없이 생성";
-        }
       }
 
       const newAppointmentData = {
@@ -521,8 +371,7 @@ export default function AppointmentEditModal({
         place: finalLocation.selectedAddress ?? location,
         locationLatitude: finalLocation.latitude,
         locationLongitude: finalLocation.longitude,
-        alarmTime:
-          finalalarmTime === "알림 없이 생성" ? null : finalalarmTime ?? null, // undefined 방지
+        alarmTime: null, // alarmTime은 이 컴포넌트에서 처리하지 않음
       };
 
       const isChanged: boolean = isAppointmentChanged(
@@ -530,209 +379,11 @@ export default function AppointmentEditModal({
         newAppointmentData
       );
 
-      // "알림만 변경"인지 체크
-      const isAlarmOnlyChanged =
-        !(
-          date ||
-          time ||
-          location !== params.place ||
-          selectedLocationByAddressInfo?.latitude !== params.latitude ||
-          selectedLocationByAddressInfo?.longitude !== params.longitude
-        ) && alarmTime !== params.alarmTime;
-
       setChanged(isChanged);
-
-      // 알림만 변경된 경우: 시스템 메시지(APPOINTMENT_ALERT)만 생성 + 알림 설정 로직 추가
-      if (isAlarmOnlyChanged) {
-        try {
-          // 기존 alarmTime이 null(알림이 없던 상태) → 새 알림만 생성
-          // if (params.alarmTime == null) {
-          //   // 새 알림 생성
-          //   const appointmentTime = new Date(params.appointmentTime);
-          //   const triggerAt = calculateTriggerTime(
-          //     appointmentTime,
-          //     alarmTime ?? ""
-          //   );
-          //   const utcTriggerAt = new Date(triggerAt.toISOString());
-          //   // await updateChatMeetup({
-          //   //   chatRoomId: chatRoomId,
-          //   //   alarmTime: alarmTime ?? "",
-          //   //   appointmentTime: appointmentTime,
-          //   //   place: params.place,
-          //   //   locationLatitude: params.latitude,
-          //   //   locationLongitude: params.longitude,
-          //   // });
-          //   // alarmSetting upsert
-          //   await writeAlarmSettings({
-          //     chatId: chatRoomId,
-          //     alarmTime: alarmTime ?? "",
-          //     triggerAt: utcTriggerAt.toISOString(),
-          //   } as any);
-
-            
-          //   // 시스템 메시지 생성 (알림 변경 안내)
-          //   // await writeSystemMessage({
-          //   //   chatRoomId: chatRoomId,
-          //   //   message: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
-          //   //     alarmTime ?? "",
-          //   //     params.chatMeetupId ?? 0
-          //   //   ).message,
-          //   //   meta: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
-          //   //     alarmTime ?? "",
-          //   //     params.chatMeetupId ?? 0
-          //   //   ).meta,
-          //   //   userId: user?.id,
-          //   // });
-
-          //   try {
-          //     await initializePushSubscription();
-          //   } catch (pushError) {
-          //     console.warn("푸시 구독 자동 갱신 실패:", pushError);
-          //   }
-
-          //   toast?.success?.("알림이 설정되었습니다!");
-          //   modal.closeWithResult({ success: true });
-          //   reset();
-          //   return;
-          // }
-         
-          // 새 알림 생성
-            const appointmentTime = new Date(params.appointmentTime);
-            const triggerAt = calculateTriggerTime(
-              appointmentTime,
-              alarmTime ?? ""
-            );
-            const utcTriggerAt = new Date(triggerAt.toISOString());
-            // await updateChatMeetup({
-            //   chatRoomId: chatRoomId,
-            //   alarmTime: alarmTime ?? "",
-            //   appointmentTime: appointmentTime,
-            //   place: params.place,
-            //   locationLatitude: params.latitude,
-            //   locationLongitude: params.longitude,
-            // });
-            // alarmSetting upsert
-            await writeAlarmSettings({
-              chatId: chatRoomId,
-              alarmTime: alarmTime ?? "",
-              triggerAt: utcTriggerAt.toISOString(),
-            } as any);
-
-            
-            // 시스템 메시지 생성 (알림 변경 안내)
-            // await writeSystemMessage({
-            //   chatRoomId: chatRoomId,
-            //   message: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
-            //     alarmTime ?? "",
-            //     params.chatMeetupId ?? 0
-            //   ).message,
-            //   meta: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
-            //     alarmTime ?? "",
-            //     params.chatMeetupId ?? 0
-            //   ).meta,
-            //   userId: user?.id,
-            // });
-
-            try {
-              await initializePushSubscription();
-            } catch (pushError) {
-              console.warn("푸시 구독 자동 갱신 실패:", pushError);
-            }
-
-            toast?.success?.("알림이 설정되었습니다!");
-            modal.closeWithResult({ success: true });
-            reset();
-            return;
-          // 1. 기존 SCHEDULED 알림 조회 및 CANCELED로 변경
-          // try {
-          //   // 최신 chatMeetup의 messageId로 SCHEDULED 알림 조회
-          //   await getAlarmSettings(chatRoomId);
-          // } catch (fetchError) {
-          //   console.warn("기존 알림 조회/취소 중 오류:", fetchError);
-          // }
-
-          // // 2. 새 AlarmSetting 생성 (status: SCHEDULED)
-          // const appointmentTime = new Date(params.appointmentTime);
-          // const triggerAt = calculateTriggerTime(
-          //   appointmentTime,
-          //   alarmTime ?? ""
-          // );
-          // const utcTriggerAt = new Date(triggerAt.toISOString());
-          // await updateChatMeetup({
-          //   chatRoomId: chatRoomId,
-          //   alarmTime: alarmTime ?? "",
-          //   appointmentTime: appointmentTime,
-          //   place: params.place,
-          //   locationLatitude: params.latitude,
-          //   locationLongitude: params.longitude,
-          // });
-          // await writeAlarmSettings({
-          //   chatId: chatRoomId,
-          //   alarmTime: alarmTime ?? "",
-          //   triggerAt: utcTriggerAt.toISOString(),
-          // } as any);
-
-          // // 3. 시스템 메시지 생성 (알림 변경 안내)
-          // await writeSystemMessage({
-          //   chatRoomId: chatRoomId,
-          //   message: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
-          //     alarmTime ?? "",
-          //     params.chatMeetupId ?? 0
-          //   ).message,
-          //   meta: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
-          //     alarmTime ?? "",
-          //     params.chatMeetupId ?? 0
-          //   ).meta,
-          //   userId: user?.id,
-          // });
-
-          // try {
-          //   await initializePushSubscription();
-          // } catch (pushError) {
-          //   console.warn("푸시 구독 자동 갱신 실패:", pushError);
-          // }
-
-          // toast?.success?.("알림이 변경되었습니다!");
-          // modal.closeWithResult({ success: true });
-          // reset();
-        } catch (error) {
-          toast?.error?.("알림 변경 시스템 메시지/알림 설정 실패");
-          modal.closeWithResult({ success: true, withError: true });
-          reset();
-        }
-        return;
-      }
 
       // React Query의 useMutation으로 약속 생성 API 호출
       if (isChanged) {
         updateMeetup(newAppointmentData);
-
-        // 약속 정보가 바뀌었으니 alarmTime이 null이 아니면 알림 트리거 시간도 새로 저장
-        if (newAppointmentData.alarmTime) {
-          const triggerAt = calculateTriggerTime(
-            newAppointmentData.appointmentTime,
-            newAppointmentData.alarmTime
-          );
-          const utcTriggerAt = new Date(triggerAt.toISOString());
-          await writeAlarmSettings({
-            chatId: chatRoomId,
-            alarmTime: newAppointmentData.alarmTime,
-            triggerAt: utcTriggerAt.toISOString(),
-            disableAlarm: false,
-          });
-        } else {
-          // 알림이 무효화된 경우: 기존 SCHEDULED 알림이 있으면 취소
-          if (params.alarmTime && params.alarmTime !== "알림 없이 생성") {
-            try {
-              const alarmData = await getAlarmSettings(chatRoomId);
-              if (alarmData?.alarm?.status === "SCHEDULED") {
-                await cancelAlarmSettings(chatRoomId);
-              }
-            } catch (cancelError) {
-              console.warn("기존 알림 취소 중 오류:", cancelError);
-            }
-          }
-        }
       }
     } catch (error) {
       console.error("약속 생성 중 오류 발생:", error);
@@ -893,12 +544,8 @@ export default function AppointmentEditModal({
 3. onSuccess(responseData)
    - 약속 수정이 성공하면 실행
    - 1) 약속 데이터가 있으면 시스템 메시지(약속이 생성되었습니다)를 생성
-   - 2) 알림 시간이 있고 메시지 id가 있으면:
-      - a) 알림 트리거 시간 계산
-      - b) createAlarmSettings로 알림 설정(서버에 POST)
-      - c) 푸시 구독 상태 자동 갱신 시도
-   - 3) 성공 토스트 메시지 출력
-   - 4) 모달 닫기 및 상태 초기화
+   - 2) 성공 토스트 메시지 출력
+   - 3) 모달 닫기 및 상태 초기화
 
 4. onError
    - 약속 수정 중 에러 발생 시 에러 메시지 출력 및 상태 초기화
@@ -906,7 +553,7 @@ export default function AppointmentEditModal({
 정리:
 - updateMeetup({ chatRoomId, params })를 호출하면
   1. 서버에 약속 수정 요청
-  2. 성공 시 시스템 메시지, 알림 설정, 푸시 구독 갱신 등 후처리
+  2. 성공 시 시스템 메시지 등 후처리
   3. 실패 시 에러 처리 및 상태 초기화
   */
 
@@ -931,24 +578,19 @@ export default function AppointmentEditModal({
         Number(original.longitude ?? original.locationLongitude) -
           Number(updated.longitude)
       ) > 0.0001;
-    // 알림 비교
-    const alarmChanged =
-      (original.alarmTime ?? null) !== (updated.alarmTime ?? null);
 
     // 각 변경 여부를 콘솔에 출력
     console.log("시간 변경됨:", timeChanged);
     console.log("장소 변경됨:", placeChanged);
     console.log("위도 변경됨:", latitudeChanged);
     console.log("경도 변경됨:", longitudeChanged);
-    console.log("알림 변경됨:", alarmChanged);
 
     // 하나라도 변경되었으면 true 반환
     return (
       timeChanged ||
       placeChanged ||
       latitudeChanged ||
-      longitudeChanged ||
-      alarmChanged
+      longitudeChanged
     );
   }
 
@@ -981,22 +623,16 @@ export default function AppointmentEditModal({
     console.log("location: ", location);
     console.log("params.place: ", params.place);
     const isLocationChanged = location !== params.place;
-    // alarmTime은 params에 없으므로 초기값("30분 전")과 비교
-
-    console.log("alarmTime: ", alarmTime);
-    const isAlarmTimeChanged = alarmTime !== params.alarmTime;
 
     setChanged(
-      isDateChanged || isTimeChanged || isLocationChanged || isAlarmTimeChanged
+      isDateChanged || isTimeChanged || isLocationChanged
     );
   }, [
     date,
     time,
     location,
-    alarmTime,
     params.appointmentTime,
     params.place,
-    params.alarmTime,
   ]);
 
   return (
@@ -1093,12 +729,6 @@ export default function AppointmentEditModal({
                   containerClassName="w-full"
                 />
               </div>
-
-              {/* <AlarmTimeSelector
-                value={alarmTime ?? ""}
-                onChange={setAlarmTime}
-                appointmentTime={getCurrentAppointmentTime()}
-              /> */}
             </div>
 
             <div className="flex gap-3 mt-6">

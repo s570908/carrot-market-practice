@@ -1704,10 +1704,10 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                   setAlarmSheetOpen(true);
                 }}
                 title={
-                  !appointmentTimeChatMeetup || 
-                  appointmentTimeChatMeetup === null || 
-                  new Date(appointmentTimeChatMeetup).getTime() < new Date().getTime()
-                    ? "이미 지난 약속입니다" 
+                  !appointmentTimeChatMeetup || appointmentTimeChatMeetup === null
+                    ? ""
+                    : new Date(appointmentTimeChatMeetup).getTime() < new Date().getTime()
+                    ? "이미 지난 약속입니다"
                     : ""
                 }
                 disabled={

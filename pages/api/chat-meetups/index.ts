@@ -17,7 +17,6 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
       place,
       locationLatitude,
       locationLongitude,
-      alarmTime,
       chatRoomId,
     } = req.body;
     const { user } = req.session;
@@ -35,7 +34,7 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
 
     try {
       // 트랜잭션으로 메시지와 약속 생성
-      const [message, chatMeetup, alarmSetting] = await client.$transaction(
+      const [message, chatMeetup] = await client.$transaction(
         async (prisma) => {
           const createdMessage = await prisma.sellerChat.create({
             data: {
@@ -52,7 +51,6 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
               place,
               locationLatitude,
               locationLongitude,
-              alarmTime,
               chatRoom: { connect: { id: chatRoomId } }, // ✅ ChatRoom과 연결
               user: { connect: { id: user.id } }, // 생성자(주최자) 연결
             },
@@ -61,19 +59,7 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
             },
           });
 
-          const createdMyAlarmSetting = await prisma.alarmSetting.create({
-            data: {
-              userId: user.id,
-              chatRoomId: chatRoomId,
-              alarmTime,
-              triggerAt: new Date(
-                new Date(appointmentTime).getTime() - 30 * 60 * 1000
-              ).toISOString(),
-              status: AlarmStatus.SCHEDULED,
-            },
-          });
-
-          return [createdMessage, createdChatMeetup, createdMyAlarmSetting];
+          return [createdMessage, createdChatMeetup];
         }
       );
 
@@ -81,7 +67,6 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
         ok: true,
         chatMeetup,
         message,
-        alarmSetting,
       });
     } catch (error) {
       console.error("Error creating chat meetup:", error);

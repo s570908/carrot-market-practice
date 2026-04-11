@@ -59,11 +59,69 @@ export async function initializePushSubscription(): Promise<PushSubscription | n
         throw new Error("VAPID public key is not configured");
       }
 
+      // 🔍 디버깅: 상세 상태 확인
+      console.log("=== Push Subscribe 디버깅 시작 ===");
+      console.log("1. 알림 권한 상태:", Notification.permission);
+      console.log("2. 서비스 워커 상태:", registration.active?.state);
+      console.log("3. VAPID Public Key 길이:", publicKey.length);
+      console.log("4. VAPID Public Key (앞 20자):", publicKey.substring(0, 20) + "...");
+      
+      // 알림 권한 확인 및 요청
+      let permission = Notification.permission;
+      
+      if (permission === 'default') {
+        console.log("알림 권한이 'default' 상태입니다. 권한을 요청합니다...");
+        permission = await Notification.requestPermission();
+        console.log("권한 요청 결과:", permission);
+      }
+      
+      if (permission === 'denied') {
+        console.error("❌ 알림 권한이 거부되었습니다.");
+        throw new Error("알림 권한이 거부되었습니다. 브라우저 설정에서 알림을 허용해주세요.");
+      }
+      
+      if (permission !== 'granted') {
+        console.error("❌ 알림 권한이 'granted'가 아님:", permission);
+        throw new Error(`알림 권한이 필요합니다. 현재 상태: ${permission}`);
+      }
+      
+      console.log("✅ 알림 권한 확인됨: granted");
+
+      // 서비스 워커 활성화 상태 확인
+      if (!registration.active) {
+        console.error("❌ 서비스 워커가 활성화되지 않음");
+        console.log("   - installing:", registration.installing?.state);
+        console.log("   - waiting:", registration.waiting?.state);
+        throw new Error("서비스 워커가 아직 활성화되지 않았습니다.");
+      }
+
       console.log("Creating new push subscription...");
-      subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
-      });
+      try {
+        const convertedKey = urlBase64ToUint8Array(publicKey);
+        console.log("5. 변환된 applicationServerKey 길이:", convertedKey.length);
+        
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: convertedKey as BufferSource,
+        });
+        console.log("✅ pushManager.subscribe 성공:", subscription);
+        console.log("  - endpoint:", subscription.endpoint);
+      } catch (subscribeError: any) {
+        console.error("❌ pushManager.subscribe 실패:", subscribeError);
+        console.error("   - 에러 이름:", subscribeError.name);
+        console.error("   - 에러 메시지:", subscribeError.message);
+        
+        // 추가 진단 정보
+        if (subscribeError.name === 'AbortError') {
+          console.error("🔍 AbortError 가능한 원인:");
+          console.error("   1. VAPID 키가 잘못된 형식일 수 있음");
+          console.error("   2. 브라우저 푸시 서비스(FCM)에 연결할 수 없음");
+          console.error("   3. 네트워크 문제 또는 방화벽 차단");
+          console.error("   4. 브라우저 푸시 서비스 일시적 장애");
+        }
+        
+        throw subscribeError;
+      }
     }
 
     // 구독 정보를 서버에 전송

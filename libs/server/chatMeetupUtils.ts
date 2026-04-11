@@ -6,7 +6,6 @@ interface CreateMeetupParams {
   place: string;
   locationLatitude?: number;
   locationLongitude?: number;
-  alarmTime?: string;
   chatRoomId: number;
   userId: number;
   messageText: string;
@@ -19,7 +18,6 @@ export async function createChatMeetup(params: CreateMeetupParams) {
     place,
     locationLatitude,
     locationLongitude,
-    alarmTime,
     chatRoomId,
     userId,
     messageText,
@@ -53,7 +51,6 @@ export async function createChatMeetup(params: CreateMeetupParams) {
         place,
         locationLatitude,
         locationLongitude,
-        alarmTime,
         chatRoom: { connect: { id: chatRoomId } },
         user: { connect: { id: userId } },
       },
@@ -85,7 +82,6 @@ export function createSocketMessage(
       place: chatMeetup.place,
       locationLatitude: chatMeetup.locationLatitude,
       locationLongitude: chatMeetup.locationLongitude,
-      alarmTime: chatMeetup.alarmTime,
     },
     type: messageType,
   };

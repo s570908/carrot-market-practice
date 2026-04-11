@@ -191,7 +191,7 @@ const PushNotificationService = () => {
           pushSubscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
             // 사용자에게 보이는 알림만 허용 (백그라운드 알림 금지)
-            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource,
             // 서버에서 받은 VAPID 공개 키를 사용하여 구독 생성
           });
           

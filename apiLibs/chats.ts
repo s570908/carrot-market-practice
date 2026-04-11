@@ -69,7 +69,6 @@ export async function writeChatMeetup(params: ChatMeetupParams) {
 export async function updateChatMeetup(params: ChatMeetupParams) {
   console.log("Updating chat meetup:", params);
   // 약속 수정 API 호출 (PATCH /api/chat-meetups/[id])
-  params.alarmTime = null;
   const response = await aclient.patch<ChatMeetupResponse>(
     `/api/chat-meetups/${params.chatRoomId}`,
     params

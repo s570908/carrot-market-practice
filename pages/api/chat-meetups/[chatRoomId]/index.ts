@@ -48,7 +48,6 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
       place,
       locationLatitude,
       locationLongitude,
-      alarmTime,
     } = req.body;
 
     if (!appointmentTime || !place) {
@@ -60,7 +59,7 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
 
     try {
       // 약속 생성, alarmTime이 null이 아니면 alarmSetting도 생성
-      const [message, chatMeetup, alarmSetting] = await client.$transaction(
+      const [message, chatMeetup] = await client.$transaction(
         async (prisma) => {
           const createdChatMeetup = await prisma.chatMeetup.create({
             data: {
@@ -68,7 +67,6 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
               place,
               locationLatitude,
               locationLongitude,
-              alarmTime,
               chatRoom: { connect: { id: chatRoomId } },
               user: { connect: { id: user.id } },
             },
@@ -90,27 +88,11 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
                 place: createdChatMeetup.place,
                 locationLatitude: createdChatMeetup.locationLatitude,
                 locationLongitude: createdChatMeetup.locationLongitude,
-                alarmTime: createdChatMeetup.alarmTime,
               }),
             },
           });
 
-          let createdMyAlarmSetting = null;
-          if (alarmTime !== null && alarmTime !== undefined) {
-            createdMyAlarmSetting = await prisma.alarmSetting.create({
-              data: {
-                userId: user.id,
-                chatRoomId: chatRoomId,
-                alarmTime,
-                triggerAt: new Date(
-                  new Date(appointmentTime).getTime() - 30 * 60 * 1000
-                ).toISOString(),
-                status: AlarmStatus.SCHEDULED,
-              },
-            });
-          }
-
-          return [createdMessage, createdChatMeetup, createdMyAlarmSetting];
+          return [createdMessage, createdChatMeetup];
         }
       );
 
@@ -118,7 +100,6 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
         ok: true,
         chatMeetup,
         message,
-        alarmSetting,
       });
     } catch (error) {
       console.error("Error creating new chat meetup:", error);
@@ -135,7 +116,6 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
       place,
       locationLatitude,
       locationLongitude,
-      alarmTime,
     } = req.body;
 
     try {
@@ -159,7 +139,6 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
         updateData.locationLatitude = locationLatitude;
       if (locationLongitude !== undefined)
         updateData.locationLongitude = locationLongitude;
-      if ("alarmTime" in req.body) updateData.alarmTime = alarmTime;
 
       // Prisma transaction으로 약속 업데이트와 메시지 생성을 동시에 처리
       const [updatedMeetup, updatedMessage] = await client.$transaction(
@@ -182,7 +161,6 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
                 place: updatedMeetup.place,
                 locationLatitude: updatedMeetup.locationLatitude,
                 locationLongitude: updatedMeetup.locationLongitude,
-                // alarmTime: updatedMeetup.alarmTime,
               }),
             },
             include: {
@@ -195,59 +173,7 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
               },
             },
           });
-
-          // --- alarmSetting의 triggerAt도 업데이트 ---
-          // appointmentTime이 변경되었거나 alarmTime이 설정되어 있으면 triggerAt을 새로 계산
-          let updatedAlarmSetting = null;
-          // To do: chatMeetup에는 alarmTime이 항상 null이다. 이 부분을 수정해야 한다.
-          if (updatedMeetup.alarmTime) {
-            const alarmSetting = await prisma.alarmSetting.findFirst({
-              where: {
-                chatRoomId: chatRoomId,
-                userId: user.id,
-                status: AlarmStatus.SCHEDULED,
-              },
-            });
-
-            if (alarmSetting) {
-              function calculateTriggerTime(
-                appointmentTime: Date,
-                alarmTime: string
-              ) {
-                const triggerTime = new Date(appointmentTime);
-                switch (alarmTime) {
-                  case "10분 전":
-                    triggerTime.setMinutes(triggerTime.getMinutes() - 10);
-                    break;
-                  case "30분 전":
-                    triggerTime.setMinutes(triggerTime.getMinutes() - 30);
-                    break;
-                  case "1시간 전":
-                    triggerTime.setHours(triggerTime.getHours() - 1);
-                    break;
-                  case "1일 전":
-                    triggerTime.setDate(triggerTime.getDate() - 1);
-                    break;
-                }
-                return triggerTime;
-              }
-
-              const newTriggerAt = calculateTriggerTime(
-                updatedMeetup.appointmentTime,
-                updatedMeetup.alarmTime
-              );
-
-              updatedAlarmSetting = await prisma.alarmSetting.update({
-                where: { id: alarmSetting.id },
-                data: {
-                  // chatMeetup에는 alarmTime이 항상 null이다. 이 부분을 수정해야 한다.
-                  alarmTime: updatedMeetup.alarmTime,
-                  triggerAt: newTriggerAt.toISOString(),
-                },
-              });
-            }
-          }
-          return [updatedMeetup, updatedMessage, updatedAlarmSetting];
+          return [updatedMeetup, updatedMessage];
         }
       );
 

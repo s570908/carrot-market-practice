@@ -226,7 +226,7 @@ model ChatMeetup {
   place             String // 약속 장소
   locationLatitude  Float? // 위도 좌표
   locationLongitude Float? // 경도 좌표
-  alarmTime         String? // 알림 시간 (예: "10분 전")
+  // alarmTime         String? // 알림 시간 (예: "10분 전")
   // ChatRoom과의 1:1 관계
   chatRoom          ChatRoom? @relation(fields: [chatRoomId], references: [id])
   chatRoomId        Int?      @unique
@@ -264,7 +264,7 @@ model AlarmSetting {
 
   // 아래 유니크 제약이 있으면 findUnique에서 chatRoomId, userId로 조회 가능
   // 하지만 여러 알림을 허용하려면 이 줄을 삭제해야 함
-  // @@unique([userId, chatRoomId]) // <-- 여러 알림 허용 시 삭제
+  @@unique([userId, chatRoomId]) // <-- 여러 알림 허용 시 삭제
 
   @@index([userId, chatRoomId])
   @@index([triggerAt, status])

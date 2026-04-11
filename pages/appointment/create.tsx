@@ -45,7 +45,8 @@ const CreateAppointment = () => {
   const selectedLocation = selectedLocationByAddressInfo;
   //console.log("create--Selected location:", selectedLocation);
 
-  const [alarmTime, setAlarmTime] = useState("30분 전");
+  // const [alarmTime, setAlarmTime] = useState("30분 전");
+  const [alarmTime, setAlarmTime] = useState("알림 없이 생성");
 
   const chatRoomId = Number(router.query.chatRoomId); // 숫자로 변환
   //console.log("CreateAppointment--chatRoomId:", chatRoomId);
@@ -274,6 +275,9 @@ const CreateAppointment = () => {
     // 각 옵션의 유효성을 검사하고 유효한 것부터 정렬
     const sortedOptions = baseAlertOptions
       .map((option) => {
+        if (option.value === "") {
+          console.error("알림 시간 옵션에 빈 값이 있습니다. 옵션을 확인해주세요.");
+        }
         if (option.value === "알림 없이 생성") {
           return { ...option, disabled: false, warning: false, isValid: true };
         }
@@ -477,7 +481,7 @@ const CreateAppointment = () => {
     setDate("");
     setTime("");
     setSelectedLocationByAddressInfo(null);
-    setAlarmTime("30분 전");
+    setAlarmTime("알림 없이 생성");
   }, [router.query.chatRoomId]); // chatRoomId가 변경될 때마다 실행
 
   // 트리거 시간 계산 함수
