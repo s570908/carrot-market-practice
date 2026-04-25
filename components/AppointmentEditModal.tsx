@@ -126,6 +126,10 @@ export default function AppointmentEditModal({
     mutationFn: updateChatMeetup,
     onSuccess: async (responseData) => {
       try {
+        if ((responseData.cancelledAlarmCount ?? 0) > 0) {
+          toast?.info?.("약속 변경으로 기존 알림이 해제되었습니다.");
+        }
+
         if (socket && responseData.chatMeetup?.id && chatRoomId) {
           socket.emit("meetupUpdated", {
             chatRoomId: chatRoomId,

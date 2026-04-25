@@ -47,7 +47,17 @@ export async function callAlarmTrigger({
   });
 
   if (!alarm) {
-    throw new Error("알림을 찾을 수 없습니다");
+    console.log("[alarm-trigger] skipped_not_found", {
+      alarmId,
+      flowId,
+      expectedTriggerAt,
+    });
+    return {
+      ok: true,
+      skipped: true,
+      reason: "alarm_not_found",
+      alarm: null,
+    };
   }
 
   if (

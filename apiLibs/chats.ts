@@ -53,7 +53,7 @@ export async function readChatMeetup(chatRoomId: number) {
 // Updated ChatMeetup creation API function
 export async function writeChatMeetup(params: ChatMeetupParams) {
   // 약속 생성 + 약속 메시지 생성 API 호출
-  params.alarmTime = null;
+  // params.alarmTime = null;
   const response = await aclient.post<ChatMeetupResponse>(
     `/api/chat-meetups/${params.chatRoomId}`,
     params

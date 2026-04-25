@@ -150,14 +150,20 @@ export function scheduleAlarm(
       // });
 
       // callAlarmTrigger에서 모든 처리를 담당
-      await callAlarmTrigger({
+      const triggerResult = await callAlarmTrigger({
         baseUrl,
         alarmId: alarm.id,
         expectedTriggerAt: alarm.triggerAt.toISOString(),
         flowId: context?.flowId,
       });
 
-      console.log(`Alarm triggered successfully`);
+      if ((triggerResult as any)?.skipped) {
+        console.log(
+          `Alarm skipped: reason=${(triggerResult as any)?.reason ?? "unknown"}`
+        );
+      } else {
+        console.log(`Alarm triggered successfully`);
+      }
 
       // 작업 완료 후 Map에서 제거
       activeJobs.delete(alarm.id);

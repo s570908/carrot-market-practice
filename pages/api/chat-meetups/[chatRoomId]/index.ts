@@ -4,6 +4,7 @@ import { withApiSession } from "@libs/server/withSession";
 import withHandler from "@libs/server/withHandler";
 import { NextApiResponseServerIo } from "@/types/types";
 import { AlarmStatus } from "@prisma/client";
+import { cancelScheduledJob } from "@/libs/server/alarmScheduler";
 
 const workspace = "market";
 
@@ -140,13 +141,34 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
       if (locationLongitude !== undefined)
         updateData.locationLongitude = locationLongitude;
 
-      // Prisma transaction으로 약속 업데이트와 메시지 생성을 동시에 처리
-      const [updatedMeetup, updatedMessage] = await client.$transaction(
+      // Prisma transaction으로 약속 업데이트 + 관련 SCHEDULED 알림 취소 + 메시지 생성을 동시에 처리
+      const [updatedMeetup, updatedMessage, cancelledAlarmIds] = await client.$transaction(
         async (prisma) => {
+          const scheduledAlarms = await prisma.alarmSetting.findMany({
+            where: {
+              chatRoomId,
+              userId: user.id,
+              status: AlarmStatus.SCHEDULED,
+            },
+            select: { id: true },
+          });
+
           const updatedMeetup = await prisma.chatMeetup.update({
             where: { id: existingMeetup.id },
             data: updateData,
           });
+
+          if (scheduledAlarms.length > 0) {
+            await prisma.alarmSetting.updateMany({
+              where: {
+                id: { in: scheduledAlarms.map((alarm) => alarm.id) },
+                status: AlarmStatus.SCHEDULED,
+              },
+              data: {
+                status: AlarmStatus.CANCELED,
+              },
+            });
+          }
 
           const updatedMessage = await prisma.sellerChat.create({
             data: {
@@ -173,13 +195,28 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
               },
             },
           });
-          return [updatedMeetup, updatedMessage];
+
+          return [
+            updatedMeetup,
+            updatedMessage,
+            scheduledAlarms.map((alarm) => alarm.id),
+          ];
         }
       );
 
+      // 트랜잭션에서 DB 상태를 CANCELED로 전이했으므로 메모리 예약 잡만 정리한다.
+      cancelledAlarmIds.forEach((alarmId: number) => {
+        cancelScheduledJob(alarmId);
+      });
+
       return res
         .status(200)
-        .json({ ok: true, chatMeetup: updatedMeetup, message: updatedMessage });
+        .json({
+          ok: true,
+          chatMeetup: updatedMeetup,
+          message: updatedMessage,
+          cancelledAlarmCount: cancelledAlarmIds.length,
+        });
     } catch (error) {
       console.error("Error updating chat meetup:", error);
       return res
@@ -202,16 +239,48 @@ async function handler(req: NextApiRequest, res: NextApiResponseServerIo) {
           .json({ ok: false, error: "ChatMeetup not found" });
       }
 
-      // chatMeetup 삭제
-      await client.chatMeetup.delete({
-        where: { id: existingMeetup.id },
+      const [cancelledAlarmIds] = await client.$transaction(async (prisma) => {
+        const scheduledAlarms = await prisma.alarmSetting.findMany({
+          where: {
+            chatRoomId,
+            userId: user.id,
+            status: AlarmStatus.SCHEDULED,
+          },
+          select: { id: true },
+        });
+
+        if (scheduledAlarms.length > 0) {
+          await prisma.alarmSetting.updateMany({
+            where: {
+              id: { in: scheduledAlarms.map((alarm) => alarm.id) },
+              status: AlarmStatus.SCHEDULED,
+            },
+            data: {
+              status: AlarmStatus.CANCELED,
+            },
+          });
+        }
+
+        await prisma.chatMeetup.delete({
+          where: { id: existingMeetup.id },
+        });
+
+        return [scheduledAlarms.map((alarm) => alarm.id)];
+      });
+
+      cancelledAlarmIds.forEach((alarmId) => {
+        cancelScheduledJob(alarmId);
       });
 
       // (선택) 관련 메시지 등 추가 삭제 로직 필요시 여기에 작성
 
       return res
         .status(200)
-        .json({ ok: true, deletedMeetupId: existingMeetup.id });
+        .json({
+          ok: true,
+          deletedMeetupId: existingMeetup.id,
+          cancelledAlarmCount: cancelledAlarmIds.length,
+        });
     } catch (error) {
       console.error("Error deleting chat meetup:", error);
       return res

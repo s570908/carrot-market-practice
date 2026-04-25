@@ -43,7 +43,7 @@ import {
   getAlarmSettings,
   readChatMeetup,
   updateChatMeetup,
-  deleteAlarmSettings,
+  cancelAlarmSettings,
 } from "apiLibs/chats";
 import { handleLoadingAndError } from "@components/LoadingError";
 import {
@@ -201,6 +201,35 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     return () => clearInterval(timer);
   }, [alarmSheetOpen]);
 
+  const calculateTriggerDateByOption = (
+    appointmentDate: Date,
+    option: string
+  ): Date | null => {
+    const triggerDate = new Date(appointmentDate.getTime());
+
+    switch (option) {
+      case "10분 전":
+        triggerDate.setMinutes(triggerDate.getMinutes() - 10);
+        return triggerDate;
+      case "30분 전":
+        triggerDate.setMinutes(triggerDate.getMinutes() - 30);
+        return triggerDate;
+      case "1시간 전":
+        triggerDate.setHours(triggerDate.getHours() - 1);
+        return triggerDate;
+      case "1일 전":
+        triggerDate.setDate(triggerDate.getDate() - 1);
+        return triggerDate;
+      default:
+        return null;
+    }
+  };
+
+  const getAlarmStatus = (alarm: any): string => {
+    const status = alarm?.status;
+    return typeof status === "string" ? status.toUpperCase() : "";
+  };
+
   // 약속 시간 기준으로 유효한 알림 옵션 계산
   const alarmSheetOptions = useMemo(() => {
     const baseOptions = [
@@ -210,6 +239,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
       { label: "1시간 전", value: "1시간 전" },
     ];
     if (!appointmentTimeChatMeetup) return baseOptions;
+
     const apptDate = new Date(appointmentTimeChatMeetup);
     if (apptDate.getTime() <= alarmSheetNowTick) {
       return baseOptions.map((opt) =>
@@ -218,10 +248,16 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
           : { ...opt, disabled: true, isValid: false }
       );
     }
+
     return baseOptions
       .map((opt) => {
         if (opt.value === "없음") return { ...opt, disabled: false, isValid: true };
-        const { isValid } = validatealarmTime(apptDate, opt.value);
+
+        const optionTriggerDate = calculateTriggerDateByOption(apptDate, opt.value);
+        const isValid =
+          optionTriggerDate !== null &&
+          optionTriggerDate.getTime() > alarmSheetNowTick;
+
         return { ...opt, disabled: !isValid, isValid };
       })
       .sort((a, b) => {
@@ -237,7 +273,11 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   useEffect(() => {
     if (alarmSheetOpen) {
-      const savedAlarm = alarmSettingsData?.ok ? alarmTimeFromSettings : "없음";
+      const currentAlarm = (alarmSettingsData as any)?.alarm;
+      const hasScheduledAlarm =
+        alarmSettingsData?.ok === true && getAlarmStatus(currentAlarm) === "SCHEDULED";
+      const savedAlarm = hasScheduledAlarm ? alarmTimeFromSettings : "없음";
+
       // 저장된 알람 시간이 현재 약속 시간 기준으로 유효한지 확인
       if (savedAlarm !== "없음" && appointmentTimeChatMeetup) {
         const { isValid } = validatealarmTime(new Date(appointmentTimeChatMeetup), savedAlarm);
@@ -248,6 +288,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     }
   }, [
     alarmTimeFromSettings,
+    alarmSettingsData,
     alarmSettingsData?.ok,
     alarmSheetOpen,
     appointmentTimeChatMeetup,
@@ -1116,7 +1157,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
           //   locationLatitude: appointment?.locationLatitude,
           //   locationLongitude: appointment?.locationLongitude,
           // });
-          const deleteResult = await deleteAlarmSettings(id);
+          const cancelResult = await cancelAlarmSettings(id);
 
           // 3-3. 알림 해제 메시지 생성
           // alert("writeSystemMessage1를 작성해야함");
@@ -1128,12 +1169,12 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
           //   userId: user?.id,
           // });
 
-          if (deleteResult?.alreadySent) {
-            toast.info("이미 발송된 알림입니다. 해제할 예약 알림이 없습니다.");
-          } else if (deleteResult?.alreadyDeleted) {
-            toast.info("이미 알림이 해제된 상태입니다.");
-          } else {
+          if (cancelResult?.canceled) {
             toast.success("알림이 해제되었습니다.");
+          } else if (cancelResult?.alreadyCanceled) {
+            toast.info("이미 알림이 해제되었거나 발송이 완료된 상태입니다.");
+          } else {
+            toast.info("해제할 예약 알림이 없습니다.");
           }
           setAlarmSheetOpen(false);
           refetchAlarmSettings();
@@ -1751,61 +1792,51 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                     return;
                   }
 
-                  // 모달 표시 전에 최신 DB 알림 상태를 가져와 "현재 저장된 알림"을 정확히 표시
+                  // 항상 최신 상태를 기준으로 분기한다.
                   const latestAlarmSettings = await refetchAlarmSettings();
                   const latestAlarmData = latestAlarmSettings?.data ?? alarmSettingsData;
-                  const storedAlarmTime =
-                    ((latestAlarmData as any)?.alarm?.alarmTime as string | undefined) ??
-                    undefined;
-                  const currentStoredAlarm = formatStoredTriggerTime(
-                    ((latestAlarmData as any)?.alarm?.triggerAt as string | undefined)
-                  );
+                  const latestAlarm = (latestAlarmData as any)?.alarm;
+                  const latestStatus = getAlarmStatus(latestAlarm);
 
-                  const expectedAlarm = calculateAlarmTriggerTime(
-                    appointmentTimeChatMeetup,
-                    storedAlarmTime
-                  );
-                  const nextTriggerDate = getAlarmTriggerDate(
-                    appointmentTimeChatMeetup,
-                    storedAlarmTime
-                  );
-                  const shouldAutoAdjust =
-                    Boolean(storedAlarmTime && storedAlarmTime !== "없음") &&
-                    Boolean(nextTriggerDate) &&
-                    currentStoredAlarm !== expectedAlarm;
-
-                  // 커스텀 모달 사용
-                  const alarmConfirmAction = await openAlarmConfirmModal({
-                    currentStoredAlarm,
-                    expectedAlarm,
-                    shouldAutoAdjust,
-                  });
-
-                  if (alarmConfirmAction === "cancel" || !alarmConfirmAction) {
+                  // status가 SCHEDULED가 아니면 신규 설정 루틴으로 간주한다.
+                  if (latestStatus !== "SCHEDULED") {
+                    setAlarmSheetValue("없음");
+                    setAlarmSheetNowTick(Date.now());
+                    setAlarmSheetOpen(true);
                     return;
                   }
 
+                  const storedAlarmTime =
+                    ((latestAlarm as any)?.alarmTime as string | undefined) ?? "없음";
+                  const storedTriggerAtRaw = (latestAlarm as any)?.triggerAt as
+                    | string
+                    | undefined;
+                  const storedTriggerAt = storedTriggerAtRaw
+                    ? new Date(storedTriggerAtRaw)
+                    : null;
+                  const now = new Date();
+
+                  // SCHEDULED라도 triggerAt이 지났거나 비정상이면 신규 설정 루틴으로 전환한다.
                   if (
-                    alarmConfirmAction === "keepAndApply" &&
-                    shouldAutoAdjust &&
-                    nextTriggerDate &&
-                    storedAlarmTime
+                    !storedTriggerAt ||
+                    isNaN(storedTriggerAt.getTime()) ||
+                    storedTriggerAt.getTime() <= now.getTime()
                   ) {
-                    try {
-                      await setAlarmSettingsAsync({
-                        chatId: id,
-                        alarmTime: storedAlarmTime,
-                        triggerAt: nextTriggerDate.toISOString(),
-                        disableAlarm: false,
-                      });
-                      return;
-                    } catch (error) {
-                      console.error("알림 유지 적용 중 오류 발생:", error);
-                      toast.error("기존 알림 적용에 실패했습니다. 다시 선택해주세요.");
-                    }
+                    setAlarmSheetValue("없음");
+                    setAlarmSheetNowTick(now.getTime());
+                    setAlarmSheetOpen(true);
+                    return;
                   }
 
-                  // 사용자가 다시 선택을 원했거나 유지 적용이 불가능한 경우 ActionSheet 오픈
+                  // SCHEDULED 상태면 저장된 옵션을 기본값으로 두고, 활성 옵션만 선택 가능하게 연다.
+                  if (storedAlarmTime !== "없음") {
+                    const { isValid } = validatealarmTime(appointmentTime, storedAlarmTime);
+                    setAlarmSheetValue(isValid ? storedAlarmTime : "없음");
+                  } else {
+                    setAlarmSheetValue("없음");
+                  }
+
+                  setAlarmSheetNowTick(now.getTime());
                   setAlarmSheetOpen(true);
                 }}
                 title={

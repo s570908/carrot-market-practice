@@ -743,6 +743,7 @@ export interface ChatMeetupResponse {
   ok: boolean;
   chatMeetup?: ChatMeetup;
   message?: any;
+  cancelledAlarmCount?: number;
   error?: string;
 }
 
