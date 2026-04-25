@@ -80,7 +80,7 @@ const CreateAppointment = () => {
           socket.emit("meetupCreated", {
             chatRoomId: chatRoomId,
             chatMeetup: responseData.chatMeetup,
-            alarmSetting: responseData.alarmSetting,
+            // alarmSetting: responseData.alarmSetting,
           });
         }
 

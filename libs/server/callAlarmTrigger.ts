@@ -6,6 +6,8 @@ interface CallAlarmTriggerParams {
   baseUrl: string;
   alarmId: number;
   sessionCookie?: string;
+  expectedTriggerAt?: string;
+  flowId?: string;
 }
 
 /**
@@ -13,8 +15,18 @@ interface CallAlarmTriggerParams {
  * @param params 알람 트리거 파라미터
  * @returns 푸시 결과 등
  */
-export async function callAlarmTrigger({ baseUrl, alarmId}: CallAlarmTriggerParams) {
-  console.log("callAlarmTrigger start:", { baseUrl, alarmId });
+export async function callAlarmTrigger({
+  baseUrl,
+  alarmId,
+  expectedTriggerAt,
+  flowId,
+}: CallAlarmTriggerParams) {
+  console.log("[alarm-trigger] start", {
+    baseUrl,
+    alarmId,
+    expectedTriggerAt,
+    flowId,
+  });
 
   // 알림 정보 조회
   const alarm = await client.alarmSetting.findUnique({
@@ -38,19 +50,83 @@ export async function callAlarmTrigger({ baseUrl, alarmId}: CallAlarmTriggerPara
     throw new Error("알림을 찾을 수 없습니다");
   }
 
-  // 상태 확인
-  if (alarm.status !== 'SCHEDULED') {
-    throw new Error(`이미 ${alarm.status} 상태인 알림입니다. SCHEDULED 상태의 알림만 트리거할 수 있습니다.`);
+  if (
+    expectedTriggerAt &&
+    alarm.triggerAt.toISOString() !== expectedTriggerAt
+  ) {
+    console.log("[alarm-trigger] stale_job_skipped", {
+      alarmId,
+      flowId,
+      expectedTriggerAt,
+      currentTriggerAt: alarm.triggerAt.toISOString(),
+      status: alarm.status,
+    });
+    return {
+      ok: true,
+      skipped: true,
+      reason: "triggerAt_mismatch",
+      alarm: {
+        id: alarm.id,
+        status: alarm.status,
+        triggerAt: alarm.triggerAt.toISOString(),
+      },
+    };
   }
 
-  // 알림 상태를 SENT로 변경
-  await client.alarmSetting.update({
-    where: { id: alarmId },
-    data: { 
+  // 상태 확인
+  if (alarm.status !== 'SCHEDULED') {
+    console.log("[alarm-trigger] skipped_non_scheduled", {
+      alarmId,
+      flowId,
+      status: alarm.status,
+      triggerAt: alarm.triggerAt.toISOString(),
+    });
+    return {
+      ok: true,
+      skipped: true,
+      reason: `status_${alarm.status}`,
+      alarm: {
+        id: alarm.id,
+        status: alarm.status,
+        triggerAt: alarm.triggerAt.toISOString(),
+      },
+    };
+  }
+
+  // 여전히 현재 유효한 스케줄인 경우에만 SENT로 전이
+  const sentUpdateResult = await client.alarmSetting.updateMany({
+    where: {
+      id: alarmId,
+      status: AlarmStatus.SCHEDULED,
+      ...(expectedTriggerAt
+        ? { triggerAt: new Date(expectedTriggerAt) }
+        : {}),
+    },
+    data: {
       status: AlarmStatus.SENT,
-      updatedAt: new Date()
-    }
+      updatedAt: new Date(),
+    },
   });
+
+  if (sentUpdateResult.count === 0) {
+    console.log("[alarm-trigger] skipped_conditional_update_failed", {
+      alarmId,
+      flowId,
+      expectedTriggerAt,
+      currentTriggerAt: alarm.triggerAt.toISOString(),
+      currentStatus: alarm.status,
+    });
+    return {
+      ok: true,
+      skipped: true,
+      reason: "conditional_update_failed",
+      alarm: {
+        id: alarm.id,
+        status: alarm.status,
+        triggerAt: alarm.triggerAt.toISOString(),
+      },
+    };
+  }
 
   // 푸시 알림 페이로드 구성을 위한 변수 정의
   // chatRoom과 meetup을 alarm.chatRoomId로 직접 조회
@@ -201,6 +277,13 @@ export async function callAlarmTrigger({ baseUrl, alarmId}: CallAlarmTriggerPara
     pushResults: process.env.NODE_ENV === 'development' ? pushResults : undefined
   };
 
-  console.log("callAlarmTrigger result:", result);
+  console.log("[alarm-trigger] sent", {
+    alarmId,
+    flowId,
+    expectedTriggerAt,
+    pushSent,
+    sentCount,
+    failedCount,
+  });
   return result;
 }

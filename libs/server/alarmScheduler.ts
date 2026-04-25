@@ -58,6 +58,25 @@ interface AlarmWithTrigger {
   // chatMeetup: ChatMeetup | null;
 }
 
+export interface AlarmLogContext {
+  flowId?: string;
+  chatRoomId?: number;
+  userId?: number;
+  reason?: string;
+}
+
+function logAlarmFlow(event: string, payload: Record<string, unknown>) {
+  console.log(`[alarm-flow] ${event}`, payload);
+}
+
+export interface CancelAlarmResult {
+  ok: boolean;
+  canceled: boolean;
+  alreadyCanceled: boolean;
+  hadActiveJob: boolean;
+  updatedCount: number;
+}
+
 /*
 scheduleAlarm 함수의 기능 요약
 
@@ -74,19 +93,39 @@ scheduleAlarm 함수의 기능 요약
 5. 예약 완료 로그를 출력함.
 */
 
-export function scheduleAlarm(alarm: AlarmWithTrigger, baseUrl: string) {
+export function scheduleAlarm(
+  alarm: AlarmWithTrigger,
+  baseUrl: string,
+  context?: AlarmLogContext
+) {
   if (!alarm.alarmTime) return; //alarmTime 없으면 스케줄링하지 않음
 
   // 기존 작업이 있다면 취소
   if (activeJobs.has(alarm.id)) {
-    activeJobs.get(alarm.id).cancel();
+    const existingJob = activeJobs.get(alarm.id);
+    const previousNextInvocation = existingJob?.nextInvocation?.();
+    existingJob?.cancel();
+    logAlarmFlow("replace_existing_job", {
+      flowId: context?.flowId,
+      reason: context?.reason ?? "reschedule",
+      alarmId: alarm.id,
+      previousNextInvocation: previousNextInvocation
+        ? previousNextInvocation.toISOString()
+        : null,
+      newTriggerAt: alarm.triggerAt.toISOString(),
+      chatRoomId: context?.chatRoomId,
+      userId: context?.userId,
+    });
   }
 
-  console.log(
-    `job = schedule.scheduleJob 수행전. Scheduling alarm ID ${
-      alarm.id
-    } for ${alarm.triggerAt.toISOString()}`
-  );
+  logAlarmFlow("register_job_start", {
+    flowId: context?.flowId,
+    reason: context?.reason,
+    alarmId: alarm.id,
+    triggerAt: alarm.triggerAt.toISOString(),
+    chatRoomId: context?.chatRoomId,
+    userId: context?.userId,
+  });
 
   // 정확한 시간에 작업 예약
   const job = schedule.scheduleJob(alarm.triggerAt, async function () {
@@ -94,6 +133,14 @@ export function scheduleAlarm(alarm: AlarmWithTrigger, baseUrl: string) {
       console.log(
         `Triggering alarm ID: ${alarm.id} at ${new Date().toISOString()}`
       );
+      logAlarmFlow("job_fired", {
+        flowId: context?.flowId,
+        alarmId: alarm.id,
+        expectedTriggerAt: alarm.triggerAt.toISOString(),
+        firedAt: new Date().toISOString(),
+        chatRoomId: context?.chatRoomId,
+        userId: context?.userId,
+      });
 
       // 중복 상태 업데이트 제거 - callAlarmTrigger에서 처리하도록 함
       // const updatedAlarm = await client.alarmSetting.update({
@@ -103,14 +150,29 @@ export function scheduleAlarm(alarm: AlarmWithTrigger, baseUrl: string) {
       // });
 
       // callAlarmTrigger에서 모든 처리를 담당
-      await callAlarmTrigger({ baseUrl, alarmId: alarm.id });
+      await callAlarmTrigger({
+        baseUrl,
+        alarmId: alarm.id,
+        expectedTriggerAt: alarm.triggerAt.toISOString(),
+        flowId: context?.flowId,
+      });
 
       console.log(`Alarm triggered successfully`);
 
       // 작업 완료 후 Map에서 제거
       activeJobs.delete(alarm.id);
+      logAlarmFlow("job_cleanup", {
+        flowId: context?.flowId,
+        alarmId: alarm.id,
+        cleanup: "activeJobs.delete",
+      });
     } catch (error) {
       console.error(`Error triggering alarm ID ${alarm.id}:`, error);
+      logAlarmFlow("job_trigger_error", {
+        flowId: context?.flowId,
+        alarmId: alarm.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   });
 
@@ -119,6 +181,14 @@ export function scheduleAlarm(alarm: AlarmWithTrigger, baseUrl: string) {
 
   const formattedTime = dayjs(alarm.triggerAt).format("YYYY-MM-DD HH:mm:ss");
   console.log(`Scheduled alarm ID ${alarm.id} for ${formattedTime}`);
+  logAlarmFlow("register_job_done", {
+    flowId: context?.flowId,
+    alarmId: alarm.id,
+    triggerAt: alarm.triggerAt.toISOString(),
+    formattedTime,
+    chatRoomId: context?.chatRoomId,
+    userId: context?.userId,
+  });
 }
 
 // scheduleAlarmById 함수의 알고리즘 요약 (기존 scheduleAlarmById에서 이름 변경)
@@ -136,10 +206,24 @@ export function scheduleAlarm(alarm: AlarmWithTrigger, baseUrl: string) {
    - true 반환
 4. 조건을 만족하지 않으면 false 반환
 */
-export async function scheduleAlarmById(alarmId: number, baseUrl: string) {
+export async function scheduleAlarmById(
+  alarmId: number,
+  baseUrl: string,
+  context?: AlarmLogContext
+) {
   const alarm = await client.alarmSetting.findUnique({
     where: { id: alarmId },
     // include: { chatMeetup: true },
+  });
+
+  logAlarmFlow("schedule_by_id_lookup", {
+    flowId: context?.flowId,
+    alarmId,
+    found: Boolean(alarm),
+    status: alarm?.status,
+    triggerAt: alarm?.triggerAt?.toISOString?.(),
+    chatRoomId: context?.chatRoomId,
+    userId: context?.userId,
   });
 
   console.log(
@@ -177,46 +261,97 @@ export async function scheduleAlarmById(alarmId: number, baseUrl: string) {
         2
       )}`
     );
-    scheduleAlarm(alarmWithTrigger, baseUrl);
+    scheduleAlarm(alarmWithTrigger, baseUrl, context);
     return true;
   }
+
+  logAlarmFlow("schedule_by_id_skipped", {
+    flowId: context?.flowId,
+    alarmId,
+    reason: "not_schedulable",
+    status: alarm?.status,
+    triggerAt: alarm?.triggerAt?.toISOString?.(),
+  });
   return false;
 }
 
 // 기존 알람 취소 함수 (새로 추가)
-export async function cancelExistingAlarm(alarmId: number) {
+export async function cancelExistingAlarm(
+  alarmId: number,
+  context?: AlarmLogContext
+) {
   try {
-    // DB 상태 확인 후 메모리에서 제거
-    const alarm = await client.alarmSetting.findUnique({
-      where: { id: alarmId },
-      select: { id: true, status: true },
+    logAlarmFlow("cancel_start", {
+      flowId: context?.flowId,
+      reason: context?.reason,
+      alarmId,
+      chatRoomId: context?.chatRoomId,
+      userId: context?.userId,
     });
 
-    // 이미 취소되었거나 전송된 알람은 스킵
-    if (!alarm || alarm.status !== AlarmStatus.SCHEDULED) {
-      console.log(
-        `Alarm ID ${alarmId} is not in SCHEDULED status, skipping cancellation`
-      );
-      return true;
-    }
-
-    // 스케줄된 작업 취소
-    if (activeJobs.has(alarmId)) {
+    // 1) 메모리 작업은 상태와 무관하게 먼저 정리
+    const hadActiveJob = activeJobs.has(alarmId);
+    if (hadActiveJob) {
       activeJobs.get(alarmId).cancel();
       activeJobs.delete(alarmId);
       console.log(`Cancelled scheduled job for alarm ID: ${alarmId}`);
+      logAlarmFlow("cancel_active_job", {
+        flowId: context?.flowId,
+        alarmId,
+        hadActiveJob,
+      });
     }
 
-    // DB에서 알람 상태 업데이트
-    await client.alarmSetting.update({
-      where: { id: alarmId },
-      data: { status: AlarmStatus.CANCELED },
+    // 2) DB 상태는 조건부로만 변경 (id + SCHEDULED)
+    const updateResult = await client.alarmSetting.updateMany({
+      where: {
+        id: alarmId,
+        status: AlarmStatus.SCHEDULED,
+      },
+      data: {
+        status: AlarmStatus.CANCELED,
+      },
     });
 
-    return true;
+    const canceled = updateResult.count > 0;
+    const alreadyCanceled = !canceled;
+
+    if (alreadyCanceled) {
+      console.log(
+        `Alarm ID ${alarmId} was already canceled or not in SCHEDULED status`
+      );
+    }
+
+    logAlarmFlow("cancel_done", {
+      flowId: context?.flowId,
+      alarmId,
+      canceled,
+      alreadyCanceled,
+      hadActiveJob,
+      updatedCount: updateResult.count,
+    });
+
+    return {
+      ok: true,
+      canceled,
+      alreadyCanceled,
+      hadActiveJob,
+      updatedCount: updateResult.count,
+    };
   } catch (error) {
     console.error(`Error cancelling alarm ID ${alarmId}:`, error);
-    return false;
+    logAlarmFlow("cancel_error", {
+      flowId: context?.flowId,
+      alarmId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return {
+      ok: false,
+      canceled: false,
+      alreadyCanceled: false,
+      hadActiveJob: false,
+      updatedCount: 0,
+    };
   }
 }
 

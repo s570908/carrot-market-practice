@@ -28,7 +28,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           place: true,
           locationLatitude: true,
           locationLongitude: true,
-          alarmTime: true,
+          // alarmTime: true,
         },
       });
 

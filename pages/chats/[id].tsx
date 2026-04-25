@@ -25,7 +25,7 @@ import React, {
 } from "react";
 import { useIntersectionObserver } from "@libs/client/useIntersectionObserver";
 import { FiChevronsDown } from "react-icons/fi";
-import { cls, parseId } from "@libs/utils";
+import { cls, parseId, validatealarmTime } from "@libs/utils";
 import Loading from "@components/Loading";
 import ImgComponent from "@components/ImgComponent";
 import { getChatRoomData } from "@libs/server/chatUtils";
@@ -108,6 +108,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
   // 알림 ActionSheet 상태 관리
   const [alarmSheetOpen, setAlarmSheetOpen] = useState(false);
   const [alarmSheetValue, setAlarmSheetValue] = useState("");
+  const [alarmSheetNowTick, setAlarmSheetNowTick] = useState(Date.now());
 
   // ActionSheet가 열릴 때마다 defaultValue로 초기화
   // useEffect(() => {
@@ -188,18 +189,69 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     }
   }, [alarmSheetOpen, refetchAlarmSettings]);
 
+  // ActionSheet가 열린 동안 현재 시간 기준 유효성 계산을 주기적으로 갱신
+  useEffect(() => {
+    if (!alarmSheetOpen) return;
+
+    setAlarmSheetNowTick(Date.now());
+    const timer = setInterval(() => {
+      setAlarmSheetNowTick(Date.now());
+    }, 10000);
+
+    return () => clearInterval(timer);
+  }, [alarmSheetOpen]);
+
+  // 약속 시간 기준으로 유효한 알림 옵션 계산
+  const alarmSheetOptions = useMemo(() => {
+    const baseOptions = [
+      { label: "없음", value: "없음" },
+      { label: "10분 전", value: "10분 전" },
+      { label: "30분 전", value: "30분 전" },
+      { label: "1시간 전", value: "1시간 전" },
+    ];
+    if (!appointmentTimeChatMeetup) return baseOptions;
+    const apptDate = new Date(appointmentTimeChatMeetup);
+    if (apptDate.getTime() <= alarmSheetNowTick) {
+      return baseOptions.map((opt) =>
+        opt.value === "없음"
+          ? { ...opt, disabled: false, isValid: true }
+          : { ...opt, disabled: true, isValid: false }
+      );
+    }
+    return baseOptions
+      .map((opt) => {
+        if (opt.value === "없음") return { ...opt, disabled: false, isValid: true };
+        const { isValid } = validatealarmTime(apptDate, opt.value);
+        return { ...opt, disabled: !isValid, isValid };
+      })
+      .sort((a, b) => {
+        if (a.isValid && !b.isValid) return -1;
+        if (!a.isValid && b.isValid) return 1;
+        return 0;
+      });
+  }, [appointmentTimeChatMeetup, alarmSheetNowTick]);
+
+  // API 응답 타입과 런타임 필드가 달라 alarmTime은 안전 캐스팅으로 접근
+  const alarmTimeFromSettings =
+    ((alarmSettingsData as any)?.alarm?.alarmTime as string | undefined) ?? "없음";
+
   useEffect(() => {
     if (alarmSheetOpen) {
-      if (alarmSettingsData?.ok) {
-        setAlarmSheetValue(alarmSettingsData?.alarm?.alarmTime ?? "없음");
+      const savedAlarm = alarmSettingsData?.ok ? alarmTimeFromSettings : "없음";
+      // 저장된 알람 시간이 현재 약속 시간 기준으로 유효한지 확인
+      if (savedAlarm !== "없음" && appointmentTimeChatMeetup) {
+        const { isValid } = validatealarmTime(new Date(appointmentTimeChatMeetup), savedAlarm);
+        setAlarmSheetValue(isValid ? savedAlarm : "없음");
       } else {
-        setAlarmSheetValue("없음");
+        setAlarmSheetValue(savedAlarm);
       }
     }
   }, [
-    alarmSettingsData?.alarm?.alarmTime,
+    alarmTimeFromSettings,
     alarmSettingsData?.ok,
     alarmSheetOpen,
+    appointmentTimeChatMeetup,
+    alarmSheetNowTick,
   ]);
 
   // console.log("/api/chat/${router.query.id}--data:", data);
@@ -492,24 +544,48 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
 
   const {
     mutate: setAlarmSettings,
+    mutateAsync: setAlarmSettingsAsync,
     isPending: isSettingAlarm,
     isError: isErrorSettingAlarm,
     error: errorSettingAlarm,
   } = useMutation({
     mutationFn: writeAlarmSettings,
-    onSuccess: (data) => {
-      // data.alarmTime이 undefined인 경우를 방지
-      const alarmTimeText = data?.alarm?.alarmTime || "알림";
-      alert(
-        `${
-          data?.alarm?.disableAlarm
-            ? "알림이 해제되었습니다."
-            : `${alarmTimeText} 알림이 설정되었습니다.`
-        }`
-      );
-      setAlarmSheetOpen(false); // ActionSheet 닫기 추가
-      refetchChat();
-      refetchAlarmSettings(); // 추가: 알림 설정 쿼리도 갱신
+    onSuccess: (data, variables) => {
+      const isDisableAlarm = variables?.disableAlarm;
+      const isOk = (data as any)?.ok === true;
+
+      // 1) 해제 성공: disableAlarm=true 이면 시간값 없이도 성공 처리
+      if (isDisableAlarm === true && isOk) {
+        alert("알림이 해제되었습니다.");
+        setAlarmSheetOpen(false);
+        refetchAlarmSettings();
+        return;
+      }
+
+      // 2) 설정 성공: disableAlarm=false 이면 alarmTime 필수
+      if (isDisableAlarm === false && isOk) {
+        const alarmTimeText = ((data as any)?.alarm?.alarmTime as string | undefined)?.trim();
+        if (!alarmTimeText) {
+          console.error("알림 설정 성공 응답에 alarmTime이 누락되었습니다.", {
+            data,
+            variables,
+          });
+          toast.error("알림 설정에 실패했습니다. 다시 시도해주세요.");
+          return;
+        }
+
+        alert(`${alarmTimeText} 알림이 설정되었습니다.`);
+        setAlarmSheetOpen(false);
+        refetchAlarmSettings();
+        return;
+      }
+
+      // 3) 모호한 응답: 실패 처리 + 로그
+      console.error("알림 설정 응답이 모호합니다.", {
+        data,
+        variables,
+      });
+      toast.error("알림 설정에 실패했습니다. 다시 시도해주세요.");
     },
     onError: (error: any) => {
       console.error("알림 설정 중 오류 발생:", error);
@@ -1040,7 +1116,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
           //   locationLatitude: appointment?.locationLatitude,
           //   locationLongitude: appointment?.locationLongitude,
           // });
-          await deleteAlarmSettings(id);
+          const deleteResult = await deleteAlarmSettings(id);
 
           // 3-3. 알림 해제 메시지 생성
           // alert("writeSystemMessage1를 작성해야함");
@@ -1052,9 +1128,15 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
           //   userId: user?.id,
           // });
 
-          alert("알림이 해제되었습니다.");
+          if (deleteResult?.alreadySent) {
+            toast.info("이미 발송된 알림입니다. 해제할 예약 알림이 없습니다.");
+          } else if (deleteResult?.alreadyDeleted) {
+            toast.info("이미 알림이 해제된 상태입니다.");
+          } else {
+            toast.success("알림이 해제되었습니다.");
+          }
           setAlarmSheetOpen(false);
-          refetchChat();
+          refetchAlarmSettings();
           return;
         } catch (error) {
           console.error("알림 해제 중 오류 발생:", error);
@@ -1092,76 +1174,13 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         return;
       }
 
-      try {
-        // await updateChatMeetup({
-        //   chatRoomId: id,
-        //   appointmentTime: appointment?.appointmentTime,
-        //   place: appointment?.place,
-        //   locationLatitude: appointment?.locationLatitude,
-        //   locationLongitude: appointment?.locationLongitude,
-        //   alarmTime: timeOption,
-        // });
-        await writeAlarmSettings({
-          chatId: id,
-          alarmTime: timeOption,
-          triggerAt: triggerAt.toISOString(),
-          disableAlarm: false,
-        });
-        // 5-2. 기존 SCHEDULED 알림 조회 및 취소
-        let latestAlarm = null;
-        try {
-          // const alarmRes = await axios.get(`/api/alarm-settings/${id}`);
-          const alarmRes = await getAlarmSettings(id);
-          latestAlarm = alarmRes.data.alarm || null;
-          if (latestAlarm && latestAlarm.status === "SCHEDULED") {
-            // await axios.post(
-            //   `/api/chat/${id}/alarm-settings/cancel`,
-            //   {}
-            // );
-            await writeAlarmSettings({
-              chatId: id,
-              alarmTime: timeOption,
-              triggerAt: triggerAt.toISOString(),
-              disableAlarm: true,
-            });
-            console.log(`기존 알림 취소됨: ${latestAlarm.id}`);
-          }
-        } catch (fetchError) {
-          console.warn("기존 알림 조회/취소 중 오류:", fetchError);
-        }
-
-        // 5-3. 새 AlarmSetting 생성
-        setAlarmSettings({
-          chatId: id,
-          // messageId: appointmentMessage.id,
-          alarmTime: timeOption,
-          triggerAt: triggerAt.toISOString(),
-          disableAlarm: false,
-        });
-
-        // 5-4. 시스템 메시지 생성 (알림 변경 안내)
-        // alert("writeSystemMessage2를 작성해야함");
-        // await writeSystemMessage({
-        //   chatRoomId: id,
-        //   message: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
-        //     timeOption,
-        //     chatMeetupId!
-        //     // appointmentMessage.id
-        //   ).message,
-        //   meta: SYSTEM_MESSAGES.APPOINTMENT_ALERT(
-        //     timeOption,
-        //     chatMeetupId!
-        //     // appointmentMessage.id
-        //   ).meta,
-        //   userId: user?.id,
-        // });
-
-        setAlarmSheetOpen(false);
-        refetchChat();
-      } catch (error) {
-        console.error("알림 설정 중 오류 발생:", error);
-        toast.error("알림 설정에 실패했습니다.");
-      }
+      // 서버 PUT 업서트가 기존 알림 취소/재스케줄을 처리하므로 1회 호출만 수행
+      setAlarmSettings({
+        chatId: id,
+        alarmTime: timeOption,
+        triggerAt: triggerAt.toISOString(),
+        disableAlarm: false,
+      });
 
       console.log("=== 알림 시간 선택 디버깅 완료 ===");
     } catch (error) {
@@ -1426,34 +1445,15 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         className={`text-md rounded-md border border-blue-500 bg-blue-50 p-1 text-blue-700 cursor-pointer`}
         onClick={async () => {
           // if (isPast) return;
-          // alarmSetting을 조회해서 현재 사용자(user)의 alarmTime을 전달
-          let alarmTimeFromSetting: string | null = null;
-          try {
-            const alarmRes = await axios.get(`/api/alarm-settings/${id}`);
-            // alarmRes.data.alarms가 배열이면, userId로 필터링
-            if (alarmRes.data.alarms && Array.isArray(alarmRes.data.alarms)) {
-              const userAlarm = alarmRes.data.alarms.find(
-                (a: any) => a.userId === user?.id
-              );
-              alarmTimeFromSetting = userAlarm?.alarmTime ?? null;
-            } else if (alarmRes.data.alarm) {
-              // 단일 alarm 객체일 경우
-              alarmTimeFromSetting = alarmRes.data.alarm.alarmTime ?? null;
-            }
-          } catch (err) {
-            // 조회 실패 시 chatMeetup.alarmTime을 fallback
-            alarmTimeFromSetting = chatMeetup?.alarmTime ?? null;
-          }
-
           const result = await openAppointmentEditModal({
             appointmentTime: chatMeetup?.appointmentTime,
             place: chatMeetup?.place,
             latitude: chatMeetup?.locationLatitude ?? 0,
             longitude: chatMeetup?.locationLongitude ?? 0,
-            alarmTime: alarmTimeFromSetting,
+            // alarmTime: alarmTimeFromSetting,
             chatMeetupId: chatMeetupId,
           });
-          // ✅ 약속/알림이 변경된 경우 refetchChat() 호출
+          // ✅ 약속이 변경된 경우 refetchChat() 호출
           if (result && result.success) {
             refetchChat();
           }
@@ -1509,14 +1509,16 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     };
   }, [openAppointmentEditModal, refetchChat]);
 
-  // 알림이 울릴 시간을 계산하는 함수 추가
-  const calculateAlarmTriggerTime = (appointmentTime: string | Date | undefined, alarmTime: string | undefined): string => {
+  const getAlarmTriggerDate = (
+    appointmentTime: string | Date | undefined,
+    alarmTime: string | undefined
+  ): Date | null => {
     if (!appointmentTime || !alarmTime || alarmTime === "없음") {
-      return "없음";
+      return null;
     }
 
     const triggerTime = new Date(appointmentTime);
-    
+
     switch (alarmTime) {
       case "10분 전":
         triggerTime.setMinutes(triggerTime.getMinutes() - 10);
@@ -1531,11 +1533,20 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         triggerTime.setDate(triggerTime.getDate() - 1);
         break;
       default:
-        return "없음";
+        return null;
     }
 
-    // 트리거 시간이 이미 지났으면 "없음" 반환
     if (triggerTime < new Date()) {
+      return null;
+    }
+
+    return triggerTime;
+  };
+
+  // 알림이 울릴 시간을 계산하는 함수 추가
+  const calculateAlarmTriggerTime = (appointmentTime: string | Date | undefined, alarmTime: string | undefined): string => {
+    const triggerTime = getAlarmTriggerDate(appointmentTime, alarmTime);
+    if (!triggerTime) {
       return "없음";
     }
 
@@ -1552,12 +1563,33 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
     return koreanDate.format("M월 D일 A h:mm");
   };
 
+  // DB에 저장된 triggerAt(절대 시각)을 사용자에게 보여줄 포맷으로 변환
+  const formatStoredTriggerTime = (triggerAt: string | Date | undefined): string => {
+    if (!triggerAt) return "없음";
+
+    const triggerDate = dayjs(triggerAt).tz("Asia/Seoul");
+    if (!triggerDate.isValid()) return "없음";
+
+    const now = dayjs().tz("Asia/Seoul");
+    if (triggerDate.isSame(now, "day")) {
+      return `오늘 ${triggerDate.format("A h:mm")}`;
+    }
+    if (triggerDate.isSame(now.add(1, "day"), "day")) {
+      return `내일 ${triggerDate.format("A h:mm")}`;
+    }
+    return triggerDate.format("M월 D일 A h:mm");
+  };
+
   // 알림 확인 모달 추가
   const { openModal: openAlarmConfirmModal, renderModal: renderAlarmConfirmModal } =
     useAwaitableModal((modal, params) => {
+      const isDifferentAlarmTime =
+        (params?.currentStoredAlarm ?? "") !== (params?.expectedAlarm ?? "");
+      const shouldAutoAdjust = Boolean(params?.shouldAutoAdjust);
+
       return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => modal.closeWithResult(false)} />
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => modal.closeWithResult("cancel")} />
           <div className="z-50 max-w-full p-0 border border-blue-200 shadow-2xl w-96 rounded-2xl bg-gradient-to-br from-white via-blue-50 to-blue-100 animate-fadeIn">
             <div className="flex flex-col items-center px-8 py-8">
               {/* Icon */}
@@ -1566,21 +1598,59 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
               </div>
-              <h3 className="mb-1 text-xl font-bold tracking-tight text-blue-700">현재 알림</h3>
-              <p className="px-3 py-1 mb-4 text-lg font-medium text-blue-600 rounded shadow-sm bg-blue-50">{params.alarmTime}</p>
-              <p className="mb-8 text-center text-gray-600">알림을 변경하시겠습니까?</p>
+              <h3 className="mb-3 text-xl font-bold tracking-tight text-blue-700">알림 확인</h3>
+              {isDifferentAlarmTime ? (
+                <>
+                  <div className="w-full mb-3 space-y-1">
+                    <p className="text-sm font-semibold text-gray-600">현재 저장된 알림</p>
+                    <p className="px-3 py-1 text-lg font-medium text-blue-700 rounded shadow-sm bg-blue-50">{params.currentStoredAlarm}</p>
+                  </div>
+                  <div className="w-full mb-4 space-y-1">
+                    <p className="text-sm font-semibold text-gray-600">약속 변경 기준 예상 알림</p>
+                    <p className="px-3 py-1 text-lg font-medium rounded shadow-sm text-emerald-700 bg-emerald-50">{params.expectedAlarm}</p>
+                  </div>
+                  <p className="w-full mb-4 text-sm font-medium text-center text-amber-700">
+                    약속 시간 변경으로 알림 시각이 달라집니다.
+                  </p>
+                  <p className="w-full mb-4 text-sm text-center text-gray-600">
+                    {shouldAutoAdjust
+                      ? "기존 알림 설정을 유지한 채 새 약속 시간에 맞춰 반영됩니다."
+                      : "기존 알림 시간이 더 이상 유효하지 않아 다시 선택해야 합니다."}
+                  </p>
+                </>
+              ) : (
+                <div className="w-full mb-4 space-y-1">
+                  <p className="text-sm font-semibold text-gray-600">현재 알림</p>
+                  <p className="px-3 py-1 text-lg font-medium text-blue-700 rounded shadow-sm bg-blue-50">{params.currentStoredAlarm}</p>
+                </div>
+              )}
+              <p className="mb-8 text-center text-gray-600">
+                {shouldAutoAdjust ? "어떻게 진행할까요?" : "알림을 변경하시겠습니까?"}
+              </p>
               <div className="flex w-full gap-3">
                 <button
                   className="flex-1 px-4 py-2 font-semibold text-gray-700 transition-colors duration-150 bg-white border border-gray-300 shadow-sm rounded-xl hover:bg-gray-100"
-                  onClick={() => modal.closeWithResult(false)}
+                  onClick={() => modal.closeWithResult("cancel")}
                 >
                   취소
                 </button>
+                {shouldAutoAdjust && (
+                  <button
+                    className="flex-1 px-4 py-2 font-semibold text-blue-700 transition-colors duration-150 bg-white border border-blue-300 shadow-sm rounded-xl hover:bg-blue-50"
+                    onClick={() => modal.closeWithResult("reselect")}
+                  >
+                    다시 선택
+                  </button>
+                )}
                 <button
                   className="flex-1 px-4 py-2 font-semibold text-white transition-colors duration-150 shadow-md rounded-xl bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-600 hover:to-blue-500"
-                  onClick={() => modal.closeWithResult(true)}
+                  onClick={() =>
+                    modal.closeWithResult(
+                      shouldAutoAdjust ? "keepAndApply" : "reselect"
+                    )
+                  }
                 >
-                  변경
+                  {shouldAutoAdjust ? "유지하고 적용" : "변경"}
                 </button>
               </div>
             </div>
@@ -1598,12 +1668,7 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
         isOpen={alarmSheetOpen}
         onClose={() => setAlarmSheetOpen(false)}
         title="약속 전 나에게 알림"
-        options={[
-          { label: "없음", value: "없음" },
-          { label: "10분 전", value: "10분 전" },
-          { label: "30분 전", value: "30분 전" },
-          { label: "1시간 전", value: "1시간 전" },
-        ]}
+        options={alarmSheetOptions}
         selectedValue={alarmSheetValue}
         onChange={setAlarmSheetValue}
         onConfirm={handleAlarmTimeSelected}
@@ -1685,22 +1750,62 @@ const ChatDetail: NextPage<ChatDetailProps> = ({ chatRoomData }) => {
                     alert("이미 지난 약속입니다. 알림을 설정할 수 없습니다.");
                     return;
                   }
-                  
-                  const alarmTriggerTime = calculateAlarmTriggerTime(
-                    appointmentTimeChatMeetup,
-                    userAlarmSetting?.alarmTime
+
+                  // 모달 표시 전에 최신 DB 알림 상태를 가져와 "현재 저장된 알림"을 정확히 표시
+                  const latestAlarmSettings = await refetchAlarmSettings();
+                  const latestAlarmData = latestAlarmSettings?.data ?? alarmSettingsData;
+                  const storedAlarmTime =
+                    ((latestAlarmData as any)?.alarm?.alarmTime as string | undefined) ??
+                    undefined;
+                  const currentStoredAlarm = formatStoredTriggerTime(
+                    ((latestAlarmData as any)?.alarm?.triggerAt as string | undefined)
                   );
-                  
+
+                  const expectedAlarm = calculateAlarmTriggerTime(
+                    appointmentTimeChatMeetup,
+                    storedAlarmTime
+                  );
+                  const nextTriggerDate = getAlarmTriggerDate(
+                    appointmentTimeChatMeetup,
+                    storedAlarmTime
+                  );
+                  const shouldAutoAdjust =
+                    Boolean(storedAlarmTime && storedAlarmTime !== "없음") &&
+                    Boolean(nextTriggerDate) &&
+                    currentStoredAlarm !== expectedAlarm;
+
                   // 커스텀 모달 사용
-                  const userConfirmed = await openAlarmConfirmModal({
-                    alarmTime: alarmTriggerTime
+                  const alarmConfirmAction = await openAlarmConfirmModal({
+                    currentStoredAlarm,
+                    expectedAlarm,
+                    shouldAutoAdjust,
                   });
-                  
-                  if (!userConfirmed) {
+
+                  if (alarmConfirmAction === "cancel" || !alarmConfirmAction) {
                     return;
                   }
-                  
-                  refetchAlarmSettings();
+
+                  if (
+                    alarmConfirmAction === "keepAndApply" &&
+                    shouldAutoAdjust &&
+                    nextTriggerDate &&
+                    storedAlarmTime
+                  ) {
+                    try {
+                      await setAlarmSettingsAsync({
+                        chatId: id,
+                        alarmTime: storedAlarmTime,
+                        triggerAt: nextTriggerDate.toISOString(),
+                        disableAlarm: false,
+                      });
+                      return;
+                    } catch (error) {
+                      console.error("알림 유지 적용 중 오류 발생:", error);
+                      toast.error("기존 알림 적용에 실패했습니다. 다시 선택해주세요.");
+                    }
+                  }
+
+                  // 사용자가 다시 선택을 원했거나 유지 적용이 불가능한 경우 ActionSheet 오픈
                   setAlarmSheetOpen(true);
                 }}
                 title={

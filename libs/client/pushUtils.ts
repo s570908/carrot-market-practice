@@ -41,6 +41,15 @@ export async function initializePushSubscription(): Promise<PushSubscription | n
       console.log("Service worker registered successfully");
     }
     
+    console.log("Service worker registered:", registration);
+    console.log("registration.pushManager:", registration.pushManager);
+    console.log("pushManager 메서드 확인:", {
+      subscribe: typeof registration.pushManager?.subscribe,
+      getSubscription: typeof registration.pushManager?.getSubscription,
+      permissionState: typeof registration.pushManager?.permissionState,
+    });
+    console.log("프로토콜:", location.protocol, "(HTTPS 필요!)");
+
     // 서비스 워커가 준비될 때까지 대기
     await navigator.serviceWorker.ready;
 
@@ -99,11 +108,13 @@ export async function initializePushSubscription(): Promise<PushSubscription | n
       try {
         const convertedKey = urlBase64ToUint8Array(publicKey);
         console.log("5. 변환된 applicationServerKey 길이:", convertedKey.length);
-        
+        console.log("registration:", registration);
+        console.log("-----------registration.pushManager: ", registration.pushManager);
         subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: convertedKey as BufferSource,
         });
+        console.log("subscription:", subscription);
         console.log("✅ pushManager.subscribe 성공:", subscription);
         console.log("  - endpoint:", subscription.endpoint);
       } catch (subscribeError: any) {

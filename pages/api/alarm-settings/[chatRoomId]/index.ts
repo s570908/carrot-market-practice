@@ -23,7 +23,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   if (
     req.method !== "GET" &&
-    req.method !== "PATCH" &&
     req.method !== "POST" &&
     req.method !== "DELETE" &&
     req.method !== "PUT"
@@ -77,78 +76,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
   }
 
-  if (req.method === "PATCH") {
-    try {
-      // disableAlarm이 true면 알림 삭제 및 스케줄러 취소
-      if (req.body.disableAlarm === true) {
-        // SCHEDULED 상태의 알림만 삭제
-        const alarm = await client.alarmSetting.findFirst({
-          where: {
-            chatRoomId,
-            userId: user?.id,
-            status: AlarmStatus.SCHEDULED,
-          },
-        });
-
-        if (!alarm) {
-          return res
-            .status(404)
-            .json({ ok: false, error: "No scheduled alarm found" });
-        }
-
-        // 1. DB에서 알림 삭제
-        await client.alarmSetting.delete({
-          where: { id: alarm.id },
-        });
-
-        // 2. 스케줄러에서 알림 취소
-        try {
-          await cancelExistingAlarm(alarm.id);
-        } catch (e) {
-          // 스케줄러 취소 실패는 무시 (로그만)
-          console.warn("스케줄러 알림 취소 실패:", e);
-        }
-
-        return res.status(200).json({
-          ok: true,
-          deletedAlarmId: alarm.id,
-        });
-      }
-
-      // SCHEDULED 상태의 알림만 업데이트
-      const alarm = await client.alarmSetting.findFirst({
-        where: {
-          chatRoomId,
-          userId: user?.id,
-          status: AlarmStatus.SCHEDULED,
-        },
-      });
-
-      if (!alarm) {
-        return res
-          .status(404)
-          .json({ ok: false, error: "No scheduled alarm found" });
-      }
-
-      const updatedAlarm = await client.alarmSetting.update({
-        where: { id: alarm.id },
-        data: {
-          alarmTime: alarmTime ?? alarm.alarmTime,
-          status: status ?? alarm.status,
-        },
-      });
-
-      return res.status(200).json({
-        ok: true,
-        alarm: updatedAlarm,
-      });
-    } catch (error) {
-      return res
-        .status(500)
-        .json({ ok: false, error: "Failed to update alarm setting" });
-    }
-  }
-
   if (req.method === "POST") {
     // 알림 생성
     try {
@@ -176,22 +103,40 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   if (req.method === "DELETE") {
-    // 알림 삭제 (status와 관계없이 삭제)
+    // 멱등 삭제: SCHEDULED만 삭제 대상, SENT는 alreadySent로 응답
     try {
-      const alarm = await client.alarmSetting.findFirst({
+      const scheduledAlarm = await client.alarmSetting.findFirst({
         where: {
           chatRoomId,
           userId: user.id,
-          // status 조건 제거
+          status: AlarmStatus.SCHEDULED,
         },
       });
-      if (!alarm) {
-        return res.status(404).json({ ok: false, error: "No alarm found" });
+
+      if (scheduledAlarm) {
+        await client.alarmSetting.delete({
+          where: { id: scheduledAlarm.id },
+        });
+        return res.status(200).json({ ok: true, deleted: true });
       }
-      await client.alarmSetting.delete({
-        where: { id: alarm.id },
+
+      const sentAlarm = await client.alarmSetting.findFirst({
+        where: {
+          chatRoomId,
+          userId: user.id,
+          status: AlarmStatus.SENT,
+        },
       });
-      return res.status(200).json({ ok: true });
+
+      if (sentAlarm) {
+        return res.status(200).json({
+          ok: true,
+          alreadySent: true,
+          deleted: false,
+        });
+      }
+
+      return res.status(200).json({ ok: true, alreadyDeleted: true });
     } catch (error) {
       return res
         .status(500)
@@ -201,7 +146,58 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   if (req.method === "PUT") {
     try {
-      const { alarmTime, triggerAt, status } = req.body;
+      const { alarmTime, triggerAt, status, disableAlarm } = req.body;
+      const flowId = `alarm-put-${chatRoomId}-${user.id}-${Date.now()}`;
+
+      console.log("[alarm-flow] put_start", {
+        flowId,
+        chatRoomId,
+        userId: user.id,
+        disableAlarm,
+        alarmTime,
+        triggerAt,
+      });
+
+      // disableAlarm=true 이면 시간값 없이도 성공 처리
+      if (disableAlarm === true) {
+        const existingAlarm = await client.alarmSetting.findFirst({
+          where: {
+            chatRoomId,
+            userId: user.id,
+          },
+        });
+
+        if (!existingAlarm) {
+          return res.status(200).json({
+            ok: true,
+            disabled: true,
+            alreadyDisabled: true,
+            alarm: null,
+          });
+        }
+
+        const cancelResult = await cancelExistingAlarm(existingAlarm.id, {
+          flowId,
+          reason: "disable_alarm",
+          chatRoomId,
+          userId: user.id,
+        });
+        if (!cancelResult.ok) {
+          return res.status(500).json({
+            ok: false,
+            error: "Failed to cancel alarm",
+          });
+        }
+
+        return res.status(200).json({
+          ok: true,
+          disabled: true,
+          canceled: cancelResult.canceled,
+          alreadyCanceled: cancelResult.alreadyCanceled,
+          alarm: null,
+        });
+      }
+
       if (!alarmTime || !triggerAt) {
         return res.status(400).json({ ok: false, error: "alarmTime and triggerAt are required" });
       }
@@ -214,6 +210,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
 
       if (alarm) {
+        const previousTriggerAt = alarm.triggerAt?.toISOString?.();
         // 2. 있으면 업데이트
         alarm = await client.alarmSetting.update({
           where: { id: alarm.id },
@@ -229,9 +226,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           process.env.NEXT_PUBLIC_API_URL ||
           req.headers.origin ||
           `http://${req.headers.host}`;
-        const scheduled = await scheduleAlarmById(alarm.id, baseUrl);
+        const scheduled = await scheduleAlarmById(alarm.id, baseUrl, {
+          flowId,
+          reason: "put_update_reschedule",
+          chatRoomId,
+          userId: user.id,
+        });
         console.log(
-          `[알림 PUT] scheduleAlarmById 호출됨: alarmId=${alarm.id}, result=${scheduled}`
+          `[알림 PUT] scheduleAlarmById 호출됨: flowId=${flowId}, alarmId=${alarm.id}, previousTriggerAt=${previousTriggerAt}, nextTriggerAt=${alarm.triggerAt.toISOString()}, result=${scheduled}`
         );
         return res.status(200).json({ ok: true, alarm, updated: true, scheduled });
       } else {
@@ -250,9 +252,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           process.env.NEXT_PUBLIC_API_URL ||
           req.headers.origin ||
           `http://${req.headers.host}`;
-        const scheduled = await scheduleAlarmById(alarm.id, baseUrl);
+        const scheduled = await scheduleAlarmById(alarm.id, baseUrl, {
+          flowId,
+          reason: "put_create_schedule",
+          chatRoomId,
+          userId: user.id,
+        });
         console.log(
-          `[알림 PUT] scheduleAlarmById 호출됨: alarmId=${alarm.id}, result=${scheduled}`
+          `[알림 PUT] scheduleAlarmById 호출됨: flowId=${flowId}, alarmId=${alarm.id}, nextTriggerAt=${alarm.triggerAt.toISOString()}, result=${scheduled}`
         );
         return res.status(201).json({ ok: true, alarm, created: true, scheduled });
       }
@@ -264,7 +271,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
 export default withApiSession(
   withHandler({
-    methods: ["GET", "PATCH", "POST", "DELETE", "PUT"],
+    methods: ["GET", "POST", "DELETE", "PUT"],
     handler,
     isPrivate: true,
   })

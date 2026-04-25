@@ -3,7 +3,6 @@ import withHandler from "@libs/server/withHandler";
 import client from "@libs/client/client";
 import { withApiSession } from "@libs/server/withSession";
 import { cancelExistingAlarm } from "@libs/server/alarmScheduler";
-import { AlarmStatus } from "@prisma/client";
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
@@ -21,29 +20,39 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   try {
-    // Find the alarm setting to cancel
+    // idempotent cancel: status와 무관하게 대상 알람 1건을 찾고, 없으면 이미 해제된 것으로 처리
     const alarmToCancel = await client.alarmSetting.findFirst({
       where: {
         chatRoomId: +id,
         userId: user.id,
-        status: AlarmStatus.SCHEDULED,
       },
     });
 
     if (!alarmToCancel) {
-      return res.status(404).json({
-        ok: false,
-        error: "No scheduled alarm found",
+      return res.status(200).json({
+        ok: true,
+        message: "Alarm already cancelled",
+        cancelledAlarmId: null,
+        canceled: false,
+        alreadyCanceled: true,
       });
     }
 
     // Update status to CANCELED in database and cancel the scheduled job
-    await cancelExistingAlarm(alarmToCancel.id);
+    const cancelResult = await cancelExistingAlarm(alarmToCancel.id);
+    if (!cancelResult.ok) {
+      return res.status(500).json({
+        ok: false,
+        error: "Failed to cancel alarm",
+      });
+    }
 
     return res.status(200).json({
       ok: true,
       message: "Alarm cancelled successfully",
       cancelledAlarmId: alarmToCancel.id,
+      canceled: cancelResult.canceled,
+      alreadyCanceled: cancelResult.alreadyCanceled,
     });
   } catch (error) {
     console.error("Error cancelling alarm:", error);
