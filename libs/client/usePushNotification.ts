@@ -417,7 +417,7 @@ export default function usePushNotification(): PushNotificationHookResult {
 
       const newSubscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: convertedKey,
+        applicationServerKey: convertedKey as BufferSource,
       });
 
       const saveResponse = await fetch("/api/push/subscribe", {

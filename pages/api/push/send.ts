@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 import client from "@libs/client/client";
 import withHandler from "@libs/server/withHandler";
 import { withApiSession } from "@libs/server/withSession";
-import { sendPushNotification } from "@libs/server/webPushUtils";
+import { sendPushNotification } from "@libs/server/pushService";
 
 // PushPayload 타입에 requireInteraction 추가
 type PushPayload = {
