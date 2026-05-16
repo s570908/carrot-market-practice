@@ -80,7 +80,6 @@ self.addEventListener("install", (event) => {
         console.log("[Service Worker] 캐시 생성");
         return cache.addAll(CACHE_ASSETS);
       })
-      .then(() => self.skipWaiting())
   );
 });
 
@@ -385,6 +384,11 @@ self.addEventListener("notificationclick", (event) => {
 // 메시지 수신 이벤트
 self.addEventListener("message", (event) => {
   console.log("[Service Worker] 메시지 수신:", event.data);
+
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+    return;
+  }
 
   if (event.data && event.data.type === "TEST_MESSAGE") {
     self.clients.matchAll().then((clients) => {

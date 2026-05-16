@@ -18,6 +18,7 @@ import { useRouter } from "next/router";
 import AppInitializer from "@/components/AppInitializer";
 import axios from "axios";
 import PushSubscriptionManager from "@/components/PushSubscriptionManager";
+import PwaUpdateBanner from "@/components/PwaUpdateBanner";
 
 // QueryClient 생성
 const queryClient = new QueryClient({
@@ -118,6 +119,7 @@ function AppContent({
   return (
     <div className="w-full max-w-xl mx-auto">
       {/* <PushSubscriptionManager /> */}
+      <PwaUpdateBanner />
       <Component {...pageProps} />
       <AppInitializer />
       <ToastContainer
