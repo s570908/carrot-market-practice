@@ -19,6 +19,8 @@ import AppInitializer from "@/components/AppInitializer";
 import axios from "axios";
 import PushSubscriptionManager from "@/components/PushSubscriptionManager";
 import PwaUpdateBanner from "@/components/PwaUpdateBanner";
+import ForceUpdateGuard from "@/components/ForceUpdateGuard";
+import NewVersionBanner from "@/components/NewVersionBanner";
 
 // QueryClient 생성
 const queryClient = new QueryClient({
@@ -120,7 +122,10 @@ function AppContent({
     <div className="w-full max-w-xl mx-auto">
       {/* <PushSubscriptionManager /> */}
       <PwaUpdateBanner />
-      <Component {...pageProps} />
+      <NewVersionBanner />
+      <ForceUpdateGuard>
+        <Component {...pageProps} />
+      </ForceUpdateGuard>
       <AppInitializer />
       <ToastContainer
         position="top-center"

@@ -1,0 +1,532 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model alarmsetting {
+  id         Int                 @id @default(autoincrement())
+  alarmTime  String
+  triggerAt  DateTime
+  status     alarmsetting_status @default(SCHEDULED)
+  userId     Int
+  chatRoomId Int
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @default(now())
+  chatroom   chatroom            @relation(fields: [chatRoomId], references: [id], onDelete: Cascade, map: "AlarmSetting_chatRoomId_fkey")
+  user       user                @relation(fields: [userId], references: [id], onDelete: Cascade, map: "AlarmSetting_userId_fkey")
+
+  @@unique([userId, chatRoomId], map: "AlarmSetting_userId_chatRoomId_key")
+  @@index([chatRoomId], map: "AlarmSetting_chatRoomId_idx")
+  @@index([triggerAt, status], map: "AlarmSetting_triggerAt_status_idx")
+  @@index([userId, chatRoomId], map: "AlarmSetting_userId_chatRoomId_idx")
+}
+
+model answer {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  userId    Int
+  postId    Int
+  answer    String   @db.MediumText
+  post      post     @relation(fields: [postId], references: [id], onDelete: Cascade, map: "Answer_postId_fkey")
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Answer_userId_fkey")
+
+  @@index([postId], map: "Answer_postId_fkey")
+  @@index([userId], map: "Answer_userId_fkey")
+}
+
+model appointment {
+  id                      Int                       @id @default(autoincrement())
+  title                   String
+  description             String?                   @db.MediumText
+  startTime               DateTime
+  endTime                 DateTime
+  status                  appointment_status        @default(PENDING)
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime
+  organizerId             Int
+  user                    user                      @relation(fields: [organizerId], references: [id], onDelete: Cascade, map: "Appointment_organizerId_fkey")
+  appointmentnotification appointmentnotification[]
+  appointmentparticipant  appointmentparticipant[]
+  locationtmap            locationtmap?
+
+  @@index([organizerId], map: "Appointment_organizerId_idx")
+  @@index([startTime], map: "Appointment_startTime_idx")
+}
+
+model appointmentnotification {
+  id            Int                          @id @default(autoincrement())
+  appointmentId Int
+  title         String
+  message       String?                      @db.Text
+  type          appointmentnotification_type @default(PUSH)
+  minutesBefore Int
+  isSent        Boolean                      @default(false)
+  sentAt        DateTime?
+  createdAt     DateTime                     @default(now())
+  updatedAt     DateTime                     @default(now())
+  appointment   appointment                  @relation(fields: [appointmentId], references: [id], onDelete: Cascade, map: "AppointmentNotification_appointmentId_fkey")
+
+  @@index([appointmentId], map: "AppointmentNotification_appointmentId_idx")
+  @@index([isSent, minutesBefore], map: "AppointmentNotification_isSent_minutesBefore_idx")
+}
+
+model appointmentparticipant {
+  id            Int                           @id @default(autoincrement())
+  appointmentId Int
+  userId        Int
+  status        appointmentparticipant_status @default(PENDING)
+  responseTime  DateTime?
+  createdAt     DateTime                      @default(now())
+  updatedAt     DateTime                      @default(now())
+  appointment   appointment                   @relation(fields: [appointmentId], references: [id], onDelete: Cascade, map: "AppointmentParticipant_appointmentId_fkey")
+  user          user                          @relation(fields: [userId], references: [id], onDelete: Cascade, map: "AppointmentParticipant_userId_fkey")
+
+  @@unique([appointmentId, userId], map: "AppointmentParticipant_appointmentId_userId_key")
+  @@index([appointmentId], map: "AppointmentParticipant_appointmentId_idx")
+  @@index([userId], map: "AppointmentParticipant_userId_idx")
+}
+
+model chatmeetup {
+  id                Int       @id @default(autoincrement())
+  appointmentTime   DateTime
+  place             String
+  locationLatitude  Float?
+  locationLongitude Float?
+  chatRoomId        Int?      @unique(map: "ChatMeetup_chatRoomId_key")
+  chatMeetupRef     Int?
+  userId            Int?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @default(now())
+  chatroom          chatroom? @relation(fields: [chatRoomId], references: [id], map: "ChatMeetup_chatRoomId_fkey")
+  user              user?     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "ChatMeetup_userId_fkey")
+
+  @@index([userId], map: "ChatMeetup_userId_fkey")
+}
+
+model chatroom {
+  id                                          Int               @id @default(autoincrement())
+  createdAt                                   DateTime          @default(now())
+  updatedAt                                   DateTime
+  buyerId                                     Int               @default(1)
+  sellerId                                    Int               @default(1)
+  recentMsgId                                 Int?              @unique(map: "ChatRoom_recentMsgId_key")
+  productId                                   Int               @default(1)
+  chatMeetupId                                Int?              @unique(map: "ChatRoom_chatMeetupId_key")
+  alarmsetting                                alarmsetting[]
+  chatmeetup                                  chatmeetup?
+  user_chatroom_buyerIdTouser                 user              @relation("chatroom_buyerIdTouser", fields: [buyerId], references: [id], onDelete: Cascade, map: "ChatRoom_buyerId_fkey")
+  product                                     product           @relation(fields: [productId], references: [id], onDelete: Cascade, map: "ChatRoom_productId_fkey")
+  sellerchat_chatroom_recentMsgIdTosellerchat sellerchat?       @relation("chatroom_recentMsgIdTosellerchat", fields: [recentMsgId], references: [id], map: "ChatRoom_recentMsgId_fkey")
+  user_chatroom_sellerIdTouser                user              @relation("chatroom_sellerIdTouser", fields: [sellerId], references: [id], onDelete: Cascade, map: "ChatRoom_sellerId_fkey")
+  lastreadmessage                             lastreadmessage[]
+  sellerchat_sellerchat_chatRoomIdTochatroom  sellerchat[]      @relation("sellerchat_chatRoomIdTochatroom")
+
+  @@index([buyerId], map: "ChatRoom_buyerId_fkey")
+  @@index([productId], map: "ChatRoom_productId_fkey")
+  @@index([recentMsgId], map: "ChatRoom_recentMsgId_fkey")
+  @@index([sellerId], map: "ChatRoom_sellerId_fkey")
+}
+
+model fav {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+  userId    Int
+  productId Int
+  product   product  @relation(fields: [productId], references: [id], onDelete: Cascade, map: "Fav_productId_fkey")
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Fav_userId_fkey")
+
+  @@index([productId], map: "Fav_productId_fkey")
+  @@index([userId], map: "Fav_userId_fkey")
+}
+
+model friendship {
+  id                             Int      @id @default(autoincrement())
+  userId                         Int
+  friendId                       Int
+  createdAt                      DateTime @default(now())
+  user_friendship_friendIdTouser user     @relation("friendship_friendIdTouser", fields: [friendId], references: [id], onDelete: Cascade, map: "Friendship_friendId_fkey")
+  user_friendship_userIdTouser   user     @relation("friendship_userIdTouser", fields: [userId], references: [id], onDelete: Cascade, map: "Friendship_userId_fkey")
+
+  @@unique([userId, friendId], map: "Friendship_userId_friendId_key")
+  @@index([friendId], map: "Friendship_friendId_idx")
+  @@index([userId], map: "Friendship_userId_idx")
+}
+
+model lastreadmessage {
+  id           Int        @id @default(autoincrement())
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @default(now())
+  userId       Int
+  chatRoomId   Int
+  sellerChatId Int
+  chatroom     chatroom   @relation(fields: [chatRoomId], references: [id], onDelete: Cascade, map: "LastReadMessage_chatRoomId_fkey")
+  sellerchat   sellerchat @relation(fields: [sellerChatId], references: [id], onDelete: Cascade, map: "LastReadMessage_sellerChatId_fkey")
+  user         user       @relation(fields: [userId], references: [id], onDelete: Cascade, map: "LastReadMessage_userId_fkey")
+
+  @@unique([userId, chatRoomId], map: "LastReadMessage_userId_chatRoomId_key")
+  @@index([chatRoomId], map: "LastReadMessage_chatRoomId_fkey")
+  @@index([sellerChatId], map: "LastReadMessage_sellerChatId_fkey")
+}
+
+model locationtmap {
+  id              Int          @id @default(autoincrement())
+  appointmentId   Int?         @unique(map: "LocationTmap_appointmentId_key")
+  locationName    String
+  selectedAddress String       @default("")
+  latitude        Float
+  longitude       Float
+  addressType     String?
+  adminDong       String?
+  adminDongCode   String?
+  buildingIndex   String?
+  buildingName    String?
+  bunji           String?
+  city_do         String?
+  eup_myun        String?
+  fullAddress     String?
+  gu_gun          String?
+  legalDong       String?
+  legalDongCode   String?
+  mappingDistance String?
+  ri              String?
+  roadCode        String?
+  roadName        String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime
+  appointment     appointment? @relation(fields: [appointmentId], references: [id], onDelete: Cascade, map: "LocationTmap_appointmentId_fkey")
+}
+
+model message {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  userId    Int
+  message   String   @db.MediumText
+  streamId  Int
+  stream    stream   @relation(fields: [streamId], references: [id], onDelete: Cascade, map: "Message_streamId_fkey")
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Message_userId_fkey")
+
+  @@index([streamId], map: "Message_streamId_fkey")
+  @@index([userId], map: "Message_userId_fkey")
+}
+
+model post {
+  id        Int         @id @default(autoincrement())
+  createdAt DateTime    @default(now())
+  updatedAt DateTime
+  userId    Int
+  question  String      @db.MediumText
+  latitude  Float?
+  longitude Float?
+  answer    answer[]
+  user      user        @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Post_userId_fkey")
+  wondering wondering[]
+
+  @@index([userId], map: "Post_userId_fkey")
+}
+
+model product {
+  id           Int            @id @default(autoincrement())
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime
+  userId       Int
+  name         String
+  price        Int
+  description  String         @db.MediumText
+  status       product_status @default(Registered)
+  chatroom     chatroom[]
+  fav          fav[]
+  user         user           @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Product_userId_fkey")
+  productimage productimage[]
+  purchase     purchase?
+  record       record[]
+  reservation  reservation[]
+  review       review[]
+  sale         sale?
+
+  @@index([userId], map: "Product_userId_fkey")
+}
+
+model productimage {
+  id        Int     @id @default(autoincrement())
+  imageId   String
+  productId Int
+  product   product @relation(fields: [productId], references: [id], onDelete: Cascade, map: "ProductImage_productId_fkey")
+
+  @@index([productId], map: "ProductImage_productId_fkey")
+}
+
+model purchase {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+  userId    Int
+  productId Int      @unique(map: "Purchase_productId_key")
+  product   product  @relation(fields: [productId], references: [id], onDelete: Cascade, map: "PurchaseToProduct")
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Purchase_userId_fkey")
+
+  @@index([userId], map: "Purchase_userId_fkey")
+}
+
+model pushsubscription {
+  id        Int                     @id @default(autoincrement())
+  userId    Int
+  endpoint  String                  @db.Text
+  p256dh    String                  @db.Text
+  auth      String                  @db.Text
+  createdAt DateTime                @default(now())
+  updatedAt DateTime
+  browserId String?
+  status    pushsubscription_status @default(ACTIVE)
+  user      user                    @relation(fields: [userId], references: [id], onDelete: Cascade, map: "PushSubscription_userId_fkey")
+
+  @@index([endpoint(length: 191)], map: "PushSubscription_endpoint_idx")
+  @@index([userId], map: "PushSubscription_userId_idx")
+}
+
+model record {
+  id        Int         @id @default(autoincrement())
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @default(now())
+  userId    Int
+  productId Int
+  kind      record_kind
+  product   product     @relation(fields: [productId], references: [id], onDelete: Cascade, map: "Record_productId_fkey")
+  user      user        @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Record_userId_fkey")
+
+  @@index([productId], map: "Record_productId_fkey")
+  @@index([userId], map: "Record_userId_fkey")
+}
+
+model reservation {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+  userId    Int
+  productId Int
+  product   product  @relation(fields: [productId], references: [id], onDelete: Cascade, map: "Reservation_productId_fkey")
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Reservation_userId_fkey")
+
+  @@index([productId], map: "Reservation_productId_fkey")
+  @@index([userId], map: "Reservation_userId_fkey")
+}
+
+model review {
+  id                             Int               @id @default(autoincrement())
+  createdAt                      DateTime          @default(now())
+  updatedAt                      DateTime
+  review                         String            @db.MediumText
+  score                          Int               @default(1)
+  createdById                    Int
+  createdForId                   Int
+  productForId                   Int               @default(1)
+  reviewType                     review_reviewType @default(SellerReview)
+  user_review_createdByIdTouser  user              @relation("review_createdByIdTouser", fields: [createdById], references: [id], onDelete: Cascade, map: "Review_createdById_fkey")
+  user_review_createdForIdTouser user              @relation("review_createdForIdTouser", fields: [createdForId], references: [id], onDelete: Cascade, map: "Review_createdForId_fkey")
+  product                        product           @relation(fields: [productForId], references: [id], onDelete: Cascade, map: "Review_productForId_fkey")
+
+  @@index([createdById], map: "Review_createdById_fkey")
+  @@index([createdForId], map: "Review_createdForId_fkey")
+  @@index([productForId], map: "Review_productForId_fkey")
+}
+
+model sale {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+  userId    Int
+  productId Int      @unique(map: "Sale_productId_key")
+  product   product  @relation(fields: [productId], references: [id], onDelete: Cascade, map: "SaleToProduct")
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Sale_userId_fkey")
+
+  @@index([userId], map: "Sale_userId_fkey")
+}
+
+model schedulednotification {
+  id          Int      @id @default(autoincrement())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now())
+  userId      Int
+  jobId       String   @unique(map: "ScheduledNotification_jobId_key")
+  payload     String   @db.Text
+  scheduledAt DateTime
+  status      String   @default("SCHEDULED")
+  result      String?  @db.Text
+  user        user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "ScheduledNotification_userId_fkey")
+
+  @@index([scheduledAt], map: "ScheduledNotification_scheduledAt_idx")
+  @@index([status], map: "ScheduledNotification_status_idx")
+  @@index([userId], map: "ScheduledNotification_userId_idx")
+}
+
+model sellerchat {
+  id                                        Int                    @id @default(autoincrement())
+  createdAt                                 DateTime               @default(now())
+  updatedAt                                 DateTime
+  userId                                    Int?
+  chatMsg                                   String                 @db.MediumText
+  chatRoomId                                Int                    @default(1)
+  messageType                               sellerchat_messageType @default(USER)
+  meta                                      Json?
+  chatMeetupRef                             Int?
+  chatroom_chatroom_recentMsgIdTosellerchat chatroom?              @relation("chatroom_recentMsgIdTosellerchat")
+  lastreadmessage                           lastreadmessage[]
+  chatroom_sellerchat_chatRoomIdTochatroom  chatroom               @relation("sellerchat_chatRoomIdTochatroom", fields: [chatRoomId], references: [id], onDelete: Cascade, map: "SellerChat_chatRoomId_fkey")
+  user                                      user?                  @relation(fields: [userId], references: [id], onDelete: Cascade, map: "SellerChat_userId_fkey")
+
+  @@index([chatRoomId], map: "SellerChat_chatRoomId_fkey")
+  @@index([userId], map: "SellerChat_userId_fkey")
+}
+
+model stream {
+  id            Int       @id @default(autoincrement())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime
+  name          String
+  description   String    @db.MediumText
+  price         Int
+  userId        Int
+  cloudflareId  String    @default("a")
+  cloudflareUrl String    @default("a")
+  cloudflareKey String    @default("a")
+  replayVideoId String    @default("a")
+  live          Boolean   @default(false)
+  message       message[]
+  user          user      @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Stream_userId_fkey")
+
+  @@index([userId], map: "Stream_userId_fkey")
+}
+
+model timezonetest {
+  id        Int      @id @default(autoincrement())
+  author    String
+  title     String
+  createdAt DateTime @default(now()) @db.DateTime(0)
+  updatedAt DateTime @default(now()) @db.DateTime(0)
+}
+
+model token {
+  id        Int      @id @default(autoincrement())
+  payload   String   @unique(map: "Token_payload_key")
+  userId    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Token_userId_fkey")
+
+  @@index([userId], map: "Token_userId_fkey")
+}
+
+model user {
+  id                                   Int                      @id @default(autoincrement())
+  phone                                String?                  @unique(map: "User_phone_key")
+  email                                String?                  @unique(map: "User_email_key")
+  name                                 String
+  avatar                               String?
+  createdAt                            DateTime                 @default(now())
+  updatedAt                            DateTime
+  alarmsetting                         alarmsetting[]
+  answer                               answer[]
+  appointment                          appointment[]
+  appointmentparticipant               appointmentparticipant[]
+  chatmeetup                           chatmeetup[]
+  chatroom_chatroom_buyerIdTouser      chatroom[]               @relation("chatroom_buyerIdTouser")
+  chatroom_chatroom_sellerIdTouser     chatroom[]               @relation("chatroom_sellerIdTouser")
+  fav                                  fav[]
+  friendship_friendship_friendIdTouser friendship[]             @relation("friendship_friendIdTouser")
+  friendship_friendship_userIdTouser   friendship[]             @relation("friendship_userIdTouser")
+  lastreadmessage                      lastreadmessage[]
+  message                              message[]
+  post                                 post[]
+  product                              product[]
+  purchase                             purchase[]
+  pushsubscription                     pushsubscription[]
+  record                               record[]
+  reservation                          reservation[]
+  review_review_createdByIdTouser      review[]                 @relation("review_createdByIdTouser")
+  review_review_createdForIdTouser     review[]                 @relation("review_createdForIdTouser")
+  sale                                 sale[]
+  schedulednotification                schedulednotification[]
+  sellerchat                           sellerchat[]
+  stream                               stream[]
+  token                                token[]
+  wondering                            wondering[]
+}
+
+model wondering {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+  userId    Int
+  postId    Int
+  post      post     @relation(fields: [postId], references: [id], onDelete: Cascade, map: "Wondering_postId_fkey")
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Wondering_userId_fkey")
+
+  @@index([postId], map: "Wondering_postId_fkey")
+  @@index([userId], map: "Wondering_userId_fkey")
+}
+
+enum alarmsetting_status {
+  SCHEDULED
+  SENT
+  FAILED
+  CANCELED
+}
+
+enum appointmentparticipant_status {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+enum appointmentnotification_type {
+  EMAIL
+  PUSH
+  SMS
+}
+
+enum appointment_status {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum record_kind {
+  Purchase
+  Sale
+  Fav
+}
+
+enum sellerchat_messageType {
+  USER
+  SYSTEM
+}
+
+enum product_status {
+  Unregistered
+  Registered
+  Reserved
+  Sold
+}
+
+enum pushsubscription_status {
+  ACTIVE
+  EXPIRED
+  INVALID
+  INACTIVE
+}
+
+enum review_reviewType {
+  SellerReview
+  BuyerReview
+}
+
+
+// introspectionSchemaVersion: NonPrisma 
+

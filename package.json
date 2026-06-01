@@ -9,6 +9,7 @@
     "lint": "next lint",
     "prisma:seed": "node prisma/seed.js",
     "prisma:miggen": "prisma migrate dev --name $npm_config_name && prisma generate",
+    "prisma:migrate-app-release": "prisma migrate dev --name add_app_release",
     "prisma:dbpush": "prisma db push",
     "json-server": "json-server --watch libs/server/db.json --port 4000",
     "cleanup-subscriptions": "tsx scripts/cleanup-subscriptions.ts"

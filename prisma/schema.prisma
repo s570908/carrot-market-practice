@@ -544,3 +544,22 @@ model ScheduledNotification {
 // 1. 오타 방지 및 일관성 보장 (ex: "SENT", "FAILED" 등 오타 불가)
 // 2. 코드 자동완성 및 타입 안정성 향상  SCHEDULED // scheduled가 제일 먼저 있어야 함
 // 3. 쿼리 조건, 통계, 유지보수에 유리
+
+// =====================================================
+// 앱 버전 관리 모델 (PWA 업데이트용)
+// =====================================================
+
+model AppRelease {
+  id          Int      @id @default(autoincrement())
+  version     String   @unique
+  buildId     String   @unique
+  releasedAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  forceUpdate Boolean  @default(false)
+  message     String?  @db.Text
+  
+  @@index([releasedAt])
+  @@index([version])
+}
