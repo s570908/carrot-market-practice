@@ -11,9 +11,12 @@ interface VersionInfo {
 }
 
 const STORAGE_KEY = "app_seen_version";
+const DISMISSED_AT_KEY = "app_seen_version_dismissed_at";
+const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
 
 export default function NewVersionBanner() {
   const [dismissed, setDismissed] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const { data } = useQuery<VersionInfo>({
     queryKey: ["app-version"],
@@ -28,14 +31,32 @@ export default function NewVersionBanner() {
 
   // 렌더 시점에 localStorage를 직접 읽어 판단 — useEffect 타이밍 문제 없음
   const seen = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+  const dismissedAtRaw =
+    typeof window !== "undefined" ? localStorage.getItem(DISMISSED_AT_KEY) : null;
+  const dismissedAt = dismissedAtRaw ? Number(dismissedAtRaw) : null;
+  const dismissalExpired =
+    dismissedAt != null && Number.isFinite(dismissedAt) ? Date.now() - dismissedAt >= SIX_HOURS_MS : false;
   const isNew = seen !== data.version;
 
   // forceUpdate=true 는 ForceUpdateGuard가 처리하므로 배너에서 제외
-  if (!isNew || dismissed || data.forceUpdate) return null;
+  // 같은 버전이라도 닫은 지 6시간이 지나면 다시 보여준다.
+  if ((seen === data.version && !dismissalExpired) || dismissed || data.forceUpdate) return null;
 
   const handleDismiss = () => {
     localStorage.setItem(STORAGE_KEY, data.version!);
+    localStorage.setItem(DISMISSED_AT_KEY, String(Date.now()));
     setDismissed(true);
+  };
+
+  const handleUpdate = async () => {
+    setIsUpdating(true);
+    try {
+      localStorage.setItem(STORAGE_KEY, data.version!);
+      localStorage.removeItem(DISMISSED_AT_KEY);
+      window.location.reload();
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   return (
@@ -46,6 +67,13 @@ export default function NewVersionBanner() {
           {data.message && <span>{data.message}</span>}
         </div>
         <div className="flex gap-2 shrink-0">
+          <button
+            onClick={handleUpdate}
+            disabled={isUpdating}
+            className="px-3 py-1 text-sm font-semibold text-orange-500 bg-white rounded hover:bg-orange-50 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {isUpdating ? "업데이트 중..." : "업데이트"}
+          </button>
           <button
             onClick={handleDismiss}
             className="px-3 py-1 text-sm border border-white rounded hover:bg-orange-600"
